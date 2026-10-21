@@ -1,0 +1,3 @@
+Coloque aqui os arquivos .gs do Google Apps Script do BI.
+
+No script.google.com, abra o projeto, copie cada arquivo e salve nesta pasta com o mesmo nome (por exemplo Codigo.gs).
