@@ -1,0 +1,25 @@
+# Sistema
+.DS_Store
+Thumbs.db
+desktop.ini
+ehthumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Segredos
+.env
+.env.*
+!.env.example
+*.pem
+credentials.json
+client_secret*.json
+
+# Editores
+.idea/
+.vscode/
+*.swp
+
+# Dependências
+node_modules/
