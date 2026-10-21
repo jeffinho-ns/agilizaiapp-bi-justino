@@ -1,0 +1,29 @@
+# --- segredos e credenciais (NUNCA versionar) ---
+.env
+.env.*
+credentials.json
+*credentials*.json
+*.pem
+*.key
+.seujustino/
+
+# --- dependências e sistema ---
+node_modules/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- logs ---
+logs/
+*.log
+
+# --- robô ZigPay: só o código vai; o resto é gerado na máquina ---
+robo-zigpay/.debug/
+robo-zigpay/chromedriver-cache/
+robo-zigpay/fechado_sem_publico.txt
+
+# --- backups e temporários ---
+*.bak
+*.bak-*
+*.tmp
+*~
