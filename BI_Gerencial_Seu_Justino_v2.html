@@ -1268,6 +1268,16 @@ tbody tr:hover{background:#ffffff08}
   </div>
 </div>
 
+<div class="dicaOverlay hidden" id="escalaDiaOverlay" onclick="if(event.target===this)fecharEscalaDia()">
+<div class="dicaCard" style="max-width:1240px">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+    <h3 id="escalaDiaTitulo">Escala do dia</h3>
+    <span><button class="btn" type="button" style="padding:6px 10px;font-size:12px" onclick="abrirEscalaDiaPopup(escalaDiaAtual.date,escalaDiaAtual.turno)" title="Recalcula com a lista da grade como está agora">🔄 Atualizar</button> <button class="btn" type="button" style="padding:6px 10px;font-size:12px;background:#3a1620;border-color:#5c2530" onclick="fecharEscalaDia()">✕</button></span>
+  </div>
+  <div id="escalaDiaBody" style="margin-top:8px"><div class="mini">Calculando…</div></div>
+</div>
+</div>
+
 <div class="dicaOverlay hidden" id="dicaAtracaoOverlay" onclick="if(event.target===this)fecharSugestaoAtracao()">
 <div class="dicaCard">
   <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
@@ -1609,6 +1619,7 @@ tbody tr:hover{background:#ffffff08}
   <div class="tbItem"><label class="mini">Quantidade</label><input type="number" id="wgQty" min="1" step="1" value="1"></div>
   <button class="btn" type="button" onclick="addWeekGridDraft()">+ Adicionar</button>
   <button class="btn" type="button" style="background:#233a1f;border-color:#3a5c30" onclick="suggestWeekGridDay()" title="Adiciona de uma vez a sugestão de todos os setores pro dia escolhido — turno sobe sozinho até 12h em dia mais comprido (ex.: sábado)">✨ Sugerir solicitação do dia</button>
+  <button class="btn" type="button" onclick="abrirEscalaDiaPopup($('wgDay')?.value,Number($('wgShift')?.value)||8)" title="Abre a escala do dia, hora a hora: equipe fixa + freelancers da lista, setor por setor">🔍 Escala do dia</button>
 </div>
 <div class="alert g" id="wgPaxInfo" style="margin:4px 0 10px;font-weight:700"></div>
 <div class="tablewrap"><table><thead><tr><th title="Mínimo de referência do setor, cadastrado em RH → Base de setores">Brigada padrão</th><th>Setor</th><th title="Pico de necessidade calculado pelo mapa de calor de movimento do dia">Necessário no pico</th><th title="CLT + INT + PJ escalados hoje, já descontando férias e ausência informada">Equipe fixa hoje</th><th>Ausências</th><th>Freelancers a contratar</th></tr></thead><tbody id="wgSuggestionBody"><tr><td colspan="6" class="mini">Carregue uma semana e escolha dia/setor.</td></tr></tbody></table></div>
@@ -7772,6 +7783,91 @@ function addWeekGridDraft(){
 // setor), guiada pelo mapa de calor real/histórico daquele dia da semana. Chama
 // freelancerSuggestion() setor por setor — MESMA função, não uma conta em paralelo
 // (Renato 28/09: reclamou que a prévia em cima e o botão aqui davam número diferente).
+
+// ---- Popup "Escala do dia" (22/10, pedido do Renato): ao sugerir os freelancers, mostra hora a hora a equipe fixa + os
+// freelancers da lista da grade, setor por setor, pra analisar sobra e falta antes de enviar. Só leitura: ajuste na lista da grade
+// e clique em Atualizar. Mesma conta da sugestão (necessidadeSetor + cltPresenteBlocos + planejarTurnos).
+let escalaDiaAtual={date:'',turno:8};
+function fecharEscalaDia(){const o=$('escalaDiaOverlay');if(o)o.classList.add('hidden')}
+// igual a planejarTurnos, mas para em maxQ pessoas — reflete exatamente a quantidade que está na lista (editada ou não)
+function planejarTurnosCap(need,W,maxQ){
+  const n=need.length;if(!n||maxQ<=0)return [];
+  W=Math.max(1,Math.min(W,n));
+  const res=need.slice(),cont={};
+  for(let q=0;q<maxQ;q++){
+    const base=res.some(v=>v>0)?res:need;
+    let mi=0,ms=-1;
+    for(let i=0;i+W<=n;i++){let t=0;for(let k=0;k<W;k++)t+=base[i+k];if(t>ms){ms=t;mi=i}}
+    for(let k=0;k<W;k++)res[mi+k]=Math.max(0,res[mi+k]-1);
+    cont[mi]=(cont[mi]||0)+1;
+  }
+  return Object.keys(cont).map(Number).sort((a,b)=>a-b).map(i=>({i,tam:W,qtd:cont[i]}));
+}
+async function abrirEscalaDiaPopup(date,turnoH){
+  const ov=$('escalaDiaOverlay'),body=$('escalaDiaBody');if(!ov||!body)return;
+  if(!date){showToast('Escolha o dia primeiro.',true);return}
+  escalaDiaAtual={date,turno:turnoH||8};
+  ov.classList.remove('hidden');
+  body.innerHTML='<div class="mini">Calculando pelo mapa de calor…</div>';
+  await Promise.all([loadZigHourlyLocal(),loadZigDetailLocal(),loadDailyAttendance(date)]);
+  zigRawSeriesCache=null;
+  const wd=new Date(date+'T12:00:00').getDay(),fun=HORARIO_FUNCIONAMENTO[wd];
+  $('escalaDiaTitulo').textContent='Escala do dia • '+fmtDate(date);
+  if(!fun){body.innerHTML='<div class="note">Casa fechada nesse dia (Manual) — sem escala.</div>';return}
+  const exp=expectedPaxForDate(date),pax=Math.min(CAPACIDADE_MAXIMA_SIMULTANEA,exp.pax);
+  const spanH=fun.fecha-fun.abre;
+  const turnoEf=spanH>12?12:Math.min(12,Math.max(1,turnoH||8));
+  const W=Math.max(1,Math.round(turnoEf*2));
+  const curva=curvaDoDia(date);
+  const hh=m=>String(Math.floor(m/60)%24).padStart(2,'0');
+  const linhas=FREELANCER_SECTORS.map(sec=>{
+    const nec=necessidadeSetor(date,sec,curva,pax);if(!nec)return null;
+    const blocos=nec.blocos,need=blocos.map(b=>b.need);
+    const {pres,ativos}=cltPresenteBlocos(sec,date,blocos);
+    const gap=need.map((v,i)=>Math.max(0,v-pres[i]));
+    const planQtd=planejarTurnos(gap,Math.min(W,gap.length)).reduce((t,u)=>t+u.qtd,0);
+    const itens=weekGridDraftList.filter(it=>it.date===date&&it.sector===sec);
+    const naLista=itens.reduce((t,it)=>t+(Number(it.qty)||0),0);
+    const turnoLista=itens.length?Number(itens[0].shiftHours)||turnoEf:turnoEf;
+    const qtd=itens.length?naLista:planQtd;
+    const turnos=planejarTurnosCap(gap,Math.min(Math.round(turnoLista*2),gap.length),qtd);
+    const fl=blocos.map((_,i)=>turnos.reduce((t,u)=>t+((i>=u.i&&i<u.i+u.tam)?u.qtd:0),0));
+    const fixos=ativos.filter(e=>{const d=(e.horarioSemanal&&e.horarioSemanal[wd])||{};return d.trabalha&&!feriasAtivas(e,date)&&!estaAusenteHoje(e.id,date)});
+    return {sec,blocos,need,pres,fl,planQtd,naLista,usaLista:itens.length>0,qtd,turnoLista,turnos,fixos,semCurva:nec.semCurva,custo:qtd*(FREELANCER_PAY_TABLE[turnoLista]||0)};
+  }).filter(Boolean);
+  if(!linhas.length){body.innerHTML='<div class="mini">Sem dados pra montar a escala.</div>';return}
+  // colunas por hora cheia
+  const blocos=linhas[0].blocos;
+  const horas=[];blocos.forEach((b,i)=>{const h=Math.floor(b.off/60);let g=horas[horas.length-1];if(!g||g.h!==h){g={h,idx:[]};horas.push(g)}g.idx.push(i)});
+  const cor=d=>d<0?'background:#4a1c24':(d>=2?'background:#4a3a14':'background:#1f3a26');
+  const cel=(L)=>horas.map(g=>{
+    const need=Math.max(...g.idx.map(i=>L.need[i])),clt=Math.min(...g.idx.map(i=>L.pres[i])),fl=Math.min(...g.idx.map(i=>L.fl[i]));
+    const d=Math.min(...g.idx.map(i=>L.pres[i]+L.fl[i]-L.need[i]));
+    if(!need&&!clt&&!fl)return '<td class="mini" style="text-align:center">—</td>';
+    return '<td style="text-align:center;white-space:nowrap;'+cor(d)+'" title="Necessário '+need+' • equipe fixa '+clt+' • freelancers '+fl+'">'+(clt+fl)+'<span class="mini">/'+need+'</span></td>';
+  }).join('');
+  let h='<div class="note"><b>Público esperado: '+pax.toLocaleString('pt-BR')+'</b> ('+(exp.fonte||'—')+') • funcionamento '+fun.abre+'h–'+(fun.fecha%24)+'h • equipe chega '+fmtHHMM(fun.abre*60-PRE_ABERTURA_MIN)+' • turno dos freelancers: '+turnoEf+'h'+(spanH>12?' (dia comprido: teto de 12h)':'')+'</div>';
+  h+='<div class="mini" style="margin:6px 0">Cada célula mostra <b>pessoas escaladas / necessárias</b> (equipe fixa + freelancers). <span style="padding:1px 7px;border-radius:5px;background:#1f3a26">coberto</span> <span style="padding:1px 7px;border-radius:5px;background:#4a1c24">falta gente</span> <span style="padding:1px 7px;border-radius:5px;background:#4a3a14">sobra 2+</span> • passe o mouse para ver o detalhe.</div>';
+  h+='<div class="igTblWrap"><table class="igTbl" style="width:auto"><thead><tr><th>Setor</th>'+horas.map(g=>'<th style="text-align:center!important">'+String(g.h%24).padStart(2,'0')+'h</th>').join('')+'</tr></thead><tbody>';
+  linhas.forEach(L=>{h+='<tr><td><b>'+FREELANCER_SECTOR_LABEL[L.sec]+'</b></td>'+cel(L)+'</tr>'});
+  const totEsc=horas.map(g=>Math.min(...g.idx.map(i=>linhas.reduce((t,L)=>t+L.pres[i]+L.fl[i],0))));
+  const totNec=horas.map(g=>Math.max(...g.idx.map(i=>linhas.reduce((t,L)=>t+L.need[i],0))));
+  h+='<tr style="border-top:2px solid var(--line)"><td><b>Total da casa</b></td>'+horas.map((g,k)=>'<td style="text-align:center;white-space:nowrap;font-weight:800'+(totEsc[k]<totNec[k]?';color:var(--red)':'')+'">'+totEsc[k]+'<span class="mini">/'+totNec[k]+'</span></td>').join('')+'</tr>';
+  h+='</tbody></table></div>';
+  // resumo por setor
+  h+='<h4 style="margin:14px 0 6px">Resumo por setor</h4><div class="igTblWrap"><table class="igTbl"><thead><tr><th>Setor</th><th>Equipe fixa no dia</th><th>Freelancers</th><th>Janelas</th><th>Plano pelo mapa</th><th>Custo</th></tr></thead><tbody>';
+  linhas.forEach(L=>{
+    const nomes=L.fixos.map(e=>{const d=e.horarioSemanal[wd]||{};return escapeHtml(String(e.nome||'').split(' ')[0])+' <span class="mini">'+escapeHtml((d.entrada||'?')+'–'+(d.saida||'?'))+'</span>'}).join('<br>')||'<span class="mini">ninguém escalado</span>';
+    const jan=L.turnos.length?L.turnos.map(t=>'<b>'+t.qtd+'×</b> '+fmtHHMM(L.blocos[t.i].off)+'–'+fmtHHMM(L.blocos[t.i].off+t.tam*30)).join('<br>'):'<span class="badge g">sem freelancer</span>';
+    const dif=L.usaLista&&L.naLista!==L.planQtd?' <span class="badge y">lista '+L.naLista+' ≠ plano '+L.planQtd+'</span>':'';
+    h+='<tr><td><b>'+FREELANCER_SECTOR_LABEL[L.sec]+'</b>'+(L.semCurva?'<br><span class="mini">sem histórico de horário</span>':'')+'</td><td>'+nomes+'</td><td><b>'+L.qtd+'</b> <span class="mini">'+(L.qtd?'• '+L.turnoLista+'h':'')+'</span>'+dif+'</td><td>'+jan+'</td><td>'+L.planQtd+'</td><td>'+(L.custo?brl(L.custo):'—')+'</td></tr>';
+  });
+  const totQtd=linhas.reduce((t,L)=>t+L.qtd,0),totCusto=linhas.reduce((t,L)=>t+L.custo,0);
+  h+='<tr style="border-top:2px solid var(--line)"><td><b>Total</b></td><td></td><td><b>'+totQtd+'</b></td><td></td><td>'+linhas.reduce((t,L)=>t+L.planQtd,0)+'</td><td><b>'+brl(totCusto)+'</b></td></tr></tbody></table></div>';
+  h+='<div class="mini" style="margin-top:8px">Os freelancers vêm da <b>lista da grade</b> deste dia (se um setor não está na lista, mostra o plano sugerido). As janelas são a melhor distribuição dos turnos sobre a curva de movimento do dia. Para ajustar, edite a lista da grade e clique em <b>🔄 Atualizar</b> aqui. Equipe fixa = CLT, INT e PJ ativos com horário cadastrado nesse dia da semana, sem férias nem ausência.</div>';
+  body.innerHTML=h;
+}
+
 async function suggestWeekGridDay(){
   const date=$('wgDay')?.value;
   if(!date){$('weekGridStatus').textContent='Carregue uma semana primeiro.';return}
@@ -7795,6 +7891,7 @@ async function suggestWeekGridDay(){
   });
   const turnoH=turnoUsado,spanH=fun.fecha-fun.abre;
   renderWeekGridDraftList();
+  try{abrirEscalaDiaPopup(date,turnoUsado)}catch(e){console.warn('escala do dia',e)}
   const avisoComprido=spanH>12?` Dia com ${spanH}h de funcionamento — turno no máximo permitido (12h), quantidade ajustada pra cobrir o resto guiada pelo mapa de calor.`:'';
   if(!adicionados&&!pulados&&!semDado){$('weekGridStatus').textContent='Nenhum setor precisa de reforço nesse dia.'+avisoComprido}
   else{$('weekGridStatus').textContent=`${adicionados} setor(es) adicionado(s), turno de ${turnoH}h`+(pulados?` — ${pulados} já estava(m) na lista.`:'')+(semDado?` ${semDado} setor(es) sem histórico de horário pra calcular.`:'')+avisoComprido}
