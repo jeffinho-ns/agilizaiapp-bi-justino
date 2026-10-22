@@ -2246,7 +2246,7 @@ function switchMkSubTab(tab){
   $('mkPlanView').classList.toggle('hidden',tab!=='plan');
   if($('mkDemView'))$('mkDemView').classList.toggle('hidden',tab!=='dem');
   if($('mkGrafView'))$('mkGrafView').classList.toggle('hidden',tab!=='graf');
-  if(tab==='graf'){try{baRender()}catch(e){}}
+  if(tab==='graf'){try{baCarregar()}catch(e){}}
   if(tab==='dem')loadMkReunioes();
   if($('mkInsView'))$('mkInsView').classList.toggle('hidden',tab!=='ins');
   if($('mkInstaView'))$('mkInstaView').classList.toggle('hidden',tab!=='insta');
@@ -5051,7 +5051,7 @@ function refreshAll(){
     // aquela aba na sessão.
     refreshMkPlans,refreshMeters,refreshZigRevenue,refreshCmvTeoricoParcial,refreshItemSalesRanking,refreshRevenueOverview,loadBandRanking,loadEventos,loadZigBilheteria
   ];
-  if(hasAreaAccessClient('marketing'))jobs.push(loadMkReunioes,baCarregar);
+  if(hasAreaAccessClient('marketing'))jobs.push(loadMkReunioes); // baCarregar (budget de atrações) só carrega ao abrir Marketing › Gráficos — não disputa a fila na abertura
   if(isAdmin)jobs.push(refreshSalaries);
   // Chamada final depois que TODOS os jobs (inclusive loadEventos) terminam — os
   // jobs rodam em paralelo, então refreshZigRevenue pode terminar (e desenhar o
