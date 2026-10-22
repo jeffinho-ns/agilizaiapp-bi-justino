@@ -8477,6 +8477,18 @@ async function saveFreelancerScheduleUI(id,nomeId,entId,saiId,pauId,stId){
   }catch(e){if(statusEl)statusEl.textContent='Falha ao conectar.';showToast('Falha ao conectar.',true)}
 }
 
+// 23/10, pedido do Renato: a escala do dia sai ORGANIZADA por setor → horário (entrada) → hierarquia, misturando CLT/INT/PJ e freelancers (antes: todos os
+// CLT e, depois, todos os freelancers). Setor na ordem do cadastro de colaboradores (gerência, salão, caixa, cumim, runner, bar, cozinha, limpeza,
+// segurança, estoquista, manutenção). Quem não trabalha no dia (folga/férias) fica no fim do próprio setor; freelancer entra depois do CLT em empate.
+function escalaChave(setor,entrada,rank){
+  const si=COLAB_SETOR_ORDEM.indexOf(setor);
+  let m=entrada?timeToMinutes(entrada):null;
+  if(m==null||isNaN(m))m=99999;else if(m<6*60)m+=1440; // virada da madrugada conta como fim do turno da noite
+  return [si<0?99:si,m,rank==null?9:rank];
+}
+function escalaOrdenar(itens){
+  return itens.sort((a,b)=>{for(let i=0;i<3;i++){if(a.k[i]!==b.k[i])return a.k[i]-b.k[i]}return String(a.n||'').localeCompare(String(b.n||''),'pt-BR')}).map(x=>x.h).join('');
+}
 let ecSplitOcupado=false,ecSplitTentado={};
 function separarAgrupadosDoDia(){
   const date=$('ecDate')?$('ecDate').value:'';
@@ -8622,12 +8634,12 @@ async function loadEscalaCompleta(){
       else if(!dia.trabalha)situacao='<span class="badge">FOLGA</span>';
       else if(dia.entrada&&dia.saida)situacao=`${dia.entrada} – ${dia.saida}`+(dia.almoco?` <span class="mini">almoço ${escapeHtml(dia.almoco)}</span>`:'')+(dia.jantar?` <span class="mini">jantar ${escapeHtml(dia.jantar)}</span>`:'');
       else situacao='<span class="mini">horário não cadastrado</span>';
-      return linhaCltRow(e,date,situacao,feriasOuFolga);
+      return {k:escalaChave(colabSetor(e),(dia.trabalha&&!feriasAtivas(e,date))?dia.entrada:'',colabRank(e)),n:e.nome,h:linhaCltRow(e,date,situacao,feriasOuFolga)};
     });
     const linhasFreelancerBasico=extrasAprovadosSempre.map(it=>
-      linhaExtraAprovado(it,'','','','sem calor do dia nem histórico pra sugerir horário — defina manualmente')
+      ({k:escalaChave(it.sector,it.horaEntrada,6),n:it.freelancerNames,h:linhaExtraAprovado(it,'','','','sem calor do dia nem histórico pra sugerir horário — defina manualmente')})
     );
-    cltBody.innerHTML=(linhasCltBasico.join('')+linhasFreelancerBasico.join(''))||'<tr><td colspan="7" class="mini">Ninguém escalado ainda pra esse dia.</td></tr>';
+    cltBody.innerHTML=escalaOrdenar(linhasCltBasico.concat(linhasFreelancerBasico))||'<tr><td colspan="7" class="mini">Ninguém escalado ainda pra esse dia.</td></tr>';
     return;
   }
   const extrasAprovadosSempre=(freelancerRequests||[]).filter(it=>it.date===date&&it.status==='aprovado'&&it.attendance!=='faltou');
@@ -8742,10 +8754,10 @@ async function loadEscalaCompleta(){
       }
       situacao+=barraTempoTurno(dia.entrada,dia.saida,heatInfo);
     }else situacao='<span class="mini">horário não cadastrado</span>';
-    return linhaCltRow(e,date,situacao,feriasOuFolga);
+    return {k:escalaChave(colabSetor(e),(dia.trabalha&&!feriasAtivas(e,date))?dia.entrada:'',colabRank(e)),n:e.nome,h:linhaCltRow(e,date,situacao,feriasOuFolga)};
   });
-  const linhasExtras=extrasLinhas.map(({it,sugEntrada,sugSaida,sugPausa})=>linhaExtraAprovado(it,sugEntrada,sugSaida,sugPausa,'',heatInfo));
-  cltBody.innerHTML=(linhasClt.join('')||'')+(linhasExtras.join('')||'')||'<tr><td colspan="7" class="mini">Ninguém escalado ainda pra esse dia.</td></tr>';
+  const linhasExtras=extrasLinhas.map(({it,sugEntrada,sugSaida,sugPausa})=>({k:escalaChave(it.sector,it.horaEntrada||sugEntrada,6),n:it.freelancerNames,h:linhaExtraAprovado(it,sugEntrada,sugSaida,sugPausa,'',heatInfo)}));
+  cltBody.innerHTML=escalaOrdenar(linhasClt.concat(linhasExtras))||'<tr><td colspan="7" class="mini">Ninguém escalado ainda pra esse dia.</td></tr>';
 }
 
 function buildFreelancerSectorSelect(){
