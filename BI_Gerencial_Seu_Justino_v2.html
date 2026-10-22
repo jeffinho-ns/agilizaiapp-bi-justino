@@ -7618,7 +7618,9 @@ function freelancerSuggestion(date,sector,ausentes,turnoH){
   // fórmula que já existia no caminho sem curva de demanda (linha ~6839), só que
   // agora SEMPRE calculada, mesmo quando "Extras sugeridos" usa o caminho detalhado.
   const freelancerRapido=Math.max(0,Math.max(necessario,brigada)-cltPresente);
-  return {pax,necessario,brigada,clt,cltPresente,contratados,freelancerRapido,minimo,sugestao,estimated:exp.estimated,maxSimultaneo,turnoEfetivo,
+  const soManual=SETORES_SO_MANUAL.indexOf(sector)>=0;
+  if(soManual)sugestao=0;
+  return {manual:soManual,pax,necessario,brigada,clt,cltPresente,contratados,freelancerRapido:soManual?0:freelancerRapido,minimo,sugestao,estimated:exp.estimated,maxSimultaneo,turnoEfetivo,
     semCurva:!(need&&need.length),acimaDoTetoSoComClt:maxSimultaneo!=null&&cltPresente>maxSimultaneo};
 }
 
@@ -7843,13 +7845,13 @@ function wgRender(){
       const st=freelancerSuggestion(date,sec,aus,it?it.shiftHours:8);
       if(st.fechado)return '';
       const qty=it?it.qty:0,turno=it?it.shiftHours:(st.turnoEfetivo||8);
-      const cor=qty>st.sugestao?'color:#e2a33d':(qty<st.sugestao?'color:#a78bfa':'');
+      const cor=st.manual?'':qty>st.sugestao?'color:#e2a33d':(qty<st.sugestao?'color:#a78bfa':'');
       const custo=qty*(FREELANCER_PAY_TABLE[turno]||0);
       const opts=[8,9,10,11,12].map(function(h){return '<option value="'+h+'"'+(h===turno?' selected':'')+'>'+h+'h — R$ '+FREELANCER_PAY_TABLE[h]+'</option>'}).join('');
-      return '<tr'+(qty>0?' style="background:#241a12"':'')+'><td><b>'+FREELANCER_SECTOR_LABEL[sec]+'</b>'+(st.maxSimultaneo!=null?' <span class="mini">(máx. '+st.maxSimultaneo+')</span>':'')+(st.semCurva?'<br><span class="mini">sem histórico de horário</span>':'')+'</td>'
+      return '<tr'+(qty>0?' style="background:#241a12"':'')+'><td><b>'+FREELANCER_SECTOR_LABEL[sec]+'</b>'+(st.manual?' <span class="badge" title="Fora da sugestão automática: só entra por solicitação manual (+)">só manual</span>':'')+(st.maxSimultaneo!=null?' <span class="mini">(máx. '+st.maxSimultaneo+')</span>':'')+(st.semCurva?'<br><span class="mini">sem histórico de horário</span>':'')+'</td>'
         +'<td>'+st.brigada+'</td><td>'+st.necessario+'</td><td>'+st.cltPresente+(st.acimaDoTetoSoComClt?' <span class="badge r" title="Equipe fixa já passa do teto do setor">teto</span>':'')+'</td>'
         +'<td><input type="number" min="0" value="'+aus+'" style="width:58px" onchange="wgSetAus(\''+sec+'\',this.value)"></td>'
-        +'<td><b>'+st.sugestao+'</b></td>'
+        +'<td>'+(st.manual?'<span class="mini" title="Só solicitação manual">—</span>':'<b>'+st.sugestao+'</b>')+'</td>'
         +'<td><div style="display:flex;gap:4px;align-items:center;'+cor+'"><button type="button" class="btn" style="padding:2px 9px" data-nofeedback onclick="wgSetQty(\''+sec+'\',-1)">−</button><input type="number" min="0" max="40" value="'+qty+'" style="width:56px;text-align:center" onchange="wgSetQty(\''+sec+'\',0,this.value)"><button type="button" class="btn" style="padding:2px 9px" data-nofeedback onclick="wgSetQty(\''+sec+'\',1)">+</button></div></td>'
         +'<td>'+(qty>0?'<select onchange="wgSetTurno(\''+sec+'\',this.value)">'+opts+'</select>':'<span class="mini">—</span>')+'</td>'
         +'<td>'+(qty>0?brl(custo):'—')+'</td></tr>';
@@ -7865,11 +7867,13 @@ function planoSetorDia(date,sec,ctx,ausentes){
   const nec=necessidadeSetor(date,sec,ctx.curva,ctx.pax);if(!nec)return null;
   const blocos=nec.blocos,need=blocos.map(function(b){return b.need});
   const cp=cltPresenteBlocos(sec,date,blocos);
-  const gap=need.map(function(v,i){return Math.max(0,v-Math.max(0,cp.pres[i]-(ausentes||0)))});
-  return {sec:sec,blocos:blocos,need:need,pres:cp.pres,ativos:cp.ativos,gap:gap,semCurva:nec.semCurva};
+  const manual=SETORES_SO_MANUAL.indexOf(sec)>=0;
+  const needF=manual?need.map(function(){return 0}):need;
+  const gap=needF.map(function(v,i){return Math.max(0,v-Math.max(0,cp.pres[i]-(ausentes||0)))});
+  return {sec:sec,blocos:blocos,need:needF,pres:cp.pres,ativos:cp.ativos,gap:gap,semCurva:nec.semCurva,manual:manual,iniAberto:Math.max(0,blocos.findIndex(function(b){return b.aberto}))};
 }
 // põe N freelancers (1 por linha) em janelas de W blocos de 30 min, cada um onde ainda falta mais gente; devolve [{i,tam}] por início
-function distribuirFreelancers(gap,W,qtd,gapOrig){
+function distribuirFreelancers(gap,W,qtd,gapOrig,iniPadrao){
   const n=gap.length;if(!n||qtd<=0)return [];
   W=Math.max(1,Math.min(W,n));
   const res=gap.slice(),pessoas=[];
@@ -7877,6 +7881,7 @@ function distribuirFreelancers(gap,W,qtd,gapOrig){
     const base=res.some(function(v){return v>0})?res:(gapOrig||gap);
     let mi=0,ms=-1;
     for(let i=0;i+W<=n;i++){let t=0;for(let k=0;k<W;k++)t+=base[i+k];if(t>ms){ms=t;mi=i}}
+    if(ms<=0)mi=Math.max(0,Math.min(iniPadrao||0,n-W)); // sem demanda calculada (ex.: só solicitação manual): entra na abertura
     for(let k=0;k<W;k++)res[mi+k]=Math.max(0,res[mi+k]-1);
     pessoas.push({i:mi,tam:W});
   }
@@ -7892,7 +7897,7 @@ async function escalaDiaModelo(date){
   FREELANCER_SECTORS.forEach(function(sec){
     const P=planoSetorDia(date,sec,ctx,wgAusentes[date+'|'+sec]||0);if(!P)return;
     const it=wgItem(date,sec),qtd=it?it.qty:0,H=it?it.shiftHours:((fun.fecha-fun.abre>12)?12:8);
-    const jan=distribuirFreelancers(P.gap,Math.round(H*2),qtd);
+    const jan=distribuirFreelancers(P.gap,Math.round(H*2),qtd,null,P.iniAberto);
     const pessoas=jan.map(function(j,k){
       const pj=pausaDoTurno(P.need,j.i,j.tam);
       return {n:k+1,i:j.i,tam:j.tam,entrada:fmtHHMM(P.blocos[j.i].off),saida:fmtHHMM(P.blocos[j.i].off+j.tam*30),pausa:pj!=null?fmtHHMM(P.blocos[pj].off):'',shiftHours:H};
@@ -8040,6 +8045,8 @@ async function wgEnviarConfirmado(){
 
 
 // ---- Solicitação de freelancers (Gerente Operador → aprovação RH → presença) ----
+// 23/10, pedido do Renato: Manutenção, Estoquista e Runner não entram na escala/sugestão automática de freelancers — só solicitação manual (sempre sugerido 0).
+const SETORES_SO_MANUAL=['manutencao','estoquista','runner'];
 const FREELANCER_SECTORS=['salao','cumim','bar','cozinha','limpeza','seguranca','caixa','runner','manutencao','estoquista'];
 const FREELANCER_SECTOR_LABEL={salao:'Garçom',cumim:'Cumim',bar:'Bar',cozinha:'Cozinha',limpeza:'Limpeza',seguranca:'Segurança',caixa:'Caixa/Hostess',runner:'Runner/RP',manutencao:'Manutenção',estoquista:'Estoquista'};
 const FREELANCER_PAY_TABLE={8:125,9:135,10:145,11:155,12:165};
@@ -8528,7 +8535,7 @@ async function loadEscalaCompleta(){
     const P=planoDe(it.sector);
     if(!P){extrasLinhas.push({it,sugEntrada:'',sugSaida:'',sugPausa:''});return}
     const W=Math.max(1,Math.round((it.shiftHours||8)*2));
-    const j=distribuirFreelancers(gapResSetor[it.sector],W,1,P.gap)[0];
+    const j=distribuirFreelancers(gapResSetor[it.sector],W,1,P.gap,P.iniAberto)[0];
     if(!j){extrasLinhas.push({it,sugEntrada:'',sugSaida:'',sugPausa:''});return}
     const ent=fmtHHMM(P.blocos[j.i].off),sai=fmtHHMM(P.blocos[j.i].off+j.tam*30);
     const pj=pausaDoTurno(P.need,j.i,j.tam);
