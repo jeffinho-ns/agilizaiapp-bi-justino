@@ -8477,15 +8477,12 @@ async function saveFreelancerScheduleUI(id,nomeId,entId,saiId,pauId,stId){
   }catch(e){if(statusEl)statusEl.textContent='Falha ao conectar.';showToast('Falha ao conectar.',true)}
 }
 
-async function separarAgrupadosDoDia(){
+let ecSplitOcupado=false,ecSplitTentado={};
+function separarAgrupadosDoDia(){
   const date=$('ecDate')?$('ecDate').value:'';
-  const ag=(freelancerRequests||[]).filter(it=>it.date===date&&it.status==='aprovado'&&Number(it.qty)>1);
-  if(!ag.length)return;
-  if(!confirm('Separar '+ag.length+' pedido(s) em linhas individuais (1 freelancer por linha)? Nome, horário e presença do pedido original passam para a primeira linha.'))return;
-  let ok=0,falhou=0;
-  for(const it of ag){try{const r=await apiAuthRetry('splitFreelancerRequest',{id:it.id},2);if(r&&r.ok)ok++;else falhou++}catch(e){falhou++}}
-  showToast(ok+' pedido(s) separado(s)'+(falhou?', '+falhou+' falhou(aram) — confira se o Code.gs novo foi publicado':'')+'.',falhou>0&&!ok);
-  await loadFreelancerRequests();loadEscalaCompleta();
+  (freelancerRequests||[]).filter(it=>it.date===date).forEach(it=>{delete ecSplitTentado[it.id]});
+  ecSplitOcupado=false;
+  return loadEscalaCompleta();
 }
 async function loadEscalaCompleta(){
   const cltBody=$('ecCltBody');if(!cltBody)return;
@@ -8509,14 +8506,27 @@ async function loadEscalaCompleta(){
     cltBody.innerHTML='<tr><td colspan="7" class="mini">Sem acesso ao cadastro de Colaboradores (RH) pra listar aqui.</td></tr>';
   }
 
-  // pedidos antigos com mais de 1 freelancer na mesma linha: oferece separar (1 freelancer por linha, cada um com nome e horário próprios)
+  // 23/10, pedido do Renato: pedido com mais de 1 freelancer na mesma linha é separado AUTOMATICAMENTE (1 freelancer por linha, cada um com nome/horário
+  // próprios) — sem botão. Se o servidor recusar (Code.gs antigo), avisa e oferece tentar de novo.
   (function(){
     const bar=$('ecAgrupadosBar');if(!bar)return;
-    const ag=(freelancerRequests||[]).filter(it=>it.date===date&&it.status==='aprovado'&&Number(it.qty)>1);
+    const ag=(freelancerRequests||[]).filter(it=>it.date===date&&Number(it.qty)>1&&it.status!=='recusado');
     if(!ag.length){bar.classList.add('hidden');bar.innerHTML='';return}
-    const n=ag.reduce((t,it)=>t+Number(it.qty),0);
+    const novos=ag.filter(it=>!ecSplitTentado[it.id]);
+    if(!novos.length||ecSplitOcupado){
+      if(!ecSplitOcupado){bar.classList.remove('hidden');bar.innerHTML='<b>Não consegui separar '+ag.length+' pedido(s) em linhas individuais.</b> Confira se o <code>Code.gs</code> novo foi publicado. <button class="btn" type="button" style="padding:4px 10px;font-size:12px;margin-left:8px" onclick="separarAgrupadosDoDia()">Tentar de novo</button>'}
+      return;
+    }
+    ecSplitOcupado=true;novos.forEach(it=>{ecSplitTentado[it.id]=true});
     bar.classList.remove('hidden');
-    bar.innerHTML='<b>'+ag.length+' pedido(s) com vários freelancers na mesma linha ('+n+' pessoas).</b> Para ajustar nome e horário de cada um, separe em uma linha por freelancer. <button class="btn" type="button" style="padding:4px 10px;font-size:12px;margin-left:8px" onclick="separarAgrupadosDoDia()">Separar em linhas individuais</button>';
+    bar.innerHTML='Separando '+novos.length+' pedido(s) em um freelancer por linha…';
+    (async function(){
+      let ok=0;
+      for(const it of novos){try{const r=await apiAuthRetry('splitFreelancerRequest',{id:it.id},2);if(r&&r.ok)ok++}catch(e){}}
+      ecSplitOcupado=false;
+      if(ok)await loadFreelancerRequests();
+      loadEscalaCompleta();
+    })();
   })();
   await loadDailyAttendance(date); // presença/observação persistida de CLT/INT/PJ — precisa estar fresca antes de montar as linhas e a conta de cobertura
   const todosBuckets=await loadZigHourlyLocal(); // já em horário de Brasília
