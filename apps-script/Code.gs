@@ -771,6 +771,12 @@ function doPost(e) {
       return jsonOut_(deleteMkReuniao_(auth, body.id)); // já audita via logDeletion_
     }
 
+    // Faturamento por semana (23/10) — só os TOTAIS semanais da ZigPay (sem dia a dia nem público), pra quem monta a escala (Operação) ver o teto de
+    // 8% do CMO de freelancers; também Financeiro/Marketing. Não abre o resto da receita (getZigRevenue continua só Financeiro).
+    if (action === 'getFaturamentoSemanas') {
+      if (!(hasAreaAccess_(auth, 'operacao') || hasAreaAccess_(auth, 'financeiro') || hasAreaAccess_(auth, 'marketing'))) return jsonOut_({ ok: false, code: 'forbidden' });
+      return jsonOut_({ ok: true, semanas: getFaturamentoSemanas_() });
+    }
     // Budget de atrações (22/10) — só totais de pax por data de reserva (sem dados de cliente), pra quem vê Marketing.
     if (action === 'getBudgetAtracoesBase') {
       if (!hasAreaAccess_(auth, 'marketing')) return jsonOut_({ ok: false, code: 'forbidden' });
@@ -2452,6 +2458,24 @@ function getInstagram_() {
 }
 
 
+// Totais de faturamento por semana (segunda a domingo), só dias já encerrados e com receita > 0; a última captura de cada data vence (há datas duplicadas).
+function getFaturamentoSemanas_() {
+  const tz = Session.getScriptTimeZone() || 'America/Sao_Paulo';
+  const hoje = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');
+  const porData = {};
+  sheetToObjects_(getZigRevenueSheet_()).forEach(function (r) {
+    const d = String(r.date || '').slice(0, 10);
+    const v = Number(r.revenue) || 0;
+    if (d && d < hoje && v > 0) porData[d] = v;
+  });
+  const porSem = {};
+  Object.keys(porData).forEach(function (d) {
+    const seg = igMonday_(d);
+    const o = porSem[seg] || (porSem[seg] = { semana: seg, total: 0, dias: 0 });
+    o.total += porData[d]; o.dias++;
+  });
+  return Object.keys(porSem).sort().slice(-14).map(function (k) { return { semana: k, total: Math.round(porSem[k].total * 100) / 100, dias: porSem[k].dias } });
+}
 // Pax reservado por data da visita, de 120 dias atrás a 60 dias à frente (alimenta o card "Budget de atrações" do Marketing).
 function getBudgetAtracoesBase_() {
   const tz = Session.getScriptTimeZone() || 'America/Sao_Paulo';

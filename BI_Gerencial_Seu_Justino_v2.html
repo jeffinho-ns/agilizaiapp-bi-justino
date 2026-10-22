@@ -315,11 +315,20 @@ tbody tr:hover{background:#ffffff08}
 </style>
 <div id="toastBox"></div>
 <!-- 23/10: popup da escala fica FORA das abas (dentro de uma aba escondida ele nunca aparecia) -->
+<div class="dicaOverlay hidden" id="cmoFlOverlay" onclick="if(event.target===this)cmoFlFechar()">
+<div class="dicaCard" style="max-width:780px">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+    <h3>💰 CMO de freelancers da semana</h3>
+    <button class="btn" type="button" data-nofeedback style="padding:6px 10px;font-size:12px;background:#3a1620;border-color:#5c2530" onclick="cmoFlFechar()">✕</button>
+  </div>
+  <div id="cmoFlCorpo" style="margin-top:8px"></div>
+</div>
+</div>
 <div class="dicaOverlay hidden" id="escalaDiaOverlay" onclick="if(event.target===this)fecharEscalaDia()">
 <div class="dicaCard" style="max-width:1240px">
   <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
     <h3 id="escalaDiaTitulo">Escala do dia</h3>
-    <button class="btn" type="button" style="padding:6px 10px;font-size:12px;background:#3a1620;border-color:#5c2530" data-nofeedback onclick="fecharEscalaDia()">✕</button>
+    <button class="btn" type="button" style="padding:6px 10px;font-size:12px;background:#3a1620;border-color:#5c2530" onclick="fecharEscalaDia()">✕</button>
   </div>
   <div id="escalaDiaBody" style="margin-top:8px"><div class="mini">Calculando…</div></div>
   <div id="escalaDiaRodape" style="margin-top:12px;display:flex;gap:10px;align-items:center;justify-content:flex-end;flex-wrap:wrap"></div>
@@ -1612,15 +1621,16 @@ tbody tr:hover{background:#ffffff08}
 <div id="wgDayTabs" class="nav" style="margin:10px 0 6px"></div>
 <div class="alert g" id="wgPaxInfo" style="margin:4px 0 10px;font-weight:700"></div>
 <div class="toolbar">
-  <button class="btn" type="button" style="background:#233a1f;border-color:#3a5c30" data-nofeedback onclick="wgSugerirDia()" title="Preenche de uma vez a sugestão de todos os setores do dia escolhido (mapa de calor da Zig + reservas por horário) — turno sobe sozinho até 12h em dia comprido">✨ Sugerir solicitação do dia</button>
-  <button class="btn" type="button" data-nofeedback onclick="abrirEscalaPreview(wgDiaAtual,'consulta')" title="Mostra a escala do dia, hora a hora, com a brigada completa (equipe fixa + freelancers) e o horário sugerido de cada um">🔍 Escala do dia</button>
-  <button class="btn" type="button" style="background:#3a1620;border-color:#5c2530" data-nofeedback onclick="wgZerarDia()">Zerar o dia</button>
+  <button class="btn" type="button" style="background:#233a1f;border-color:#3a5c30" onclick="wgSugerirDia()" title="Preenche de uma vez a sugestão de todos os setores do dia escolhido (mapa de calor da Zig + reservas por horário) — turno sobe sozinho até 12h em dia comprido">✨ Sugerir solicitação do dia</button>
+  <button class="btn" type="button" style="background:#3a1620;border-color:#5c2530" onclick="wgZerarDia()">Zerar o dia</button>
+  <button class="btn" type="button" id="cmoFlBtn" data-nofeedback onclick="cmoFlAbrir()" title="CMO dos freelancers da semana contra o teto de 8% do faturamento">💰 CMO freelancers: —</button>
 </div>
+<div id="cmoFlFaixa" class="hidden" style="margin:6px 0"></div>
 <div class="tablewrap"><table class="wgTbl"><thead><tr><th>Setor</th><th title="Mínimo de referência do setor, cadastrado em RH → Base de setores">Brigada padrão</th><th title="Pico de necessidade calculado pelo mapa de calor da Zig e pelas reservas por horário">Necessário no pico</th><th title="CLT + INT + PJ escalados hoje, já descontando férias e ausência informada">Equipe fixa hoje</th><th title="Pessoas da equipe fixa que não vêm hoje (ajuste rápido)">Ausências</th><th>Sugerido</th><th title="Quantos freelancers extras solicitar — mude com − e +">Extras a solicitar</th><th>Turno</th><th>Custo</th></tr></thead><tbody id="wgTabela"><tr><td colspan="9" class="mini">Carregue uma semana primeiro.</td></tr></tbody></table></div>
 <div id="wgResumoSemana"></div>
 <div style="margin-top:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-  <button class="btn" type="button" data-nofeedback onclick="wgVisualizarSemana()" title="Escala completa com o horário de cada freelancer, sem enviar">🔍 Visualizar escala completa</button>
-  <button class="btn" type="button" style="background:#8a4423" data-nofeedback onclick="wgEnviar()" title="Mostra a escala completa pra conferência e, confirmando, envia ao RH">Enviar semana ao RH</button>
+  <button class="btn" type="button" onclick="wgVisualizarSemana()" title="Escala completa com o horário de cada freelancer, sem enviar">🔍 Visualizar escala completa</button>
+  <button class="btn" type="button" style="background:#8a4423" onclick="wgEnviar()" title="Mostra a escala completa pra conferência e, confirmando, envia ao RH">Enviar semana ao RH</button>
   <span class="mini" id="weekGridSubmitStatus"></span>
 </div>
 </div></details>
@@ -2745,6 +2755,7 @@ document.addEventListener('click',function(e){
   if(!btn||btn.disabled)return;
   // 23/10: botões só de leitura/visualização (ex.: ver a escala) não devem acionar o aviso "Informação enviada"
   if(btn.hasAttribute('data-nofeedback'))return;
+  if(!/^(✕|×|‹|›|−|-|\+|OK|Fechar.*|.*Voltar.*|Cancelar.*)$/i.test((btn.textContent||'').trim()))loadingLocalShow();
   btn.classList.remove('btn-error-flash');
   btn.classList.add('btn-loading');
   if(btn.dataset.busy){btn.dataset.idleLabel=btn.textContent;btn.textContent=btn.dataset.busy}
@@ -2765,13 +2776,13 @@ function markBtnDone(btn,isError){
 }
 // ---- overlay central "enviando dados" — só aparece pra chamada disparada por
 // clique de verdade (claimedBtn), não pro polling automático em segundo plano ----
-let __sendOverlayAutoHide=null;
+let __sendOverlayAutoHide=null,__localLoadTimer=null;
 // 07/10: popup de "carregando" pra busca da DRE — reaproveita o MESMO overlay
 // central já usado em "Enviando dados…", só com mensagem própria e sem botão de
 // ação (nunca dá erro com retry, só aparece/some).
 function dreOverlayShow(msg){
   const ov=$('sendOverlay');if(!ov)return;
-  clearTimeout(__sendOverlayAutoHide);
+  clearTimeout(__localLoadTimer);clearTimeout(__sendOverlayAutoHide);
   ov.classList.remove('hidden');
   $('sendOverlaySpinner').style.display='';
   $('sendOverlayIcon').style.display='none';
@@ -2779,17 +2790,31 @@ function dreOverlayShow(msg){
   $('sendOverlayActions').innerHTML='';
 }
 function dreOverlayHide(){sendOverlayHide()}
-function sendOverlayShow(){
+// 23/10, pedido do Renato: TODO botão com ação mostra o popup "Carregando…". Ação que chama o servidor: o popup acompanha a chamada (leitura: some ao terminar;
+// gravação: "Enviando dados…" e depois "Informação enviada"). Ação só local: o popup aparece por um instante (450 ms) pra dar retorno ao clique.
+function loadingLocalShow(){
   const ov=$('sendOverlay');if(!ov)return;
   clearTimeout(__sendOverlayAutoHide);
   ov.classList.remove('hidden');
   $('sendOverlaySpinner').style.display='';
   $('sendOverlayIcon').style.display='none';
-  $('sendOverlayMsg').textContent='Enviando dados…';
+  $('sendOverlayMsg').textContent='Carregando…';
+  $('sendOverlayActions').innerHTML='';
+  __ovMostrouEm=Date.now();
+  clearTimeout(__localLoadTimer);__localLoadTimer=setTimeout(sendOverlayHide,450);
+}
+function sendOverlayShow(msg){
+  const ov=$('sendOverlay');if(!ov)return;
+  clearTimeout(__localLoadTimer);clearTimeout(__sendOverlayAutoHide);clearTimeout(__ovMinTimer);__ovMostrouEm=Date.now();
+  ov.classList.remove('hidden');
+  $('sendOverlaySpinner').style.display='';
+  $('sendOverlayIcon').style.display='none';
+  $('sendOverlayMsg').textContent=msg||'Enviando dados…';
   $('sendOverlayActions').innerHTML='';
 }
 function sendOverlaySuccess(){
   const ov=$('sendOverlay');if(!ov)return;
+  clearTimeout(__localLoadTimer);
   $('sendOverlaySpinner').style.display='none';
   $('sendOverlayIcon').style.display='';
   $('sendOverlayIcon').textContent='✓';
@@ -2800,6 +2825,7 @@ function sendOverlaySuccess(){
 }
 function sendOverlayError(retryFn){
   const ov=$('sendOverlay');if(!ov)return;
+  clearTimeout(__localLoadTimer);
   clearTimeout(__sendOverlayAutoHide);
   $('sendOverlaySpinner').style.display='none';
   $('sendOverlayIcon').style.display='';
@@ -2808,8 +2834,13 @@ function sendOverlayError(retryFn){
   $('sendOverlayActions').innerHTML='<button class="btn" type="button" id="sendOverlayRetryBtn" style="background:#8a4423">Enviar novamente</button><button class="btn" type="button" style="background:#3a1620;border-color:#5c2530" onclick="sendOverlayHide()">Fechar</button>';
   $('sendOverlayRetryBtn').onclick=()=>{retryFn().catch(()=>{})};
 }
+// o popup "Carregando…" fica visível por pelo menos 450 ms (leitura vinda do cache terminava em 1 ms e o popup nem dava pra ver)
+let __ovMostrouEm=0,__ovMinTimer=null;
 function sendOverlayHide(){
   clearTimeout(__sendOverlayAutoHide);
+  const m=$('sendOverlayMsg'),falta=450-(Date.now()-__ovMostrouEm);
+  if(m&&m.textContent==='Carregando…'&&falta>0&&!$('sendOverlay')?.classList.contains('hidden')){clearTimeout(__ovMinTimer);__ovMinTimer=setTimeout(()=>{__ovMostrouEm=0;sendOverlayHide()},falta);return}
+  clearTimeout(__ovMinTimer);
   $('sendOverlay')?.classList.add('hidden');
 }
 // ---- Abertura instantânea (23/10, pedido do Renato): "mostra o último dado na hora e atualiza em segundo plano" ----
@@ -2892,7 +2923,7 @@ function bootCalls(){
     {action:'getEmployees',payload:{}},{action:'getSectorBase',payload:{}},{action:'getReservations',payload:{limit:120}},{action:'getReservationEntries',payload:{limit:200}},
     {action:'getFreelancerRequests',payload:{}},{action:'getMonthClosures',payload:{}},{action:'getDuvidas',payload:{}},{action:'getDreBase',payload:{}},
     {action:'getDreFaturamentoHistorico',payload:{force:false}},{action:'getContatosEmergencia',payload:{}},{action:'getEventoCotacoes',payload:{}},{action:'getEventoTarefas',payload:{}},{action:'getDocumentacoes',payload:{}},
-    {action:'getAuditoriaOpItens',payload:{}},{action:'getEventos',payload:{}});
+    {action:'getAuditoriaOpItens',payload:{}},{action:'getEventos',payload:{}},{action:'getFaturamentoSemanas',payload:{}});
   ['marketing','financeiro','rh','operacao'].forEach(area=>c.push({action:'getEntries',payload:{area:area,limit:2000}})); // histórico por mês (já era buscado na abertura)
   if(hasAreaAccessClient('marketing'))c.push({action:'getMkReunioes',payload:{}});
   if(isAdmin)c.push({action:'getUsersList',payload:{}},{action:'getDeletionsLog',payload:{}},{action:'getSalaries',payload:{}});
@@ -2951,8 +2982,9 @@ async function apiPost(action,payload={},priority,forceOverlay,timeoutMs){
 async function apiPostNet(action,payload={},priority,forceOverlay,timeoutMs){
   const claimedBtn=__feedbackBtn;
   if(claimedBtn){clearTimeout(__feedbackBtnTimer);__feedbackBtn=null}
+  const ehLeitura=/^get/.test(action);
   const showOverlay=!!claimedBtn||!!forceOverlay;
-  if(showOverlay)sendOverlayShow();
+  if(showOverlay)sendOverlayShow(ehLeitura?'Carregando…':'Enviando dados…');
   return apiEnqueue(async()=>{
     const ctrl=new AbortController();
     // Sem isso, uma chamada travada (sem erro, sem resposta) nunca libera a vaga na
@@ -2968,6 +3000,7 @@ async function apiPostNet(action,payload={},priority,forceOverlay,timeoutMs){
       markBtnDone(claimedBtn,j&&j.ok===false);
       if(showOverlay){
         if(j&&j.ok===false)sendOverlayError(()=>apiPost(action,payload,priority,true));
+        else if(ehLeitura)sendOverlayHide();
         else sendOverlaySuccess();
       }
       return j;
@@ -3014,13 +3047,13 @@ async function apiAuth(action,payload={},priority,timeoutMs){
 // não em `priority` — que passou a servir só pra furar fila, papel original dele).
 async function apiAuthRetry(action,payload={},tentativas=3,priority){
   const claimedBtn=__feedbackBtn;
-  if(claimedBtn){clearTimeout(__feedbackBtnTimer);__feedbackBtn=null;sendOverlayShow()}
+  if(claimedBtn){clearTimeout(__feedbackBtnTimer);__feedbackBtn=null;sendOverlayShow(/^get/.test(action)?'Carregando…':'Enviando dados…')}
   for(let i=1;i<=tentativas;i++){
     try{
       const r=await apiAuth(action,payload,priority);
       if(r&&r.ok){
         markBtnDone(claimedBtn,false);
-        if(claimedBtn)sendOverlaySuccess();
+        if(claimedBtn){if(/^get/.test(action))sendOverlayHide();else sendOverlaySuccess()}
         return r;
       }
       if(i===tentativas){
@@ -3047,13 +3080,13 @@ async function apiAuthRetry(action,payload={},tentativas=3,priority){
 // loop, tentativas silenciosas), só que chama apiPost() direto em vez de apiAuth().
 async function apiPostRetry(action,payload={},tentativas=3,priority){
   const claimedBtn=__feedbackBtn; // mesmo fix de raiz do apiAuthRetry — ver comentário lá
-  if(claimedBtn){clearTimeout(__feedbackBtnTimer);__feedbackBtn=null;sendOverlayShow()}
+  if(claimedBtn){clearTimeout(__feedbackBtnTimer);__feedbackBtn=null;sendOverlayShow(/^get/.test(action)?'Carregando…':'Enviando dados…')}
   for(let i=1;i<=tentativas;i++){
     try{
       const r=await apiPost(action,payload,priority);
       if(r&&r.ok){
         markBtnDone(claimedBtn,false);
-        if(claimedBtn)sendOverlaySuccess();
+        if(claimedBtn){if(/^get/.test(action))sendOverlayHide();else sendOverlaySuccess()}
         return r;
       }
       if(i===tentativas){
@@ -7941,6 +7974,7 @@ function loadWeekGrid(){
   wgDiaAtual=weekGridDates.indexOf(hoje)>=0?hoje:(weekGridDates.find(function(d){return HORARIO_FUNCIONAMENTO[new Date(d+'T12:00:00').getDay()]})||weekGridDates[0]);
   $('weekGridStatus').textContent='';
   wgRender();
+  cmoFlCarregarFat().then(()=>{try{cmoFlAtualizarBotao()}catch(e){}});
 }
 function wgSelecionarDia(d){wgDiaAtual=d;wgRender()}
 function wgSetAus(sec,v){wgAusentes[wgDiaAtual+'|'+sec]=Math.max(0,Number(v)||0);wgRender()}
@@ -7980,7 +8014,6 @@ async function wgSugerirDia(){
   const spanH=fun.fecha-fun.abre;
   $('weekGridStatus').textContent=(n?n+' setor(es) com sugestão, turno de '+turnoUsado+'h':'Nenhum setor precisa de reforço nesse dia.')+(semDado?' • '+semDado+' setor(es) sem histórico de horário.':'')+(spanH>12?' • dia de '+spanH+'h: turno no máximo permitido (12h).':'');
   wgRender();
-  if(n){try{await abrirEscalaPreview(date,'consulta')}catch(e){console.warn('escala',e)}}
 }
 function wgRender(){
   const tabs=$('wgDayTabs'),tb=$('wgTabela');if(!tabs||!tb)return;
@@ -8006,7 +8039,7 @@ function wgRender(){
         +'<td>'+st.brigada+'</td><td>'+st.necessario+'</td><td>'+st.cltPresente+(st.acimaDoTetoSoComClt?' <span class="badge r" title="Equipe fixa já passa do teto do setor">teto</span>':'')+'</td>'
         +'<td><input type="number" min="0" value="'+aus+'" style="width:58px" onchange="wgSetAus(\''+sec+'\',this.value)"></td>'
         +'<td>'+(st.manual?'<span class="mini" title="Só solicitação manual">—</span>':'<b>'+st.sugestao+'</b>')+'</td>'
-        +'<td><div style="display:flex;gap:4px;align-items:center;'+cor+'"><button type="button" class="btn" style="padding:2px 9px" data-nofeedback onclick="wgSetQty(\''+sec+'\',-1)">−</button><input type="number" min="0" max="40" value="'+qty+'" style="width:56px;text-align:center" onchange="wgSetQty(\''+sec+'\',0,this.value)"><button type="button" class="btn" style="padding:2px 9px" data-nofeedback onclick="wgSetQty(\''+sec+'\',1)">+</button></div></td>'
+        +'<td><div style="display:flex;gap:4px;align-items:center;'+cor+'"><button type="button" class="btn" style="padding:2px 9px" onclick="wgSetQty(\''+sec+'\',-1)">−</button><input type="number" min="0" max="40" value="'+qty+'" style="width:56px;text-align:center" onchange="wgSetQty(\''+sec+'\',0,this.value)"><button type="button" class="btn" style="padding:2px 9px" onclick="wgSetQty(\''+sec+'\',1)">+</button></div></td>'
         +'<td>'+(qty>0?'<select onchange="wgSetTurno(\''+sec+'\',this.value)">'+opts+'</select>':'<span class="mini">—</span>')+'</td>'
         +'<td>'+(qty>0?brl(custo):'—')+'</td></tr>';
     }).join('');
@@ -8014,6 +8047,103 @@ function wgRender(){
   const T=wgTotais();
   const porDia=weekGridDates.map(function(d){const l=weekGridDraftList.filter(function(it){return it.date===d});const q=l.reduce(function(t,it){return t+it.qty},0),v=l.reduce(function(t,it){return t+it.qty*(FREELANCER_PAY_TABLE[it.shiftHours]||0)},0);return q?'<span class="badge" style="margin-right:6px;cursor:pointer" onclick="wgSelecionarDia(\''+d+'\')">'+WG_DIAS[new Date(d+'T12:00:00').getDay()]+' '+d.slice(8)+': '+q+' • '+brl(v)+'</span>':''}).join('');
   $('wgResumoSemana').innerHTML=T.q?'<div style="margin:6px 0"><b>Total da semana: '+T.q+' freelancer(s) • '+brl(T.v)+'</b></div><div>'+porDia+'</div>':'<div class="mini" style="margin:6px 0">Nenhum extra solicitado ainda nesta semana. Use <b>✨ Sugerir solicitação do dia</b> ou os botões <b>+</b> e <b>−</b>.</div>';
+  try{cmoFlAtualizarBotao()}catch(e){}
+}
+
+
+// ---- Alerta do CMO de freelancers (23/10, pedido do Renato): não pode passar de 8% do faturamento da semana ----
+const CMO_FL_TETO_PADRAO=8;
+let fatSemanasSrv=null;
+function cmoFlCfg(){try{return JSON.parse(localStorage.getItem('sjBIcmoFl')||'{}')}catch(e){return {}}}
+function cmoFlCfgSalvar(c){try{localStorage.setItem('sjBIcmoFl',JSON.stringify(c))}catch(e){}}
+async function cmoFlCarregarFat(){
+  if(fatSemanasSrv!==null)return;
+  fatSemanasSrv=[];
+  try{const r=await apiAuth('getFaturamentoSemanas',{});if(r&&r.ok&&Array.isArray(r.semanas))fatSemanasSrv=r.semanas}catch(e){}
+}
+function fatSemanaReal(seg){
+  let tot=0,dias=0;const hoje=todayStr();
+  for(let i=0;i<7;i++){const d=semAddDays(seg,i),v=Number((typeof zigRevenueByDate!=='undefined'&&zigRevenueByDate[d])||0);if(v>0&&d<hoje){tot+=v;dias++}}
+  if(dias)return {total:tot,dias:dias};
+  const x=(fatSemanasSrv||[]).find(w=>w.semana===seg);
+  return x?{total:x.total,dias:x.dias}:null;
+}
+function cmoFlCalc(){
+  const seg=weekGridDates[0];if(!seg)return null;
+  const cfg=cmoFlCfg(),tetoPct=Number(cfg.teto)>0?Number(cfg.teto):CMO_FL_TETO_PADRAO;
+  const hoje=todayStr(),dom=semAddDays(seg,6);
+  const prev=[1,2,3,4].map(i=>fatSemanaReal(semAddDays(seg,-7*i))).filter(x=>x&&x.dias>=5).map(x=>x.total);
+  const media=prev.length?prev.reduce((a,b)=>a+b,0)/prev.length:null;
+  const real=fatSemanaReal(seg);
+  const manual=Number(cfg.fat&&cfg.fat[seg])||0;
+  let fat=null,fonte='';
+  if(manual>0){fat=manual;fonte='informado por você'}
+  else if(dom<hoje&&real){fat=real.total;fonte='faturamento real da semana'}
+  else if(media!=null){fat=media;fonte='média das '+prev.length+' últimas semanas fechadas';if(real&&real.total>fat){fat=real.total;fonte='já realizado nesta semana (acima da média)'}}
+  else if(real){fat=real.total;fonte='realizado até agora (sem semanas anteriores pra comparar)'}
+  const ativos=(freelancerRequests||[]).filter(it=>weekGridDates.indexOf(it.date)>=0&&it.status!=='recusado'&&it.attendance!=='faltou');
+  const custoRasc=it=>(Number(it.qty)||0)*(FREELANCER_PAY_TABLE[it.shiftHours]||0);
+  const cmoEnv=ativos.reduce((t,it)=>t+(Number(it.totalCost)||0),0);
+  const cmoRasc=weekGridDraftList.reduce((t,it)=>t+custoRasc(it),0);
+  const total=cmoEnv+cmoRasc;
+  const teto=fat!=null?fat*tetoPct/100:null,pct=fat>0?total/fat*100:null;
+  let status='semBase';
+  if(pct!=null)status=pct>tetoPct?'acima':(pct>tetoPct*0.85?'atencao':'ok');
+  const porDia=weekGridDates.map(d=>({d:d,env:ativos.filter(it=>it.date===d).reduce((t,it)=>t+(Number(it.totalCost)||0),0),rasc:weekGridDraftList.filter(it=>it.date===d).reduce((t,it)=>t+custoRasc(it),0)})).filter(x=>x.env||x.rasc);
+  return {seg:seg,fat:fat,fonte:fonte,tetoPct:tetoPct,teto:teto,cmoEnv:cmoEnv,cmoRasc:cmoRasc,total:total,pct:pct,status:status,porDia:porDia};
+}
+const CMO_FL_COR={ok:'#1f3a26',atencao:'#4a3a14',acima:'#4a1c24',semBase:'#2a2420'};
+function cmoFlAtualizarBotao(){
+  const b=$('cmoFlBtn'),faixa=$('cmoFlFaixa');if(!b)return;
+  const c=cmoFlCalc();
+  if(!c){b.textContent='💰 CMO freelancers: —';return}
+  const pcts=c.pct!=null?c.pct.toFixed(1).replace('.',',')+'%':'—';
+  b.textContent=(c.status==='acima'?'⚠ ':'💰 ')+'CMO freelancers: '+brl(c.total)+(c.pct!=null?' • '+pcts+' do faturamento (teto '+String(c.tetoPct).replace('.',',')+'%)':' • informe o faturamento da semana');
+  b.style.background=CMO_FL_COR[c.status];
+  b.style.borderColor=c.status==='acima'?'var(--red)':(c.status==='atencao'?'var(--yellow)':(c.status==='ok'?'var(--green)':''));
+  b.style.fontWeight=c.status==='acima'?'800':'';
+  if(faixa){
+    if(c.status==='acima'){faixa.classList.remove('hidden');faixa.innerHTML='<div class="alert r"><b>⚠ CMO de freelancers acima do teto de '+c.tetoPct+'%:</b> '+brl(c.total)+' ('+pcts+' do faturamento da semana, estimado em '+brl(c.fat)+'). Teto = '+brl(c.teto)+' — reduza <b>'+brl(c.total-c.teto)+'</b> antes de enviar. <button class="btn" type="button" data-nofeedback style="padding:3px 9px;font-size:11px;margin-left:6px" onclick="cmoFlAbrir()">Ver detalhes</button></div>'}
+    else if(c.status==='atencao'){faixa.classList.remove('hidden');faixa.innerHTML='<div class="alert y"><b>Atenção:</b> o CMO de freelancers já está em '+pcts+' do faturamento da semana (teto '+c.tetoPct+'%, sobram '+brl(c.teto-c.total)+').</div>'}
+    else{faixa.classList.add('hidden');faixa.innerHTML=''}
+  }
+}
+function cmoFlResumoCurto(){const c=cmoFlCalc();if(!c||c.pct==null)return '';return ' <b style="color:'+(c.status==='acima'?'var(--red)':(c.status==='atencao'?'var(--yellow)':'var(--green)'))+'">CMO da semana '+c.pct.toFixed(1).replace('.',',')+'% (teto '+c.tetoPct+'%)'+(c.status==='acima'?' ⚠':'')+'</b>'}
+function cmoFlFechar(){const o=$('cmoFlOverlay');if(o)o.classList.add('hidden')}
+function cmoFlAbrir(){
+  const o=$('cmoFlOverlay'),corpo=$('cmoFlCorpo');if(!o||!corpo)return;
+  const c=cmoFlCalc();
+  o.classList.remove('hidden');
+  if(!c){corpo.innerHTML='<div class="note">Carregue uma semana primeiro.</div>';return}
+  const cfg=cmoFlCfg();
+  const pcts=c.pct!=null?c.pct.toFixed(1).replace('.',',')+'%':'—';
+  const cor=c.status==='acima'?'var(--red)':(c.status==='atencao'?'var(--yellow)':'var(--green)');
+  const larg=c.pct!=null?Math.min(100,c.pct/c.tetoPct*100):0;
+  let h='<div class="mini">Semana de <b>'+fmtDate(c.seg).slice(5,10)+'</b> a <b>'+fmtDate(semAddDays(c.seg,6)).slice(5,10)+'</b></div>';
+  h+='<div class="kpiRow" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:8px 0">'
+    +'<div class="miniKpi"><small>CMO de freelancers</small><div class="v" style="color:'+cor+'">'+brl(c.total)+'</div><span class="mini">enviados '+brl(c.cmoEnv)+' + rascunho '+brl(c.cmoRasc)+'</span></div>'
+    +'<div class="miniKpi"><small>% do faturamento</small><div class="v" style="color:'+cor+'">'+pcts+'</div><span class="mini">teto '+String(c.tetoPct).replace('.',',')+'%</span></div>'
+    +'<div class="miniKpi"><small>Teto em R$</small><div class="v">'+(c.teto!=null?brl(c.teto):'—')+'</div><span class="mini">'+(c.teto!=null?(c.total<=c.teto?'sobram '+brl(c.teto-c.total):'<b style="color:var(--red)">passa '+brl(c.total-c.teto)+'</b>'):'')+'</span></div>'
+    +'<div class="miniKpi"><small>Faturamento da semana</small><div class="v">'+(c.fat!=null?brl(c.fat):'—')+'</div><span class="mini">'+(c.fonte||'sem base — informe abaixo')+'</span></div></div>';
+  h+='<div class="baBar"><div style="width:'+larg.toFixed(0)+'%;background:'+cor+'"></div></div>';
+  if(c.porDia.length){
+    h+='<h4 style="margin:12px 0 6px">Por dia</h4><div class="igTblWrap"><table class="igTbl"><thead><tr><th>Dia</th><th>Já enviado</th><th>Rascunho</th><th>Total do dia</th></tr></thead><tbody>'
+      +c.porDia.map(x=>'<tr><td>'+fmtDate(x.d)+'</td><td>'+brl(x.env)+'</td><td>'+brl(x.rasc)+'</td><td><b>'+brl(x.env+x.rasc)+'</b></td></tr>').join('')+'</tbody></table></div>';
+  }
+  h+='<h4 style="margin:12px 0 6px">Ajustar</h4><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px">'
+    +'<div class="tbItem"><label class="mini">Faturamento da semana (R$) — vazio = automático</label><input type="text" inputmode="decimal" id="cmoFlFat" value="'+((cfg.fat&&cfg.fat[c.seg])?String(cfg.fat[c.seg]).replace('.',','):'')+'" placeholder="automático"></div>'
+    +'<div class="tbItem"><label class="mini">Teto do CMO de freelancers (% do faturamento)</label><input type="number" id="cmoFlTeto" min="1" max="30" step="0.5" value="'+c.tetoPct+'"></div></div>'
+    +'<div style="margin-top:8px"><button class="btn" type="button" data-nofeedback onclick="cmoFlSalvar()">Aplicar</button></div>';
+  h+='<div class="mini" style="margin-top:10px">CMO = custo dos freelancers da semana (pedidos já enviados, pendentes ou aprovados, menos os que faltaram, + o que ainda está no rascunho). O faturamento da semana, quando você não informa, é a média das 4 últimas semanas fechadas da ZigPay (ou o realizado, se já passou dela). A meta de 8% é do faturamento da semana.</div>';
+  corpo.innerHTML=h;
+}
+function cmoFlSalvar(){
+  const seg=weekGridDates[0];if(!seg)return;
+  const cfg=cmoFlCfg();cfg.fat=cfg.fat||{};
+  const v=parseBRL($('cmoFlFat').value);
+  if(v>0)cfg.fat[seg]=v;else delete cfg.fat[seg];
+  const t=Number($('cmoFlTeto').value);cfg.teto=t>0?t:CMO_FL_TETO_PADRAO;
+  cmoFlCfgSalvar(cfg);cmoFlAtualizarBotao();cmoFlAbrir();
 }
 
 // ---- núcleo de planejamento (o mesmo pra sugestão, pra conferência e pro envio) ----
@@ -8108,12 +8238,12 @@ async function abrirEscalaPreview(date,modo){
   const ov=$('escalaDiaOverlay'),body=$('escalaDiaBody');if(!ov||!body)return;
   wgEscalaCtx={date:date||wgDiaAtual,modo:modo||'consulta'};
   ov.classList.remove('hidden');
-  $('escalaDiaTitulo').textContent=modo==='envio'?'Conferir a escala antes de enviar ao RH':'Escala do dia';
+  $('escalaDiaTitulo').textContent=modo==='envio'?'Conferir a escala antes de enviar ao RH':'Visualização da escala completa';
   body.innerHTML='<div class="mini">Calculando pelo mapa de calor e pelas reservas…</div>';
   const rodape=$('escalaDiaRodape');
-  const datas=modo==='envio'?weekGridDates.filter(function(d){return weekGridDraftList.some(function(it){return it.date===d&&it.qty>0})}):[wgEscalaCtx.date];
+  const datas=(modo==='envio'||modo==='semana')?weekGridDates.filter(function(d){return weekGridDraftList.some(function(it){return it.date===d&&it.qty>0})}):[wgEscalaCtx.date];
   try{
-    if(!datas.length){body.innerHTML='<div class="note">Nenhum extra solicitado — nada pra conferir.</div>';if(rodape)rodape.innerHTML='';return}
+    if(!datas.length){body.innerHTML='<div class="note">Nenhum extra solicitado — nada pra visualizar.</div>';if(rodape)rodape.innerHTML='';return}
     if(datas.indexOf(wgEscalaCtx.date)<0)wgEscalaCtx.date=datas[0];
     const modelos={};
     for(const d of datas)modelos[d]=await escalaDiaModelo(d);
@@ -8122,28 +8252,33 @@ async function abrirEscalaPreview(date,modo){
   }catch(e){
     console.warn('escala preview',e);
     body.innerHTML='<div class="alert r">Não consegui montar a escala: '+escapeHtml(String(e&&e.message||e))+'</div>';
-    if(rodape)rodape.innerHTML='<button class="btn" type="button" data-nofeedback onclick="fecharEscalaDia()">Fechar</button>';
+    if(rodape)rodape.innerHTML='<button class="btn" type="button" onclick="fecharEscalaDia()">Fechar</button>';
   }
 }
 function escalaPreviewRender(){
   const body=$('escalaDiaBody'),rodape=$('escalaDiaRodape'),C=wgEscalaCtx;if(!body||!C.modelos)return;
   const tabs=C.datas.length>1?'<div class="nav" style="margin:0 0 10px">'+C.datas.map(function(d){return '<button type="button" class="'+(d===C.date?'active':'')+'" onclick="wgEscalaCtx.date=\''+d+'\';escalaPreviewRender()">'+WG_DIAS[new Date(d+'T12:00:00').getDay()]+' '+d.slice(8)+'/'+d.slice(5,7)+'</button>'}).join('')+'</div>':'';
-  $('escalaDiaTitulo').textContent=(C.modo==='envio'?'Conferir a escala antes de enviar ao RH • ':'Escala do dia • ')+fmtDate(C.date);
+  $('escalaDiaTitulo').textContent=(C.modo==='envio'?'Conferir a escala antes de enviar ao RH • ':'Visualização da escala completa • ')+fmtDate(C.date);
   body.innerHTML=tabs+escalaDiaHtml(C.modelos[C.date]);
   if(rodape){
     const T=wgTotais();
     rodape.innerHTML=C.modo==='envio'
-      ?'<span class="mini" style="flex:1">'+T.q+' freelancer(s) • '+brl(T.v)+' na semana — cada um vai como um pedido, já com o horário sugerido.</span><button class="btn" type="button" data-nofeedback onclick="fecharEscalaDia()">← Voltar e ajustar</button><button class="btn" id="wgConfirmarBtn" type="button" style="background:#233a1f;border-color:#3a5c30" onclick="wgEnviarConfirmado()">✅ Confirmar e enviar ao RH</button>'
-      :'<button class="btn" type="button" data-nofeedback onclick="abrirEscalaPreview(wgEscalaCtx.date,\'consulta\')" title="Recalcula com a lista como está agora">🔄 Atualizar</button><button class="btn" type="button" data-nofeedback onclick="fecharEscalaDia()">Fechar</button>';
+      ?'<span class="mini" style="flex:1">'+T.q+' freelancer(s) • '+brl(T.v)+' na semana — cada um vai como um pedido, já com o horário sugerido.'+cmoFlResumoCurto()+'</span><button class="btn" type="button" onclick="fecharEscalaDia()">← Voltar e ajustar</button><button class="btn" id="wgConfirmarBtn" type="button" style="background:#233a1f;border-color:#3a5c30" onclick="wgEnviarConfirmado()">✅ Confirmar e enviar ao RH</button>'
+      :'<button class="btn" type="button" onclick="abrirEscalaPreview(wgEscalaCtx.date,wgEscalaCtx.modo)" title="Recalcula com a lista como está agora">🔄 Atualizar</button><button class="btn" type="button" onclick="fecharEscalaDia()">Fechar</button>';
   }
 }
 function fecharEscalaDia(){const o=$('escalaDiaOverlay');if(o)o.classList.add('hidden')}
 function wgVisualizarSemana(){
   if(!weekGridDraftList.some(function(it){return it.qty>0})){$('weekGridStatus').textContent='Nenhum extra solicitado ainda — use ✨ Sugerir ou o botão +.';return}
-  abrirEscalaPreview(wgDiaAtual,'envio');
+  abrirEscalaPreview(wgDiaAtual,'semana');
 }
-function wgEnviar(){wgVisualizarSemana()}  // o envio sempre passa pela conferência da escala
+function wgEnviar(){
+  if(!weekGridDraftList.some(function(it){return it.qty>0})){$('weekGridStatus').textContent='Nenhum extra solicitado ainda — use ✨ Sugerir ou o botão +.';return}
+  abrirEscalaPreview(wgDiaAtual,'envio'); // o envio sempre passa pela conferência da escala
+}
 async function wgEnviarConfirmado(){
+  const cmo=cmoFlCalc();
+  if(cmo&&cmo.status==='acima'&&!confirm('⚠ O CMO de freelancers da semana ficará em '+cmo.pct.toFixed(1).replace('.',',')+'% do faturamento (teto '+cmo.tetoPct+'%, ou seja, '+brl(cmo.teto)+'). Enviar mesmo assim ao RH?'))return;
   const btn=$('wgConfirmarBtn');if(btn)btn.disabled=true;
   const C=wgEscalaCtx,items=[];
   (C.datas||[]).forEach(function(d){
@@ -8802,6 +8937,7 @@ async function loadFreelancerRequests(){
     renderFreelancerOperatorList();
     renderFreelancerApprovalList();
     applyRhFreelancerHint();
+    try{cmoFlAtualizarBotao()}catch(e){}
     lastMasterResult=computeMaster();
     calcAllDrafts();
   }catch(e){}
