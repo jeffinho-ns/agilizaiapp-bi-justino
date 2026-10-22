@@ -350,6 +350,19 @@ function doPost(e) {
     const auth = verifyToken_(body.token);
     if (!auth.ok) return jsonOut_({ ok: false, code: 'unauthorized' });
 
+    // 23/10 (desempenho, cache de borda): passe assinado (7 dias) que o painel mostra ao Worker "bi-edge" pra ler o retrato das leituras da abertura.
+    // Só Diretoria/dono (o retrato é feito com a conta do robô, que tem acesso de Diretoria). Assinado com EDGE_SECRET (propriedade do script),
+    // um segredo à parte do que assina o login. Sem a propriedade, devolve edge_nao_configurado e o painel segue pelo caminho de sempre.
+    if (action === 'getEdgePass') {
+      const segredo = PropertiesService.getScriptProperties().getProperty('EDGE_SECRET');
+      if (!segredo) return jsonOut_({ ok: false, error: 'edge_nao_configurado' });
+      if (!(auth.role === 'owner' || hasAreaAccess_(auth, 'master'))) return jsonOut_({ ok: false, code: 'forbidden' });
+      const exp = Date.now() + 7 * 86400000;
+      const parte = Utilities.base64EncodeWebSafe(JSON.stringify({ e: String(auth.email || '').toLowerCase(), x: exp })).replace(/=+$/, '');
+      const assinatura = bytesToHex_(Utilities.computeHmacSha256Signature(parte, segredo));
+      return jsonOut_({ ok: true, pass: parte + '.' + assinatura, exp: exp });
+    }
+
     // 23/10 (desempenho): cada chamada ao Apps Script custa 3–5 s só de ida e volta. O painel pede aqui, de uma vez, todas as leituras da
     // abertura; cada uma passa pelo MESMO caminho (e pelas mesmas permissões) de uma chamada normal. Só aceita ações get*, nunca escrita.
     if (action === 'bootstrap') {

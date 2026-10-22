@@ -1,0 +1,20 @@
+# Cache de borda do BI Seu Justino. Só use este arquivo se for publicar com a linha de comando (wrangler).
+# Pelo painel do Cloudflare não precisa dele — veja o passo a passo no README.md desta pasta.
+name = "bi-edge"
+main = "worker.js"
+compatibility_date = "2026-10-01"
+
+[vars]
+APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzsXAoBmnHvfocbC3JWiVtiHaSwkzrCX3hKdtRsz_YRoatP3qrksSOj3J8776S3bJXVuA/exec"
+ALLOWED_ORIGINS = "https://solitary-feather-1fde.grupoideiaum1.workers.dev"
+
+# crie o namespace no painel (Armazenamento › KV) e cole o id aqui:
+[[kv_namespaces]]
+binding = "SNAP"
+id = "COLE_AQUI_O_ID_DO_KV"
+
+[triggers]
+crons = ["*/3 * * * *"]
+
+# Segredos (NÃO escreva aqui; cadastre no painel ou com: wrangler secret put NOME):
+#   EDGE_SECRET, ROBOT_EMAIL, ROBOT_PASSWORD

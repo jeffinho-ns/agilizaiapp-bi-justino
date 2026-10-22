@@ -2831,10 +2831,10 @@ function swrGet(k){
   if(!e||Date.now()-e.t>SWR_MAX_MS)return null;
   return e;
 }
-function swrPut(k,v){
-  const s=JSON.stringify(v),prev=swrMem[k];
-  swrMem[k]={t:Date.now(),v:v,s:s};
-  if(s.length<=SWR_ITEM_MAX){try{localStorage.setItem(k,JSON.stringify({t:Date.now(),v:v}))}catch(x){swrClear(true)}}
+function swrPut(k,v,quando){
+  const s=JSON.stringify(v),prev=swrMem[k],t=quando||Date.now();
+  swrMem[k]={t:t,v:v,s:s};
+  if(s.length<=SWR_ITEM_MAX){try{localStorage.setItem(k,JSON.stringify({t:t,v:v}))}catch(x){swrClear(true)}}
   return !prev||prev.s!==s; // mudou?
 }
 function swrClear(soStorage){
@@ -2846,6 +2846,41 @@ function swrTry(action,payload){
   const k=swrKey(action,payload),hit=swrGet(k);if(!hit)return null;
   if(Date.now()-hit.t>SWR_FRESH_MS)swrRevalidate(k,action,payload);
   return hit.v;
+}
+// ---- Cache de borda (Cloudflare Worker "bi-edge"): retrato das leituras da abertura em centenas de ms (só Diretoria/dono) ----
+// Passe assinado pelo Apps Script (getEdgePass, 1 chamada, guardado 7 dias). Tudo é opcional: qualquer falha cai no caminho de sempre.
+const EDGE_URL='https://bi-edge.grupoideiaum1.workers.dev';
+let edgeOff=false,swrEdgeBusy=false;
+function edgePassLer(){try{const p=JSON.parse(localStorage.getItem('sjBIedge:'+userEmail)||'null');if(p&&p.pass&&p.exp>Date.now()+3600000)return p}catch(e){}return null}
+async function edgeWarm(){
+  if(!EDGE_URL||edgeOff||!sessionToken||!(isAdmin||hasAreaAccessClient('master')))return false;
+  swrEdgeBusy=true; // enquanto o retrato da borda chega, não dispara atualizações avulsas
+  try{
+    let p=edgePassLer();
+    if(!p){
+      const keep=__feedbackBtn;__feedbackBtn=null;
+      const reqP=apiPostNet('getEdgePass',{token:sessionToken},false,false,30000);__feedbackBtn=keep;
+      const r=await reqP;
+      if(!r||!r.ok||!r.pass){if(r&&r.error==='edge_nao_configurado')edgeOff=true;return false}
+      p={pass:r.pass,exp:r.exp};try{localStorage.setItem('sjBIedge:'+userEmail,JSON.stringify(p))}catch(e){}
+    }
+    const ctrl=new AbortController(),to=setTimeout(()=>ctrl.abort(),4000);
+    let res;try{res=await fetch(EDGE_URL+'/snapshot',{headers:{Authorization:'Bearer '+p.pass},signal:ctrl.signal})}finally{clearTimeout(to)}
+    if(res.status===401){try{localStorage.removeItem('sjBIedge:'+userEmail)}catch(e){}return false}
+    const j=await res.json();
+    if(!j||!j.ok||!Array.isArray(j.results))return false;
+    let mudou=false;
+    j.results.forEach(it=>{
+      if(!it||!it.r||!it.r.ok)return;
+      const k=swrKey(it.action,it.payload),atual=swrGet(k);
+      if(atual&&atual.t>=j.ts)return; // o que já está aqui é mais novo que o retrato
+      if(swrPut(k,it.r,j.ts))mudou=true;
+    });
+    try{window.__edge={ts:j.ts,idadeS:Math.round((j.idadeMs||0)/1000),itens:j.results.length}}catch(e){}
+    if(mudou){swrDirty=true;clearTimeout(swrTimer);swrTimer=setTimeout(swrRerun,300)}
+    return true;
+  }catch(e){return false}
+  finally{swrEdgeBusy=false}
 }
 let swrBootBusy=false;
 // leituras da abertura (mesmos action/payload das telas, pra cair no mesmo cache). Pesadas e de abas pouco usadas ficam de fora.
@@ -2882,7 +2917,7 @@ async function bootstrapWarm(){
   finally{swrBootBusy=false}
 }
 function swrRevalidate(k,action,payload){
-  if(swrInflight[k]||swrBootBusy)return; // com o bootstrap em andamento, ele já traz tudo isso
+  if(swrInflight[k]||swrBootBusy||swrEdgeBusy)return; // com o bootstrap em andamento, ele já traz tudo isso
   swrInflight[k]=1;swrPending++;
   const keepBtn=__feedbackBtn;__feedbackBtn=null; // a atualização em segundo plano não pode 'roubar' o clique de um botão
   const reqP=apiPostNet(action,payload,false,false,undefined);__feedbackBtn=keepBtn;
@@ -4895,7 +4930,7 @@ async function confirmPasswordResetUI(){
 function logout(msg){
   try{
     ['sjBIv2Session','sjBIv2Draft','sjBIv2DraftV2','sjBIv2MkItems'].forEach(k=>localStorage.removeItem(k));
-    swrClear();
+    swrClear();try{Object.keys(localStorage).filter(k=>k.indexOf('sjBIedge:')===0).forEach(k=>localStorage.removeItem(k))}catch(e){}
     if(typeof msg==='string')sessionStorage.setItem('sjBIgateMsg',msg);
   }catch(e){}
   location.reload();
@@ -5109,7 +5144,10 @@ function startApp(session){
   calcAllDrafts();
   // 23/10 (desempenho): sem cache (1ª vez neste navegador) espera UMA chamada que traz tudo; com cache desenha na hora e atualiza em segundo plano.
   const frio=!swrGet(swrKey('getEntries',{area:'marketing',limit:60}));
-  if(frio){bootstrapWarm().finally(iniciarCargasAbertura)}else{bootstrapWarm();iniciarCargasAbertura()}
+  if(frio){
+    // 1ª vez neste navegador: tenta o retrato da borda (≈ centenas de ms); sem ele, espera o bootstrap do Apps Script como antes
+    edgeWarm().then(ok=>{if(ok){bootstrapWarm();iniciarCargasAbertura()}else{bootstrapWarm().finally(iniciarCargasAbertura)}});
+  }else{const pe=edgeWarm();iniciarCargasAbertura();pe.finally(()=>{bootstrapWarm()})}
   setTimeout(()=>{prefetchPdfInBackground_('pacotes','getEventoPacotesPdfInfo','getEventoPacotesPdfChunk');prefetchPdfInBackground_('manual','getManualPdfInfo','getManualPdfChunk')},30000); // PDFs só depois da tela pronta
 }
 function iniciarCargasAbertura(){
