@@ -342,6 +342,7 @@ function doPost(e) {
     const body = JSON.parse(e.postData.contents);
     const action = body.action;
     if (action === 'login') return jsonOut_(login_(body.email, body.password));
+    if (action === 'loginAgilizai') return jsonOut_(loginAgilizai_(body));
     if (action === 'requestPasswordReset') return jsonOut_(requestPasswordReset_(body.email));
     if (action === 'confirmPasswordReset') return jsonOut_(confirmPasswordReset_(body.email, body.code, body.newPassword));
 
@@ -2797,6 +2798,61 @@ function submitMkPlan_(body) {
     updatedBy: body.updatedBy || ''
   });
   return { ok: true };
+}
+
+function decodeBridgePayload_(b64) {
+  let s = String(b64 || '').replace(/-/g, '+').replace(/_/g, '/');
+  while (s.length % 4) s += '=';
+  return Utilities.newBlob(Utilities.base64Decode(s)).getDataAsString();
+}
+
+function bridgeHmacHex_(payload, secret) {
+  const raw = Utilities.computeHmacSha256Signature(payload, secret);
+  return bytesToHex_(raw);
+}
+
+// Conta do Agilizai já conferida pela API. A prova vale 2 minutos e usa a
+// propriedade AGILIZAI_BI_BRIDGE_SECRET (o mesmo valor de BI_JUSTINO_BRIDGE_SECRET no Render).
+function loginAgilizai_(body) {
+  const secret = PropertiesService.getScriptProperties().getProperty('AGILIZAI_BI_BRIDGE_SECRET');
+  if (!secret) return { ok: false, error: 'bridge_off' };
+  const proof = String((body && body.proof) || '');
+  const dot = proof.indexOf('.');
+  if (dot < 1) return { ok: false, error: 'proof_invalid' };
+  let payload = '';
+  try { payload = decodeBridgePayload_(proof.slice(0, dot)); } catch (e) { return { ok: false, error: 'proof_invalid' }; }
+  if (bridgeHmacHex_(payload, secret) !== proof.slice(dot + 1)) return { ok: false, error: 'proof_invalid' };
+  const parts = payload.split('|');
+  if (parts.length < 4) return { ok: false, error: 'proof_invalid' };
+  const email = String(parts[0] || '').toLowerCase().trim();
+  const hintedRole = parts[1] === 'owner' ? 'owner' : 'user';
+  const hintedAreas = parts[2] || 'all';
+  const exp = Number(parts[3]);
+  if (!email || !exp || Date.now() > exp) return { ok: false, error: 'proof_expired' };
+  ensureAgilizaiBiUser_(email, hintedRole, hintedAreas);
+  const user = sheetToObjects_(getUsersSheet_()).find(a => String(a.email).toLowerCase() === email);
+  if (!user) return { ok: false, error: 'user_missing' };
+  const role = (user.role === 'owner' || user.role === '' || user.role === undefined) ? 'owner' : 'user';
+  const areasCsv = user.areas || hintedAreas || 'all';
+  const layouts = getUserLayouts_(email);
+  const issued = makeToken_(email, role, areasCsv);
+  return { ok: true, token: issued.token, expiresAt: issued.expiresAt, role, areas: parseAreasCsv_(areasCsv), layouts };
+}
+
+function ensureAgilizaiBiUser_(email, role, areas) {
+  const sh = getUsersSheet_();
+  const existing = sheetToObjects_(sh).find(a => String(a.email).toLowerCase() === email);
+  if (existing) return;
+  const salt = Utilities.getUuid();
+  const passwordHash = hashPassword_(Utilities.getUuid(), salt);
+  upsertByKeys_(sh, USERS_HEADERS, ['email'], {
+    email: email,
+    salt: salt,
+    passwordHash: passwordHash,
+    createdAt: new Date().toISOString(),
+    role: role === 'owner' ? 'owner' : 'user',
+    areas: areas || 'all'
+  });
 }
 
 function login_(email, password) {
