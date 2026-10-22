@@ -4722,7 +4722,7 @@ async function bootGate(){
     const saved=JSON.parse(localStorage.getItem('sjBIv2Session')||'null');
     if(saved&&saved.token&&saved.expiresAt>Date.now()&&(saved.role==='owner'||saved.role==='user')){startApp(saved);return}
   }catch(e){}
-  /* A entrada no Agilizai não consulta o Google. A planilha segue depois, já dentro do painel. */
+  try{await apiPing()}catch(e){$('gateStatus').textContent='Sem conexão com o servidor. Confira a internet e tente de novo.'}
 }
 
 async function doLogin(){
@@ -10901,4 +10901,3 @@ function init(){
 }
 init();
 </script>
-<script src="bi-agilizai.js"></script>
