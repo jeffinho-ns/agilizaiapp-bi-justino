@@ -1273,7 +1273,7 @@ tbody tr:hover{background:#ffffff08}
 <div class="dicaCard" style="max-width:1240px">
   <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
     <h3 id="escalaDiaTitulo">Escala do dia</h3>
-    <button class="btn" type="button" style="padding:6px 10px;font-size:12px;background:#3a1620;border-color:#5c2530" onclick="fecharEscalaDia()">✕</button>
+    <button class="btn" type="button" style="padding:6px 10px;font-size:12px;background:#3a1620;border-color:#5c2530" data-nofeedback onclick="fecharEscalaDia()">✕</button>
   </div>
   <div id="escalaDiaBody" style="margin-top:8px"><div class="mini">Calculando…</div></div>
   <div id="escalaDiaRodape" style="margin-top:12px;display:flex;gap:10px;align-items:center;justify-content:flex-end;flex-wrap:wrap"></div>
@@ -1611,15 +1611,15 @@ tbody tr:hover{background:#ffffff08}
 <div id="wgDayTabs" class="nav" style="margin:10px 0 6px"></div>
 <div class="alert g" id="wgPaxInfo" style="margin:4px 0 10px;font-weight:700"></div>
 <div class="toolbar">
-  <button class="btn" type="button" style="background:#233a1f;border-color:#3a5c30" onclick="wgSugerirDia()" title="Preenche de uma vez a sugestão de todos os setores do dia escolhido (mapa de calor da Zig + reservas por horário) — turno sobe sozinho até 12h em dia comprido">✨ Sugerir solicitação do dia</button>
-  <button class="btn" type="button" onclick="abrirEscalaPreview(wgDiaAtual,'consulta')" title="Mostra a escala do dia, hora a hora, com a brigada completa (equipe fixa + freelancers) e o horário sugerido de cada um">🔍 Escala do dia</button>
-  <button class="btn" type="button" style="background:#3a1620;border-color:#5c2530" onclick="wgZerarDia()">Zerar o dia</button>
+  <button class="btn" type="button" style="background:#233a1f;border-color:#3a5c30" data-nofeedback onclick="wgSugerirDia()" title="Preenche de uma vez a sugestão de todos os setores do dia escolhido (mapa de calor da Zig + reservas por horário) — turno sobe sozinho até 12h em dia comprido">✨ Sugerir solicitação do dia</button>
+  <button class="btn" type="button" data-nofeedback onclick="abrirEscalaPreview(wgDiaAtual,'consulta')" title="Mostra a escala do dia, hora a hora, com a brigada completa (equipe fixa + freelancers) e o horário sugerido de cada um">🔍 Escala do dia</button>
+  <button class="btn" type="button" style="background:#3a1620;border-color:#5c2530" data-nofeedback onclick="wgZerarDia()">Zerar o dia</button>
 </div>
 <div class="tablewrap"><table class="wgTbl"><thead><tr><th>Setor</th><th title="Mínimo de referência do setor, cadastrado em RH → Base de setores">Brigada padrão</th><th title="Pico de necessidade calculado pelo mapa de calor da Zig e pelas reservas por horário">Necessário no pico</th><th title="CLT + INT + PJ escalados hoje, já descontando férias e ausência informada">Equipe fixa hoje</th><th title="Pessoas da equipe fixa que não vêm hoje (ajuste rápido)">Ausências</th><th>Sugerido</th><th title="Quantos freelancers extras solicitar — mude com − e +">Extras a solicitar</th><th>Turno</th><th>Custo</th></tr></thead><tbody id="wgTabela"><tr><td colspan="9" class="mini">Carregue uma semana primeiro.</td></tr></tbody></table></div>
 <div id="wgResumoSemana"></div>
 <div style="margin-top:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-  <button class="btn" type="button" onclick="wgVisualizarSemana()" title="Escala completa com o horário de cada freelancer, sem enviar">🔍 Visualizar escala completa</button>
-  <button class="btn" type="button" style="background:#8a4423" onclick="wgEnviar()" title="Mostra a escala completa pra conferência e, confirmando, envia ao RH">Enviar semana ao RH</button>
+  <button class="btn" type="button" data-nofeedback onclick="wgVisualizarSemana()" title="Escala completa com o horário de cada freelancer, sem enviar">🔍 Visualizar escala completa</button>
+  <button class="btn" type="button" style="background:#8a4423" data-nofeedback onclick="wgEnviar()" title="Mostra a escala completa pra conferência e, confirmando, envia ao RH">Enviar semana ao RH</button>
   <span class="mini" id="weekGridSubmitStatus"></span>
 </div>
 </div></details>
@@ -2742,6 +2742,8 @@ let __feedbackBtn=null,__feedbackBtnTimer=null;
 document.addEventListener('click',function(e){
   const btn=e.target.closest('button.btn');
   if(!btn||btn.disabled)return;
+  // 23/10: botões só de leitura/visualização (ex.: ver a escala) não devem acionar o aviso "Informação enviada"
+  if(btn.hasAttribute('data-nofeedback'))return;
   btn.classList.remove('btn-error-flash');
   btn.classList.add('btn-loading');
   if(btn.dataset.busy){btn.dataset.idleLabel=btn.textContent;btn.textContent=btn.dataset.busy}
@@ -7848,7 +7850,7 @@ function wgRender(){
         +'<td>'+st.brigada+'</td><td>'+st.necessario+'</td><td>'+st.cltPresente+(st.acimaDoTetoSoComClt?' <span class="badge r" title="Equipe fixa já passa do teto do setor">teto</span>':'')+'</td>'
         +'<td><input type="number" min="0" value="'+aus+'" style="width:58px" onchange="wgSetAus(\''+sec+'\',this.value)"></td>'
         +'<td><b>'+st.sugestao+'</b></td>'
-        +'<td><div style="display:flex;gap:4px;align-items:center;'+cor+'"><button type="button" class="btn" style="padding:2px 9px" onclick="wgSetQty(\''+sec+'\',-1)">−</button><input type="number" min="0" max="40" value="'+qty+'" style="width:56px;text-align:center" onchange="wgSetQty(\''+sec+'\',0,this.value)"><button type="button" class="btn" style="padding:2px 9px" onclick="wgSetQty(\''+sec+'\',1)">+</button></div></td>'
+        +'<td><div style="display:flex;gap:4px;align-items:center;'+cor+'"><button type="button" class="btn" style="padding:2px 9px" data-nofeedback onclick="wgSetQty(\''+sec+'\',-1)">−</button><input type="number" min="0" max="40" value="'+qty+'" style="width:56px;text-align:center" onchange="wgSetQty(\''+sec+'\',0,this.value)"><button type="button" class="btn" style="padding:2px 9px" data-nofeedback onclick="wgSetQty(\''+sec+'\',1)">+</button></div></td>'
         +'<td>'+(qty>0?'<select onchange="wgSetTurno(\''+sec+'\',this.value)">'+opts+'</select>':'<span class="mini">—</span>')+'</td>'
         +'<td>'+(qty>0?brl(custo):'—')+'</td></tr>';
     }).join('');
@@ -7951,7 +7953,7 @@ async function abrirEscalaPreview(date,modo){
   }catch(e){
     console.warn('escala preview',e);
     body.innerHTML='<div class="alert r">Não consegui montar a escala: '+escapeHtml(String(e&&e.message||e))+'</div>';
-    if(rodape)rodape.innerHTML='<button class="btn" type="button" onclick="fecharEscalaDia()">Fechar</button>';
+    if(rodape)rodape.innerHTML='<button class="btn" type="button" data-nofeedback onclick="fecharEscalaDia()">Fechar</button>';
   }
 }
 function escalaPreviewRender(){
@@ -7962,8 +7964,8 @@ function escalaPreviewRender(){
   if(rodape){
     const T=wgTotais();
     rodape.innerHTML=C.modo==='envio'
-      ?'<span class="mini" style="flex:1">'+T.q+' freelancer(s) • '+brl(T.v)+' na semana — cada um vai como um pedido, já com o horário sugerido.</span><button class="btn" type="button" onclick="fecharEscalaDia()">← Voltar e ajustar</button><button class="btn" id="wgConfirmarBtn" type="button" style="background:#233a1f;border-color:#3a5c30" onclick="wgEnviarConfirmado()">✅ Confirmar e enviar ao RH</button>'
-      :'<button class="btn" type="button" onclick="abrirEscalaPreview(wgEscalaCtx.date,\'consulta\')" title="Recalcula com a lista como está agora">🔄 Atualizar</button><button class="btn" type="button" onclick="fecharEscalaDia()">Fechar</button>';
+      ?'<span class="mini" style="flex:1">'+T.q+' freelancer(s) • '+brl(T.v)+' na semana — cada um vai como um pedido, já com o horário sugerido.</span><button class="btn" type="button" data-nofeedback onclick="fecharEscalaDia()">← Voltar e ajustar</button><button class="btn" id="wgConfirmarBtn" type="button" style="background:#233a1f;border-color:#3a5c30" onclick="wgEnviarConfirmado()">✅ Confirmar e enviar ao RH</button>'
+      :'<button class="btn" type="button" data-nofeedback onclick="abrirEscalaPreview(wgEscalaCtx.date,\'consulta\')" title="Recalcula com a lista como está agora">🔄 Atualizar</button><button class="btn" type="button" data-nofeedback onclick="fecharEscalaDia()">Fechar</button>';
   }
 }
 function fecharEscalaDia(){const o=$('escalaDiaOverlay');if(o)o.classList.add('hidden')}
