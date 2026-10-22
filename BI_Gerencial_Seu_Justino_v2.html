@@ -314,6 +314,18 @@ tbody tr:hover{background:#ffffff08}
 .gateCard .btn{padding:11px 13px;font-size:14px}
 </style>
 <div id="toastBox"></div>
+<!-- 23/10: popup da escala fica FORA das abas (dentro de uma aba escondida ele nunca aparecia) -->
+<div class="dicaOverlay hidden" id="escalaDiaOverlay" onclick="if(event.target===this)fecharEscalaDia()">
+<div class="dicaCard" style="max-width:1240px">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+    <h3 id="escalaDiaTitulo">Escala do dia</h3>
+    <button class="btn" type="button" style="padding:6px 10px;font-size:12px;background:#3a1620;border-color:#5c2530" data-nofeedback onclick="fecharEscalaDia()">✕</button>
+  </div>
+  <div id="escalaDiaBody" style="margin-top:8px"><div class="mini">Calculando…</div></div>
+  <div id="escalaDiaRodape" style="margin-top:12px;display:flex;gap:10px;align-items:center;justify-content:flex-end;flex-wrap:wrap"></div>
+</div>
+</div>
+
 <div id="sendOverlay" class="hidden">
   <div class="sendOverlayCard">
     <div id="sendOverlaySpinner" class="sendOverlaySpinner"></div>
@@ -1267,17 +1279,6 @@ tbody tr:hover{background:#ffffff08}
     <div class="miniKpi"><small>Público do mês (ZigPay)</small><div class="v" id="mkBilheteriaPublico">—</div></div>
     <div class="miniKpi"><small>% clientes × entradas</small><div class="v" id="mkBilheteriaPct">—</div><div class="mini">entradas vendidas ÷ público do mês</div></div>
   </div>
-</div>
-
-<div class="dicaOverlay hidden" id="escalaDiaOverlay" onclick="if(event.target===this)fecharEscalaDia()">
-<div class="dicaCard" style="max-width:1240px">
-  <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
-    <h3 id="escalaDiaTitulo">Escala do dia</h3>
-    <button class="btn" type="button" style="padding:6px 10px;font-size:12px;background:#3a1620;border-color:#5c2530" data-nofeedback onclick="fecharEscalaDia()">✕</button>
-  </div>
-  <div id="escalaDiaBody" style="margin-top:8px"><div class="mini">Calculando…</div></div>
-  <div id="escalaDiaRodape" style="margin-top:12px;display:flex;gap:10px;align-items:center;justify-content:flex-end;flex-wrap:wrap"></div>
-</div>
 </div>
 
 <div class="dicaOverlay hidden" id="dicaAtracaoOverlay" onclick="if(event.target===this)fecharSugestaoAtracao()">
@@ -8018,7 +8019,14 @@ async function escalaDiaModelo(date){
       return {n:k+1,i:j.i,tam:j.tam,entrada:fmtHHMM(P.blocos[j.i].off),saida:fmtHHMM(P.blocos[j.i].off+j.tam*30),pausa:pj!=null?fmtHHMM(P.blocos[pj].off):'',shiftHours:H};
     });
     const fl=P.blocos.map(function(_,i){return pessoas.filter(function(p){return i>=p.i&&i<p.i+p.tam}).length});
-    const fixos=P.ativos.filter(function(e){const d=(e.horarioSemanal&&e.horarioSemanal[wd])||{};return d.trabalha&&!feriasAtivas(e,date)&&!estaAusenteHoje(e.id,date)}).map(function(e){const d=e.horarioSemanal[wd]||{};return {nome:String(e.nome||''),tipo:e.contratacao,entrada:d.entrada||'',saida:d.saida||''}});
+    const fixos=P.ativos.filter(function(e){const d=(e.horarioSemanal&&e.horarioSemanal[wd])||{};return d.trabalha&&!feriasAtivas(e,date)&&!estaAusenteHoje(e.id,date)}).map(function(e){const d=e.horarioSemanal[wd]||{};
+      let pausa='',pausaSug=false;
+      if(d.almoco||d.jantar)pausa=[d.almoco?'almoço '+d.almoco:'',d.jantar?'jantar '+d.jantar:''].filter(Boolean).join(' • ');
+      else if(d.entrada&&d.saida){
+        const idx=P.blocos.map(function(_,i){return i}).filter(function(i){return isWorkingAtMinute(d.entrada,d.saida,P.blocos[i].off%1440)});
+        if(idx.length>=10){const pj=pausaDoTurno(P.need,idx[0],idx.length);if(pj!=null){pausa=fmtHHMM(P.blocos[pj].off)+' – '+fmtHHMM(P.blocos[pj].off+60);pausaSug=true}}
+      }
+      return {nome:String(e.nome||''),tipo:e.contratacao,entrada:d.entrada||'',saida:d.saida||'',pausa:pausa,pausaSug:pausaSug}});
     setores.push(Object.assign({},P,{qtd:qtd,H:H,pessoas:pessoas,fl:fl,fixos:fixos,custo:qtd*(FREELANCER_PAY_TABLE[H]||0)}));
   });
   return {date:date,fun:fun,wd:wd,exp:exp,pax:pax,setores:setores,spanH:fun.fecha-fun.abre};
@@ -8031,7 +8039,10 @@ function escalaDiaHtml(M){
   const cor=function(d){return d<0?'background:#4a1c24':(d>=2?'background:#4a3a14':'background:#1f3a26')};
   let h='<div class="note"><b>Público esperado: '+M.pax.toLocaleString('pt-BR')+'</b> ('+(M.exp.fonte||'—')+') • funcionamento '+M.fun.abre+'h–'+(M.fun.fecha%24)+'h • equipe chega '+fmtHHMM(M.fun.abre*60-PRE_ABERTURA_MIN)+'</div>';
   h+='<div class="mini" style="margin:6px 0">Cada célula: <b>pessoas escaladas / necessárias</b> (equipe fixa + freelancers). <span style="padding:1px 7px;border-radius:5px;background:#1f3a26">coberto</span> <span style="padding:1px 7px;border-radius:5px;background:#4a1c24">falta gente</span> <span style="padding:1px 7px;border-radius:5px;background:#4a3a14">sobra 2+</span> • a necessidade vem do mapa de calor da Zig e das reservas por horário.</div>';
+  const totNec0=horas.map(function(g){return Math.max.apply(null,g.idx.map(function(i){return S.reduce(function(t,L){return t+L.need[i]},0)}))});
+  const pico0=Math.max(1,Math.max.apply(null,totNec0));
   h+='<div class="igTblWrap"><table class="igTbl" style="width:auto"><thead><tr><th>Setor</th>'+horas.map(function(g){return '<th style="text-align:center!important">'+String(g.h%24).padStart(2,'0')+'h</th>'}).join('')+'</tr></thead><tbody>';
+  h+='<tr><td><b>🔥 Mapa de calor</b><br><span class="mini">movimento esperado (% do pico)</span></td>'+totNec0.map(function(v){const p=Math.round(v/pico0*100);return '<td style="text-align:center;background:rgba(247,110,124,'+(0.12+0.6*p/100).toFixed(2)+');white-space:nowrap" title="'+v+' pessoas necessárias na casa nessa hora"><b>'+p+'%</b></td>'}).join('')+'</tr>';
   S.forEach(function(L){
     h+='<tr><td><b>'+FREELANCER_SECTOR_LABEL[L.sec]+'</b></td>'+horas.map(function(g){
       const need=Math.max.apply(null,g.idx.map(function(i){return L.need[i]})),clt=Math.min.apply(null,g.idx.map(function(i){return L.pres[i]})),fl=Math.min.apply(null,g.idx.map(function(i){return L.fl[i]}));
@@ -8044,11 +8055,11 @@ function escalaDiaHtml(M){
   const totNec=horas.map(function(g){return Math.max.apply(null,g.idx.map(function(i){return S.reduce(function(t,L){return t+L.need[i]},0)}))});
   h+='<tr style="border-top:2px solid var(--line)"><td><b>Total da casa</b></td>'+horas.map(function(g,k){return '<td style="text-align:center;white-space:nowrap;font-weight:800'+(totEsc[k]<totNec[k]?';color:var(--red)':'')+'">'+totEsc[k]+'<span class="mini">/'+totNec[k]+'</span></td>'}).join('')+'</tr></tbody></table></div>';
   // brigada completa, 1 pessoa por linha
-  h+='<h4 style="margin:14px 0 6px">Brigada completa do dia — 1 pessoa por linha</h4><div class="igTblWrap"><table class="igTbl"><thead><tr><th>Setor</th><th>Quem</th><th>Tipo</th><th>Horário</th><th>Pausa (1h)</th></tr></thead><tbody>';
+  h+='<h4 style="margin:14px 0 6px">Brigada completa do dia — 1 pessoa por linha</h4><div class="igTblWrap"><table class="igTbl"><thead><tr><th>Setor</th><th>Quem</th><th>Tipo</th><th>Horário</th><th>Descanso / pausa</th></tr></thead><tbody>';
   let totFl=0,totCusto=0;
   S.forEach(function(L){
-    L.fixos.slice().sort(function(a,b){return String(a.entrada).localeCompare(String(b.entrada))}).forEach(function(f){h+='<tr><td>'+FREELANCER_SECTOR_LABEL[L.sec]+'</td><td>'+escapeHtml(f.nome)+'</td><td><span class="badge">'+escapeHtml(f.tipo)+'</span></td><td>'+escapeHtml((f.entrada||'?')+' – '+(f.saida||'?'))+'</td><td class="mini">—</td></tr>'});
-    L.pessoas.forEach(function(p){totFl++;h+='<tr style="background:#241a12"><td>'+FREELANCER_SECTOR_LABEL[L.sec]+'</td><td><b>Freelancer '+p.n+'</b> <span class="mini">de '+L.qtd+'</span></td><td><span class="badge g">freelancer '+p.shiftHours+'h</span></td><td><b>'+p.entrada+' – '+p.saida+'</b></td><td>'+(p.pausa||'<span class="mini">—</span>')+'</td></tr>'});
+    L.fixos.slice().sort(function(a,b){return String(a.entrada).localeCompare(String(b.entrada))}).forEach(function(f){h+='<tr><td>'+FREELANCER_SECTOR_LABEL[L.sec]+'</td><td>'+escapeHtml(f.nome)+'</td><td><span class="badge">'+escapeHtml(f.tipo)+'</span></td><td>'+escapeHtml((f.entrada||'?')+' – '+(f.saida||'?'))+'</td><td>'+(f.pausa?escapeHtml(f.pausa)+(f.pausaSug?' <span class="mini">(sugerida)</span>':''):'<span class="mini">—</span>')+'</td></tr>'});
+    L.pessoas.forEach(function(p){totFl++;h+='<tr style="background:#241a12"><td>'+FREELANCER_SECTOR_LABEL[L.sec]+'</td><td><b>Freelancer '+p.n+'</b> <span class="mini">de '+L.qtd+'</span></td><td><span class="badge g">freelancer '+p.shiftHours+'h</span></td><td><b>'+p.entrada+' – '+p.saida+'</b></td><td>'+(p.pausa?p.pausa+' – '+fmtHHMM(timeToMinutes(p.pausa)+60)+' <span class="mini">(sugerida)</span>':'<span class="mini">—</span>')+'</td></tr>'});
     totCusto+=L.custo;
   });
   h+='<tr style="border-top:2px solid var(--line)"><td><b>Total</b></td><td colspan="2"><b>'+totFl+' freelancer(s)</b></td><td colspan="2"><b>'+brl(totCusto)+'</b></td></tr></tbody></table></div>';
