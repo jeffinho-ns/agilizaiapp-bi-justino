@@ -2818,7 +2818,12 @@ function sendOverlayHide(){
 const SWR_FRESH_MS=15000,SWR_MAX_MS=24*3600*1000,SWR_PREFIX='sjBIc:',SWR_ITEM_MAX=700000;
 let swrMem={},swrInflight={},swrPending=0,swrDirty=false,swrTimer=null,swrForceUntil=0,swrReruns=[];
 function swrCacheable(action){return /^get/.test(action)&&!/Pdf|Chunk|Evidencia|Foto|Image|Doc(s|Chunk)$/i.test(action)}
-function swrKey(action,payload){const p=Object.assign({},payload);delete p.token;return SWR_PREFIX+(userEmail||'')+'|'+action+'|'+JSON.stringify(p)}
+function swrStable(v){
+  if(Array.isArray(v))return '['+v.map(swrStable).join(',')+']';
+  if(v&&typeof v==='object')return '{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+swrStable(v[k])).join(',')+'}';
+  return JSON.stringify(v===undefined?null:v);
+}
+function swrKey(action,payload){const p=Object.assign({},payload);delete p.token;return SWR_PREFIX+(userEmail||'')+'|'+action+'|'+swrStable(p)}
 function swrGet(k){
   let e=swrMem[k];
   if(!e){try{const raw=localStorage.getItem(k);if(raw){const o=JSON.parse(raw);e=swrMem[k]={t:o.t,v:o.v,s:JSON.stringify(o.v)}}}catch(x){}}
@@ -2841,8 +2846,42 @@ function swrTry(action,payload){
   if(Date.now()-hit.t>SWR_FRESH_MS)swrRevalidate(k,action,payload);
   return hit.v;
 }
+let swrBootBusy=false;
+// leituras da abertura (mesmos action/payload das telas, pra cair no mesmo cache). Pesadas e de abas pouco usadas ficam de fora.
+function bootCalls(){
+  const c=[];
+  ROLE_KEYS.forEach(area=>c.push({action:'getEntries',payload:{area:area,limit:area==='marketing'?60:12}}));
+  c.push({action:'getMkPlans',payload:{}},{action:'getMeterReadings',payload:{limit:60}},{action:'getZigRevenue',payload:{limit:2000}},{action:'getRevenueOverview',payload:{}},
+    {action:'getCmvTeoricoParcial',payload:{limit:30}},{action:'getZigItemSalesRanking',payload:{days:30}},{action:'getBandRanking',payload:{}},{action:'getZigBilheteria',payload:{limit:13}},
+    {action:'getEmployees',payload:{}},{action:'getSectorBase',payload:{}},{action:'getReservations',payload:{limit:120}},{action:'getReservationEntries',payload:{limit:200}},
+    {action:'getFreelancerRequests',payload:{}},{action:'getMonthClosures',payload:{}},{action:'getDuvidas',payload:{}},{action:'getDreBase',payload:{}},
+    {action:'getDreFaturamentoHistorico',payload:{force:false}},{action:'getContatosEmergencia',payload:{}},{action:'getEventoCotacoes',payload:{}},{action:'getEventoTarefas',payload:{}},{action:'getDocumentacoes',payload:{}},
+    {action:'getAuditoriaOpItens',payload:{}},{action:'getEventos',payload:{}});
+  ['marketing','financeiro','rh','operacao'].forEach(area=>c.push({action:'getEntries',payload:{area:area,limit:2000}})); // histórico por mês (já era buscado na abertura)
+  if(hasAreaAccessClient('marketing'))c.push({action:'getMkReunioes',payload:{}});
+  if(isAdmin)c.push({action:'getUsersList',payload:{}},{action:'getDeletionsLog',payload:{}},{action:'getSalaries',payload:{}});
+  return c;
+}
+async function bootstrapWarm(){
+  if(swrBootBusy||!sessionToken)return false;
+  swrBootBusy=true;
+  const keep=__feedbackBtn;__feedbackBtn=null; // não 'rouba' o clique de um botão
+  const reqP=apiPostNet('bootstrap',{token:sessionToken,calls:bootCalls()},false,false,150000);
+  __feedbackBtn=keep;
+  try{
+    const r=await reqP;
+    if(r&&r.code==='unauthorized'){logout('Sessão expirada. Entre novamente.');return false}
+    if(!r||!r.ok||!Array.isArray(r.results))return false; // servidor sem a ação ainda (Code.gs antigo): o painel segue pelo caminho de sempre
+    try{window.__boot={ms:r.ms,parcial:!!r.parcial,itens:r.results.map(x=>({acao:x.action+(x.payload&&x.payload.area?':'+x.payload.area:''),ms:x.ms,ok:!!(x.r&&x.r.ok)})).sort((p,q)=>q.ms-p.ms)}}catch(e){} // diagnóstico: no console, digite __boot
+    let mudou=false;
+    r.results.forEach(it=>{if(it&&it.r&&it.r.ok&&swrPut(swrKey(it.action,it.payload),it.r))mudou=true});
+    if(mudou){swrDirty=true;clearTimeout(swrTimer);swrTimer=setTimeout(swrRerun,300)}
+    return true;
+  }catch(e){return false}
+  finally{swrBootBusy=false}
+}
 function swrRevalidate(k,action,payload){
-  if(swrInflight[k])return;
+  if(swrInflight[k]||swrBootBusy)return; // com o bootstrap em andamento, ele já traz tudo isso
   swrInflight[k]=1;swrPending++;
   const keepBtn=__feedbackBtn;__feedbackBtn=null; // a atualização em segundo plano não pode 'roubar' o clique de um botão
   const reqP=apiPostNet(action,payload,false,false,undefined);__feedbackBtn=keepBtn;
@@ -4754,7 +4793,7 @@ let revenueOverview={};
 let masterReady=false;
 let historyDocsByArea={};
 let cmvParcialLatest=null;
-const POLL_MS=30000;
+const POLL_MS=60000;
 
 function setConnState(ok){
   const el=$('connState');
@@ -5067,6 +5106,12 @@ function startApp(session){
   buildEventoFollowupFields();
   buildCotacaoFields();
   calcAllDrafts();
+  // 23/10 (desempenho): sem cache (1ª vez neste navegador) espera UMA chamada que traz tudo; com cache desenha na hora e atualiza em segundo plano.
+  const frio=!swrGet(swrKey('getEntries',{area:'marketing',limit:60}));
+  if(frio){bootstrapWarm().finally(iniciarCargasAbertura)}else{bootstrapWarm();iniciarCargasAbertura()}
+  setTimeout(()=>{prefetchPdfInBackground_('pacotes','getEventoPacotesPdfInfo','getEventoPacotesPdfChunk');prefetchPdfInBackground_('manual','getManualPdfInfo','getManualPdfChunk')},30000); // PDFs só depois da tela pronta
+}
+function iniciarCargasAbertura(){
   loadDuvidas();
   loadEmployees().then(loadEscalaCompleta);
   loadSectorBase();
@@ -5077,8 +5122,6 @@ function startApp(session){
   loadDreBase();
   loadFaturamentoHistoricoDre();
   loadZigBilheteria();
-  prefetchPdfInBackground_('pacotes','getEventoPacotesPdfInfo','getEventoPacotesPdfChunk');
-  prefetchPdfInBackground_('manual','getManualPdfInfo','getManualPdfChunk');
   // 07/10, pedido do Renato: nada deve esperar o clique na aba pra começar a carregar —
   // essas 6 só disparavam no clique (ver o handler de nav button[data-tab] mais abaixo),
   // por isso toda primeira visita numa aba mostrava "Carregando…" na tela mesmo já
@@ -5089,13 +5132,18 @@ function startApp(session){
   loadEventoCotacoes();
   loadTarefasHojeWidget();
   loadDocumentacoes();
-  loadAuditLog();
-  loadAuditoriaOpItens();
+  loadAuditoriaOpItens(); // loadAuditLog: só ao abrir a aba (472 KB que ninguém via na abertura)
   if(isAdmin){loadUsersList();loadDeletionsLog();}
   // 1ª carga: só depois que TUDO que alimenta a Diretoria voltou é que
   // computeMaster() para de mostrar "Carregando…" (ver masterReady).
   refreshAll().then(()=>{masterReady=true;lastMasterResult=computeMaster();calcAllDrafts();if(hasAreaAccessClient('marketing')){loadMkReunioes();carregarGraficosMk();insMarcaNovo()}if(hasAreaAccessClient('operacao'))renderTicketOperacao()});
-  pollTimer=setInterval(refreshAll,POLL_MS);
+  pollTimer=setInterval(pollTick,POLL_MS);
+}
+// a cada POLL_MS: 1 chamada só (bootstrap) em vez de ~15; só com a aba visível. Se o servidor não tiver o bootstrap, cai no refreshAll de sempre.
+async function pollTick(){
+  if(document.hidden||!sessionToken)return;
+  const ok=await bootstrapWarm();
+  if(!ok)refreshAll();
 }
 
 // Cada carga roda isolada: uma que falhe (erro síncrono ou promessa rejeitada) não
@@ -5104,29 +5152,25 @@ function safeRun(fn){
   try{const r=fn();return Promise.resolve(r).catch(e=>{console.warn('refresh',e)})}
   catch(e){console.warn('refresh',e);return Promise.resolve()}
 }
-function refreshAll(){
-  const jobs=[
+function refreshAll(esperarTudo){
+  // 23/10 (desempenho): antes a abertura esperava a mais lenta de todas (Eventos, calor, ranking…) pra tirar a Diretoria do "Carregando…".
+  // Agora a Diretoria sai assim que o essencial chega (áreas, projeções, receita ZigPay, visão geral) e o resto completa em seguida, redesenhando.
+  const essencial=[
     ...ROLE_KEYS.map(area=>()=>refreshArea(area,area==='marketing'?60:12)),
-    // loadEventos entrou aqui (04/10): o gráfico "Faturamento" da Diretoria agora
-    // soma Eventos junto com ZigPay, e eventosList antes só carregava quando o
-    // usuário visitava a aba Eventos — sem isso, o gráfico mostrava Eventos=0 por
-    // atraso de carregamento, não por falta de dado real, pra quem nunca abriu
-    // aquela aba na sessão.
-    refreshMkPlans,refreshMeters,refreshZigRevenue,refreshCmvTeoricoParcial,refreshItemSalesRanking,refreshRevenueOverview,loadBandRanking,loadEventos,loadZigBilheteria
+    refreshMkPlans,refreshMeters,refreshZigRevenue,refreshRevenueOverview
   ];
-  if(hasAreaAccessClient('marketing'))jobs.push(loadMkReunioes); // baCarregar (budget de atrações) só carrega ao abrir Marketing › Gráficos — não disputa a fila na abertura
-  if(isAdmin)jobs.push(refreshSalaries);
-  // Chamada final depois que TODOS os jobs (inclusive loadEventos) terminam — os
-  // jobs rodam em paralelo, então refreshZigRevenue pode terminar (e desenhar o
-  // gráfico) antes de loadEventos preencher eventosList; isso garante um redesenho
-  // final já com os dois dados completos, não importa a ordem de chegada.
-  return Promise.all(jobs.map(safeRun)).then(()=>{renderFaturamentoChart();try{baRender()}catch(e){}});
+  const resto=[refreshCmvTeoricoParcial,refreshItemSalesRanking,loadBandRanking,loadEventos,loadZigBilheteria];
+  if(hasAreaAccessClient('marketing'))resto.push(loadMkReunioes);
+  if(isAdmin)resto.push(refreshSalaries);
+  const pResto=Promise.all(resto.map(safeRun)).then(()=>{try{renderFaturamentoChart();baRender();lastMasterResult=computeMaster();calcAllDrafts()}catch(e){}});
+  const pEssencial=Promise.all(essencial.map(safeRun)).then(()=>{try{renderFaturamentoChart()}catch(e){}});
+  return esperarTudo?Promise.all([pEssencial,pResto]):pEssencial;
 }
 // Botão "Atualizar tudo": além do que a atualização automática já faz, recarrega
 // também colaboradores, quadro mínimo, reservas, freelancers, fechamentos e dúvidas.
 // recarrega tudo que o painel carrega na abertura, sem avisos na tela (usada depois que o dado novo chega em segundo plano)
 function reloadAllQuiet(){
-  const jobs=[refreshAll,()=>loadEmployees().then(loadEscalaCompleta),loadSectorBase,loadReservations,loadReservationEntries,loadFreelancerRequests,loadMonthClosures,loadDuvidas,loadDreBase,loadFaturamentoHistoricoDre,loadZigBilheteria,loadContatosEmergencia,loadEventoCotacoes,loadTarefasHojeWidget,loadDocumentacoes,loadAuditLog,loadAuditoriaOpItens];
+  const jobs=[refreshAll,()=>loadEmployees().then(loadEscalaCompleta),loadSectorBase,loadReservations,loadReservationEntries,loadFreelancerRequests,loadMonthClosures,loadDuvidas,loadDreBase,loadFaturamentoHistoricoDre,loadZigBilheteria,loadContatosEmergencia,loadEventoCotacoes,loadTarefasHojeWidget,loadDocumentacoes,loadAuditoriaOpItens];
   if(isAdmin)jobs.push(loadUsersList,loadDeletionsLog);
   if(hasAreaAccessClient('marketing'))jobs.push(loadMkReunioes,()=>carregarGraficosMk());
   return Promise.all(jobs.map(safeRun)).then(()=>{masterReady=true;lastMasterResult=computeMaster();calcAllDrafts()});
@@ -5142,7 +5186,7 @@ async function refreshAllFull(btn){
   if(hasAreaAccessClient('master'))extra.push(loadEventos,loadDocumentacoes,loadAuditLog);
   if(hasAreaAccessClient('operacao'))extra.push(loadAuditoriaOpItens);
   if(hasAreaAccessClient('marketing'))extra.push(loadMkReunioes,()=>{zigHourlyLoadedAt=0;return carregarGraficosMk(true)});
-  await Promise.all([refreshAll(),...extra.map(safeRun)]);
+  await Promise.all([refreshAll(true),...extra.map(safeRun)]);
   if(btn){btn.disabled=false;btn.textContent=btn.dataset.txt}
   showToast('Tudo atualizado às '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+'.');
 }

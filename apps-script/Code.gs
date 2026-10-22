@@ -350,6 +350,30 @@ function doPost(e) {
     const auth = verifyToken_(body.token);
     if (!auth.ok) return jsonOut_({ ok: false, code: 'unauthorized' });
 
+    // 23/10 (desempenho): cada chamada ao Apps Script custa 3–5 s só de ida e volta. O painel pede aqui, de uma vez, todas as leituras da
+    // abertura; cada uma passa pelo MESMO caminho (e pelas mesmas permissões) de uma chamada normal. Só aceita ações get*, nunca escrita.
+    if (action === 'bootstrap') {
+      const calls = Array.isArray(body.calls) ? body.calls.slice(0, 50) : [];
+      const t0 = Date.now(), results = [];
+      __memoLeitura = {};
+      let parcial = false;
+      try {
+        for (let i = 0; i < calls.length; i++) {
+          if (Date.now() - t0 > 90000) { parcial = true; break } // não estoura o limite do Apps Script; o painel busca o resto sozinho
+          const c = calls[i] || {};
+          if (!/^get[A-Za-z]+$/.test(String(c.action || ''))) continue;
+          const t1 = Date.now();
+          let r;
+          try {
+            const out = doPost({ postData: { contents: JSON.stringify(Object.assign({}, c.payload || {}, { action: c.action, token: body.token })) } });
+            r = JSON.parse(out.getContent());
+          } catch (e) { r = { ok: false, error: 'bootstrap_item' } }
+          results.push({ action: c.action, payload: c.payload || {}, r: r, ms: Date.now() - t1 });
+        }
+      } finally { __memoLeitura = null }
+      return jsonOut_({ ok: true, results: results, parcial: parcial, ms: Date.now() - t0 });
+    }
+
     if (action === 'getEntries') {
       if (!hasAreaAccess_(auth, body.area)) return jsonOut_({ ok: false, code: 'forbidden' });
       return jsonOut_(getEntries_(body.area, Number(body.limit) || 30));
@@ -2888,9 +2912,21 @@ function parseAreasCsv_(csv) {
 // Confere a área direto na planilha (não confia só no token) — assim, quando o
 // admin muda o acesso de alguém na tabela "Acessos cadastrados", já vale no
 // próximo envio dessa pessoa, sem precisar esperar ela sair e entrar de novo.
+// 23/10 (desempenho): antes, TODA verificação de permissão de quem não é dono relia a planilha Users inteira. Agora guarda só e-mail + áreas por 60 s
+// (cache do Google); mudança de áreas de um usuário passa a valer em até 1 minuto. Login e telas de administração continuam lendo a planilha direto.
+let __usersMemo = null;
+function usersAreasCached_() {
+  if (__usersMemo) return __usersMemo;
+  const cache = CacheService.getScriptCache();
+  try { const hit = cache.get('usersAreas_v1'); if (hit) { __usersMemo = JSON.parse(hit); return __usersMemo } } catch (e) { }
+  const rows = sheetToObjects_(getUsersSheet_()).map(function (u) { return { email: String(u.email || '').toLowerCase(), areas: u.areas || '' } });
+  try { cache.put('usersAreas_v1', JSON.stringify(rows), 60) } catch (e) { }
+  __usersMemo = rows;
+  return rows;
+}
 function hasAreaAccess_(auth, area) {
   if (auth.role === 'owner') return true;
-  const user = sheetToObjects_(getUsersSheet_()).find(u => String(u.email).toLowerCase() === String(auth.email).toLowerCase());
+  const user = usersAreasCached_().find(function (u) { return u.email === String(auth.email).toLowerCase() });
   if (!user) return false;
   const areas = parseAreasCsv_(user.areas || '');
   if (areas === 'all') return true;
@@ -5051,7 +5087,12 @@ function ensureSheet_(name, headers) {
   return sh;
 }
 
+// 23/10 (desempenho): dentro de uma chamada 'bootstrap' (várias leituras numa execução só) a mesma aba costumava ser relida por cada ação
+// (ZigRevenue, Reservas, Colaboradores, Entries…). Aqui ela é lida uma vez e as próximas leituras recebem cópias. Fora do bootstrap nada muda.
+let __memoLeitura = null;
 function sheetToObjects_(sh) {
+  const memoKey = __memoLeitura ? sh.getName() : null;
+  if (memoKey && __memoLeitura[memoKey]) return __memoLeitura[memoKey].map(function (o) { return Object.assign({}, o) });
   const values = sh.getDataRange().getValues();
   if (values.length < 2) return [];
   const headers = values[0];
@@ -5082,6 +5123,7 @@ function sheetToObjects_(sh) {
     obj.__row = i + 1; // linha real na planilha (1-based)
     rows.push(obj);
   }
+  if (memoKey) __memoLeitura[memoKey] = rows.map(function (o) { return Object.assign({}, o) });
   return rows;
 }
 
