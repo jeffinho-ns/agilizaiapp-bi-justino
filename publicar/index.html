@@ -2811,7 +2811,69 @@ function sendOverlayHide(){
   clearTimeout(__sendOverlayAutoHide);
   $('sendOverlay')?.classList.add('hidden');
 }
+// ---- Abertura instantânea (23/10, pedido do Renato): "mostra o último dado na hora e atualiza em segundo plano" ----
+// As leituras (get*) guardam a última resposta ok no navegador. Na próxima abertura o painel desenha NA HORA com o que já tinha e, em segundo plano,
+// busca o dado novo no MESMO Apps Script; se algo mudou, redesenha. Nada muda de lugar: a origem dos dados continua sendo só o seu Apps Script.
+// Clique em botão (Atualizar), escrita (submit/save/delete…) e "Atualizar tudo" ignoram o cache e vão direto ao servidor; toda escrita bem-sucedida limpa o cache.
+const SWR_FRESH_MS=15000,SWR_MAX_MS=24*3600*1000,SWR_PREFIX='sjBIc:',SWR_ITEM_MAX=700000;
+let swrMem={},swrInflight={},swrPending=0,swrDirty=false,swrTimer=null,swrForceUntil=0,swrReruns=[];
+function swrCacheable(action){return /^get/.test(action)&&!/Pdf|Chunk|Evidencia|Foto|Image|Doc(s|Chunk)$/i.test(action)}
+function swrKey(action,payload){const p=Object.assign({},payload);delete p.token;return SWR_PREFIX+(userEmail||'')+'|'+action+'|'+JSON.stringify(p)}
+function swrGet(k){
+  let e=swrMem[k];
+  if(!e){try{const raw=localStorage.getItem(k);if(raw){const o=JSON.parse(raw);e=swrMem[k]={t:o.t,v:o.v,s:JSON.stringify(o.v)}}}catch(x){}}
+  if(!e||Date.now()-e.t>SWR_MAX_MS)return null;
+  return e;
+}
+function swrPut(k,v){
+  const s=JSON.stringify(v),prev=swrMem[k];
+  swrMem[k]={t:Date.now(),v:v,s:s};
+  if(s.length<=SWR_ITEM_MAX){try{localStorage.setItem(k,JSON.stringify({t:Date.now(),v:v}))}catch(x){swrClear(true)}}
+  return !prev||prev.s!==s; // mudou?
+}
+function swrClear(soStorage){
+  if(!soStorage)swrMem={};
+  try{Object.keys(localStorage).filter(k=>k.indexOf(SWR_PREFIX)===0).forEach(k=>localStorage.removeItem(k))}catch(x){}
+}
+function swrTry(action,payload){
+  if(!swrCacheable(action)||__feedbackBtn||Date.now()<swrForceUntil)return null;
+  const k=swrKey(action,payload),hit=swrGet(k);if(!hit)return null;
+  if(Date.now()-hit.t>SWR_FRESH_MS)swrRevalidate(k,action,payload);
+  return hit.v;
+}
+function swrRevalidate(k,action,payload){
+  if(swrInflight[k])return;
+  swrInflight[k]=1;swrPending++;
+  const keepBtn=__feedbackBtn;__feedbackBtn=null; // a atualização em segundo plano não pode 'roubar' o clique de um botão
+  const reqP=apiPostNet(action,payload,false,false,undefined);__feedbackBtn=keepBtn;
+  reqP.then(j=>{
+    if(j&&j.code==='unauthorized'){logout('Sessão expirada. Entre novamente.');return}
+    if(j&&j.ok&&swrPut(k,j))swrDirty=true;
+  }).catch(()=>{}).finally(()=>{
+    delete swrInflight[k];swrPending--;
+    if(swrPending===0&&swrDirty){clearTimeout(swrTimer);swrTimer=setTimeout(swrRerun,500)}
+  });
+}
+// depois que as atualizações em segundo plano terminam e algo mudou, redesenha tudo UMA vez (no máximo 2x por minuto)
+function swrRerun(){
+  const agora=Date.now();swrReruns=swrReruns.filter(t=>agora-t<60000);
+  if(!swrDirty||swrReruns.length>=2||!sessionToken)return;
+  swrDirty=false;swrReruns.push(agora);
+  try{reloadAllQuiet()}catch(e){console.warn('swrRerun',e)}
+}
 async function apiPost(action,payload={},priority,forceOverlay,timeoutMs){
+  const hit=forceOverlay?null:swrTry(action,payload);
+  if(hit)return JSON.parse(JSON.stringify(hit)); // cópia: quem chamou pode alterar o objeto à vontade
+  const j=await apiPostNet(action,payload,priority,forceOverlay,timeoutMs);
+  try{
+    if(j&&j.ok){
+      if(swrCacheable(action))swrPut(swrKey(action,payload),j);
+      else if(!/^get|^login$|PasswordReset|^requestPassword|^confirmPassword|CardOrder|Layout/i.test(action))swrClear(); // escrita bem-sucedida: nada de dado velho
+    }
+  }catch(e){}
+  return j;
+}
+async function apiPostNet(action,payload={},priority,forceOverlay,timeoutMs){
   const claimedBtn=__feedbackBtn;
   if(claimedBtn){clearTimeout(__feedbackBtnTimer);__feedbackBtn=null}
   const showOverlay=!!claimedBtn||!!forceOverlay;
@@ -4793,6 +4855,7 @@ async function confirmPasswordResetUI(){
 function logout(msg){
   try{
     ['sjBIv2Session','sjBIv2Draft','sjBIv2DraftV2','sjBIv2MkItems'].forEach(k=>localStorage.removeItem(k));
+    swrClear();
     if(typeof msg==='string')sessionStorage.setItem('sjBIgateMsg',msg);
   }catch(e){}
   location.reload();
@@ -5061,7 +5124,15 @@ function refreshAll(){
 }
 // Botão "Atualizar tudo": além do que a atualização automática já faz, recarrega
 // também colaboradores, quadro mínimo, reservas, freelancers, fechamentos e dúvidas.
+// recarrega tudo que o painel carrega na abertura, sem avisos na tela (usada depois que o dado novo chega em segundo plano)
+function reloadAllQuiet(){
+  const jobs=[refreshAll,()=>loadEmployees().then(loadEscalaCompleta),loadSectorBase,loadReservations,loadReservationEntries,loadFreelancerRequests,loadMonthClosures,loadDuvidas,loadDreBase,loadFaturamentoHistoricoDre,loadZigBilheteria,loadContatosEmergencia,loadEventoCotacoes,loadTarefasHojeWidget,loadDocumentacoes,loadAuditLog,loadAuditoriaOpItens];
+  if(isAdmin)jobs.push(loadUsersList,loadDeletionsLog);
+  if(hasAreaAccessClient('marketing'))jobs.push(loadMkReunioes,()=>carregarGraficosMk());
+  return Promise.all(jobs.map(safeRun)).then(()=>{masterReady=true;lastMasterResult=computeMaster();calcAllDrafts()});
+}
 async function refreshAllFull(btn){
+  swrForceUntil=Date.now()+90000; // botão Atualizar: ignora o cache por 90 s
   if(btn){btn.disabled=true;btn.dataset.txt=btn.dataset.txt||btn.textContent;btn.textContent='⏳ Atualizando…'}
   const extra=[
     ()=>loadEmployees().then(loadEscalaCompleta),loadSectorBase,loadReservations,loadReservationEntries,loadFreelancerRequests,
