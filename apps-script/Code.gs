@@ -87,7 +87,9 @@ const TAB_AREAS = ['master', 'marketing', 'financeiro', 'rh', 'operacao', 'cmv',
 // geral da semana (pax + contagem por tipo) é somado sozinho a partir daqui, e
 // alimenta a sugestão automática de freelancer por setor no Gerente Operador. Fica
 // fora de AREAS de propósito: não tem meta de custo/bônus, é insumo de outro cálculo.
-const RESERVATION_ENTRY_HEADERS = ['id', 'date', 'pax', 'tipo', 'nomeCliente', 'telefone', 'email', 'observacao', 'submittedByName', 'submittedAt', 'convidados', 'clientRequestId', 'origem', 'ativacaoId'];
+const RESERVATION_ENTRY_HEADERS = ['id', 'date', 'pax', 'tipo', 'nomeCliente', 'telefone', 'email', 'observacao', 'submittedByName', 'submittedAt', 'convidados', 'clientRequestId', 'origem', 'ativacaoId', 'hora'];
+// 23/10: horário previsto de chegada (opcional), pra o BI saber quantas pessoas estão reservadas em cada hora (escala dos freelancers).
+function normHora_(v) { const m = String(v || '').trim().match(/^(\d{1,2}):(\d{2})/); return m ? ('0' + m[1]).slice(-2) + ':' + m[2] : '' }
 // 21/10: de onde veio a reserva (pra medir o retorno do Instagram). Vazio = não informado.
 const RESERVATION_ORIGENS = ['instagram', 'whatsapp', 'indicacao', 'google', 'porta', 'outro'];
 function normOrigem_(v) { v = String(v || '').trim(); return RESERVATION_ORIGENS.indexOf(v) >= 0 ? v : '' }
@@ -463,7 +465,7 @@ function doPost(e) {
     if (action === 'submitFreelancerRequestsBatch') {
       if (!hasAreaAccess_(auth, 'operacao')) return jsonOut_({ ok: false, code: 'forbidden' });
       const r = submitFreelancerRequestsBatch_(auth, body.items);
-      if (r.ok) logAudit_(auth, 'create', 'operacao', 'freelancer', '', 'Grade semanal de freelancers enviada — ' + (r.count || 0) + ' item(ns)', null, body.items);
+      if (r.ok) logAudit_(auth, 'create', 'operacao', 'freelancer', '', 'Solicitação semanal de freelancers enviada — ' + (r.count || 0) + ' item(ns)', null, body.items);
       return jsonOut_(r);
     }
     if (action === 'getFreelancerRequests') {
@@ -474,6 +476,18 @@ function doPost(e) {
       if (!hasAreaAccess_(auth, 'rh')) return jsonOut_({ ok: false, code: 'forbidden' });
       const r = decideFreelancerRequest_(auth, body.id, !!body.approve, body.note);
       if (r.ok) logAudit_(auth, 'update', 'rh', 'freelancer', body.id, (body.approve ? 'Freelancer aprovado' : 'Freelancer recusado') + (body.note ? ' — ' + body.note : ''), null, body);
+      return jsonOut_(r);
+    }
+    if (action === 'decideFreelancerRequestsBatch') {
+      if (!hasAreaAccess_(auth, 'rh')) return jsonOut_({ ok: false, code: 'forbidden' });
+      const r = decideFreelancerRequestsBatch_(auth, body.ids, !!body.approve, body.note);
+      if (r.ok) logAudit_(auth, 'update', 'rh', 'freelancer', '', (body.approve ? 'Freelancers aprovados em lote' : 'Freelancers recusados em lote') + ' — ' + r.count + ' pedido(s)', null, { ids: body.ids });
+      return jsonOut_(r);
+    }
+    if (action === 'splitFreelancerRequest') {
+      if (!hasAreaAccess_(auth, 'operacao')) return jsonOut_({ ok: false, code: 'forbidden' });
+      const r = splitFreelancerRequest_(auth, body.id);
+      if (r.ok && r.count) logAudit_(auth, 'update', 'operacao', 'freelancer', body.id, 'Pedido de freelancer separado em ' + (r.count + 1) + ' linhas individuais', null, body);
       return jsonOut_(r);
     }
     if (action === 'markFreelancerAttendance') {
@@ -1168,7 +1182,7 @@ function submitReservationEntry_(auth, body) {
   sh.appendRow([
     id, body.date, pax, tipo, body.nomeCliente || '', body.telefone || '', body.email || '', body.observacao || '',
     body.submittedByName || '', new Date().toISOString(), normalizeConvidados_(body.convidados), body.clientRequestId || '',
-    normOrigem_(body.origem), normOrigem_(body.origem) === 'instagram' ? String(body.ativacaoId || '') : ''
+    normOrigem_(body.origem), normOrigem_(body.origem) === 'instagram' ? String(body.ativacaoId || '') : '', normHora_(body.hora)
   ]);
   return { ok: true, id: id };
 }
@@ -1191,7 +1205,7 @@ function submitReservationEntriesBatch_(auth, items) {
     rows.push([
       Utilities.getUuid(), it.date, pax, tipo, it.nomeCliente || '', it.telefone || '', it.email || '', it.observacao || '',
       it.submittedByName || '', now, normalizeConvidados_(it.convidados), it.clientRequestId || '',
-      normOrigem_(it.origem), normOrigem_(it.origem) === 'instagram' ? String(it.ativacaoId || '') : ''
+      normOrigem_(it.origem), normOrigem_(it.origem) === 'instagram' ? String(it.ativacaoId || '') : '', normHora_(it.hora)
     ]);
   });
   if (!rows.length) return (jaGravadas || bloqueadas) ? { ok: true, count: 0, bloqueadas: bloqueadas } : { ok: false, error: 'nothing_to_submit' };
@@ -1217,7 +1231,7 @@ function getReservationEntriesList_(limit) {
       id: r.id, date: r.date, pax: Number(r.pax) || 0, tipo: r.tipo || 'normal',
       nomeCliente: r.nomeCliente || '', telefone: r.telefone || '', email: r.email || '', observacao: r.observacao || '',
       submittedByName: r.submittedByName || '', submittedAt: r.submittedAt || '', convidados: r.convidados || '',
-      origem: normOrigem_(r.origem), ativacaoId: r.ativacaoId || ''
+      origem: normOrigem_(r.origem), ativacaoId: r.ativacaoId || '', hora: normHora_(r.hora)
     }))
   };
 }
@@ -1239,7 +1253,7 @@ function updateReservationEntry_(auth, body) {
     observacao: body.observacao || '', submittedByName: body.submittedByName || existing.submittedByName || '',
     submittedAt: existing.submittedAt, convidados: normalizeConvidados_(body.convidados),
     clientRequestId: existing.clientRequestId || '',
-    origem: normOrigem_(body.origem), ativacaoId: normOrigem_(body.origem) === 'instagram' ? String(body.ativacaoId || '') : ''
+    origem: normOrigem_(body.origem), ativacaoId: normOrigem_(body.origem) === 'instagram' ? String(body.ativacaoId || '') : '', hora: normHora_(body.hora)
   });
   return { ok: true };
 }
@@ -1263,8 +1277,10 @@ function getReservations_(limit) {
   rows.forEach(r => {
     const d = r.date;
     if (!d) return;
-    if (!byDate[d]) byDate[d] = { date: d, pax: 0, happyHour: 0, despedida: 0, aniversario: 0, submittedAt: '' };
+    if (!byDate[d]) byDate[d] = { date: d, pax: 0, happyHour: 0, despedida: 0, aniversario: 0, submittedAt: '', porHora: {} };
     byDate[d].pax += Number(r.pax) || 0;
+    const hh = normHora_(r.hora);
+    if (hh) byDate[d].porHora[hh] = (byDate[d].porHora[hh] || 0) + (Number(r.pax) || 0);
     if (r.tipo === 'happyHour') byDate[d].happyHour++;
     else if (r.tipo === 'despedida') byDate[d].despedida++;
     else if (r.tipo === 'aniversario') byDate[d].aniversario++;
@@ -1357,7 +1373,9 @@ function submitFreelancerRequestsBatch_(auth, items) {
       // itens, "Enviar semana" falhando). Mesma classe de bug já vista e documentada em
       // 26/09 (attendanceNote faltando) — aconteceu de novo com as colunas novas.
       Utilities.getUuid(), it.date, it.sector, reason, shiftHours, qty, payPerPerson, qty * payPerPerson, it.note || '',
-      auth.email, now, 'pendente', '', '', '', '', '', '', '', '', '', '', ''
+      // 23/10: 1 freelancer por linha — a solicitação semanal manda qty 1 com o horário sugerido de cada um
+      auth.email, now, 'pendente', '', '', '', '', '', '', '',
+      String(it.freelancerNames || '').trim(), String(it.horaEntrada || ''), String(it.horaSaida || ''), String(it.horaPausa || '')
     ]);
   });
   if (!rows.length) return { ok: false, error: 'nothing_to_submit' };
@@ -1384,18 +1402,63 @@ function getFreelancerRequests_() {
   };
 }
 
+// 23/10: a aprovação do RH travava. Causas tratadas aqui: (a) regravava a LINHA INTEIRA (23 colunas) por pedido, podendo sobrescrever
+// uma edição simultânea do gerente (nome/horário) e disputando a planilha quando várias aprovações disparavam juntas; (b) cada aprovação em
+// lote relia a planilha inteira. Agora grava só as 4 colunas da decisão (status, quem, quando, nota), sob trava, e há uma ação em lote.
 function decideFreelancerRequest_(auth, id, approve, note) {
   if (!id) return { ok: false, error: 'missing_id' };
-  const sh = getFreelancerSheet_();
-  const row = sheetToObjects_(sh).find(r => r.id === id);
-  if (!row) return { ok: false, error: 'not_found' };
-  sh.getRange(row.__row, 1, 1, FREELANCER_HEADERS.length).setValues([[
-    row.id, row.date, row.sector, row.reason, row.shiftHours, row.qty, row.payPerPerson, row.totalCost, row.note,
-    row.requestedByEmail, row.requestedAt, approve ? 'aprovado' : 'recusado', auth.email, new Date().toISOString(), note || '',
-    row.attendance || '', row.attendanceByEmail || '', row.attendanceAt || '', row.attendanceNote || '', row.freelancerNames || '',
-    row.horaEntrada || '', row.horaSaida || '', row.horaPausa || ''
-  ]]);
-  return { ok: true };
+  const r = decideFreelancerRequestsBatch_(auth, [id], approve, note);
+  if (!r.ok) return r;
+  return r.count ? { ok: true } : { ok: false, error: 'not_found' };
+}
+function decideFreelancerRequestsBatch_(auth, ids, approve, note) {
+  if (!Array.isArray(ids) || !ids.length) return { ok: false, error: 'empty' };
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(25000) } catch (e) { return { ok: false, error: 'busy', detail: 'Planilha ocupada, tente de novo em alguns segundos.' } }
+  try {
+    const sh = getFreelancerSheet_();
+    const porId = {};
+    sheetToObjects_(sh).forEach(function (r) { porId[r.id] = r });
+    const agora = new Date().toISOString();
+    let count = 0, notFound = 0;
+    ids.forEach(function (id) {
+      const row = porId[id];
+      if (!row) { notFound++; return }
+      sh.getRange(row.__row, 12, 1, 4).setValues([[approve ? 'aprovado' : 'recusado', auth.email, agora, note || '']]); // colunas 12–15
+      count++;
+    });
+    return { ok: true, count: count, notFound: notFound };
+  } finally { lock.releaseLock() }
+}
+// Separa um pedido com qty > 1 em N pedidos de 1 pessoa (um freelancer por linha, cada um com nome/horário próprios).
+function splitFreelancerRequest_(auth, id) {
+  if (!id) return { ok: false, error: 'missing_id' };
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(25000) } catch (e) { return { ok: false, error: 'busy' } }
+  try {
+    const sh = getFreelancerSheet_();
+    const row = sheetToObjects_(sh).find(function (r) { return r.id === id });
+    if (!row) return { ok: false, error: 'not_found' };
+    const qty = Math.max(1, Math.round(Number(row.qty) || 1));
+    if (qty <= 1) return { ok: true, count: 0 };
+    const pay = Number(row.payPerPerson) || 0;
+    const nomes = String(row.freelancerNames || '').split(/\n|,/).map(function (t) { return t.trim() }).filter(Boolean);
+    sh.getRange(row.__row, 6, 1, 3).setValues([[1, pay, pay]]);          // qty, payPerPerson, totalCost
+    sh.getRange(row.__row, 20, 1, 1).setValues([[nomes[0] || '']]);      // freelancerNames
+    const novas = [];
+    for (let i = 1; i < qty; i++) {
+      novas.push(FREELANCER_HEADERS.map(function (h) {
+        if (h === 'id') return Utilities.getUuid();
+        if (h === 'qty') return 1;
+        if (h === 'totalCost') return pay;
+        if (h === 'freelancerNames') return nomes[i] || '';
+        if (h === 'attendance' || h === 'attendanceByEmail' || h === 'attendanceAt' || h === 'attendanceNote') return row[h] || '';
+        return row[h] !== undefined && row[h] !== null ? row[h] : '';
+      }));
+    }
+    sh.getRange(sh.getLastRow() + 1, 1, novas.length, FREELANCER_HEADERS.length).setValues(novas);
+    return { ok: true, count: novas.length };
+  } finally { lock.releaseLock() }
 }
 
 // Só pode marcar presença de pedido já aprovado — evita confirmar presença de algo

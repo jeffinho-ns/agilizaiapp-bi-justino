@@ -117,6 +117,7 @@ h1{margin:0;font-size:25px;font-family:var(--font-display);font-weight:700;lette
 #mkInstaView table th:first-child,#mkInstaView table td:first-child{white-space:nowrap!important;width:1%;padding-right:16px}
 #mkInstaView table td:nth-child(n+2){min-width:140px}
 table.igTbl th:first-child,table.igTbl td:first-child{white-space:nowrap!important;width:1%}
+.wgTbl td,.wgTbl th{text-align:left;white-space:nowrap;vertical-align:middle}.wgTbl input[type=number],.wgTbl select{box-sizing:border-box}
 .baGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;margin-top:8px}
 .baGrid .tbItem{min-width:0}.baGrid input{width:100%;box-sizing:border-box}
 .baBar{height:10px;background:#271f1a;border-radius:6px;overflow:hidden;margin-top:4px}.baBar>div{height:100%;border-radius:6px}
@@ -1272,9 +1273,10 @@ tbody tr:hover{background:#ffffff08}
 <div class="dicaCard" style="max-width:1240px">
   <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
     <h3 id="escalaDiaTitulo">Escala do dia</h3>
-    <span><button class="btn" type="button" style="padding:6px 10px;font-size:12px" onclick="abrirEscalaDiaPopup(escalaDiaAtual.date,escalaDiaAtual.turno)" title="Recalcula com a lista da grade como está agora">🔄 Atualizar</button> <button class="btn" type="button" style="padding:6px 10px;font-size:12px;background:#3a1620;border-color:#5c2530" onclick="fecharEscalaDia()">✕</button></span>
+    <button class="btn" type="button" style="padding:6px 10px;font-size:12px;background:#3a1620;border-color:#5c2530" onclick="fecharEscalaDia()">✕</button>
   </div>
   <div id="escalaDiaBody" style="margin-top:8px"><div class="mini">Calculando…</div></div>
+  <div id="escalaDiaRodape" style="margin-top:12px;display:flex;gap:10px;align-items:center;justify-content:flex-end;flex-wrap:wrap"></div>
 </div>
 </div>
 
@@ -1585,9 +1587,9 @@ tbody tr:hover{background:#ffffff08}
 <div class="tablewrap"><table><thead><tr><th>Dia</th><th>Abre</th><th>Fecha</th><th>Duração</th><th>O que tem</th></tr></thead><tbody class="horarioFuncionamentoBody">
 </tbody></table></div>
 </div></details>
-<details class="full cardCollapse" id="opGradeDetails" data-card-id="op-grade-semanal"><summary class="cardCollapseHead"><span class="chev">▸</span> Grade semanal de freelancers<span class="chHint">clique para abrir</span></summary><div class="card full">
-<div class="roleTitle"><h3>Grade semanal de freelancers</h3><span class="badge p">PREENCHIMENTO RÁPIDO</span></div>
-<div class="note">Mesma mecânica da "Solicitação de freelancers (avulsa)" — escolhe dia (dentro da semana carregada) e setor, vê a mesma sugestão (pax, necessário, contratados, CLT presente), ajusta turno/quantidade e adiciona à lista. Repita pros outros dias/setores que precisarem de reforço e envie tudo de uma vez. <b>Use esta pro planejamento normal da semana</b> — a "Solicitação avulsa" é pra reforço de última hora, fora do que já foi planejado aqui.</div>
+<details class="full cardCollapse" id="opGradeDetails" data-card-id="op-grade-semanal"><summary class="cardCollapseHead"><span class="chev">▸</span> Solicitação semanal de freelancers<span class="chHint">clique para abrir</span></summary><div class="card full">
+<div class="roleTitle"><h3>Solicitação semanal de freelancers</h3><span class="badge p">PREENCHIMENTO RÁPIDO</span></div>
+<div class="note"><b>Um quadro só:</b> escolha a semana, clique no dia e ajuste os extras de cada setor com <b>−</b> e <b>+</b> ao lado da quantidade sugerida (a sugestão usa o mapa de calor da Zig e as reservas por horário). Antes de enviar, a <b>escala completa</b> — equipe fixa + <b>1 freelancer por linha</b>, com o horário sugerido de cada um — abre para conferência. <b>Use esta para o planejamento normal da semana</b>; a "Solicitação de freelancers (avulsa)" é para reforço de última hora.</div>
 <div class="toolbar">
   <div class="tbItem" style="position:relative">
     <label class="mini">Semana</label>
@@ -1606,31 +1608,22 @@ tbody tr:hover{background:#ffffff08}
   <button class="btn" type="button" onclick="loadWeekGrid()">Carregar semana</button>
   <span class="mini" id="weekGridStatus"></span>
 </div>
-<div class="toolbar">
-  <div class="tbItem"><label class="mini">Dia</label><select id="wgDay" onchange="updateWeekGridSuggestionPanel()"></select></div>
-  <div class="tbItem"><label class="mini">Setor</label><select id="wgSector" onchange="updateWeekGridSuggestionPanel()"></select></div>
-  <div class="tbItem"><label class="mini">Turno</label><select id="wgShift" onchange="updateWeekGridSuggestionPanel()">
-    <option value="8">8h — R$ 125</option>
-    <option value="9">9h — R$ 135</option>
-    <option value="10">10h — R$ 145</option>
-    <option value="11">11h — R$ 155</option>
-    <option value="12">12h — R$ 165</option>
-  </select></div>
-  <div class="tbItem"><label class="mini">Quantidade</label><input type="number" id="wgQty" min="1" step="1" value="1"></div>
-  <button class="btn" type="button" onclick="addWeekGridDraft()">+ Adicionar</button>
-  <button class="btn" type="button" style="background:#233a1f;border-color:#3a5c30" onclick="suggestWeekGridDay()" title="Adiciona de uma vez a sugestão de todos os setores pro dia escolhido — turno sobe sozinho até 12h em dia mais comprido (ex.: sábado)">✨ Sugerir solicitação do dia</button>
-  <button class="btn" type="button" onclick="abrirEscalaDiaPopup($('wgDay')?.value,Number($('wgShift')?.value)||8)" title="Abre a escala do dia, hora a hora: equipe fixa + freelancers da lista, setor por setor">🔍 Escala do dia</button>
-</div>
+<div id="wgDayTabs" class="nav" style="margin:10px 0 6px"></div>
 <div class="alert g" id="wgPaxInfo" style="margin:4px 0 10px;font-weight:700"></div>
-<div class="tablewrap"><table><thead><tr><th title="Mínimo de referência do setor, cadastrado em RH → Base de setores">Brigada padrão</th><th>Setor</th><th title="Pico de necessidade calculado pelo mapa de calor de movimento do dia">Necessário no pico</th><th title="CLT + INT + PJ escalados hoje, já descontando férias e ausência informada">Equipe fixa hoje</th><th>Ausências</th><th>Freelancers a contratar</th></tr></thead><tbody id="wgSuggestionBody"><tr><td colspan="6" class="mini">Carregue uma semana e escolha dia/setor.</td></tr></tbody></table></div>
-<div class="sectionTitle" style="margin-top:14px">Itens adicionados pra essa semana</div>
-<div class="tablewrap"><table><thead><tr><th>Dia</th><th>Setor</th><th>Turno</th><th>Qtd</th><th>Custo</th><th>Ação</th></tr></thead><tbody id="weekGridDraftBody"><tr><td colspan="6" class="mini">Nenhum item adicionado ainda.</td></tr></tbody></table></div>
-<div style="margin-top:8px;display:flex;gap:10px;align-items:center">
-  <button class="btn" type="button" onclick="submitWeekGrid()">Enviar semana</button>
+<div class="toolbar">
+  <button class="btn" type="button" style="background:#233a1f;border-color:#3a5c30" onclick="wgSugerirDia()" title="Preenche de uma vez a sugestão de todos os setores do dia escolhido (mapa de calor da Zig + reservas por horário) — turno sobe sozinho até 12h em dia comprido">✨ Sugerir solicitação do dia</button>
+  <button class="btn" type="button" onclick="abrirEscalaPreview(wgDiaAtual,'consulta')" title="Mostra a escala do dia, hora a hora, com a brigada completa (equipe fixa + freelancers) e o horário sugerido de cada um">🔍 Escala do dia</button>
+  <button class="btn" type="button" style="background:#3a1620;border-color:#5c2530" onclick="wgZerarDia()">Zerar o dia</button>
+</div>
+<div class="tablewrap"><table class="wgTbl"><thead><tr><th>Setor</th><th title="Mínimo de referência do setor, cadastrado em RH → Base de setores">Brigada padrão</th><th title="Pico de necessidade calculado pelo mapa de calor da Zig e pelas reservas por horário">Necessário no pico</th><th title="CLT + INT + PJ escalados hoje, já descontando férias e ausência informada">Equipe fixa hoje</th><th title="Pessoas da equipe fixa que não vêm hoje (ajuste rápido)">Ausências</th><th>Sugerido</th><th title="Quantos freelancers extras solicitar — mude com − e +">Extras a solicitar</th><th>Turno</th><th>Custo</th></tr></thead><tbody id="wgTabela"><tr><td colspan="9" class="mini">Carregue uma semana primeiro.</td></tr></tbody></table></div>
+<div id="wgResumoSemana"></div>
+<div style="margin-top:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+  <button class="btn" type="button" onclick="wgVisualizarSemana()" title="Escala completa com o horário de cada freelancer, sem enviar">🔍 Visualizar escala completa</button>
+  <button class="btn" type="button" style="background:#8a4423" onclick="wgEnviar()" title="Mostra a escala completa pra conferência e, confirmando, envia ao RH">Enviar semana ao RH</button>
   <span class="mini" id="weekGridSubmitStatus"></span>
 </div>
 </div></details>
-<details class="full cardCollapse" id="cardEscalaCompletaDetails" data-card-id="op-escala-completa"><summary class="cardCollapseHead"><span class="chev">▸</span> Escala completa do dia<span class="chHint">clique para abrir</span></summary>
+<details class="full cardCollapse" id="cardEscalaCompletaDetails" data-card-id="op-escala-completa"><summary class="cardCollapseHead"><span class="chev">▸</span> Visualização da Escala Completa do dia<span class="chHint">clique para abrir</span></summary>
 <div class="card full" id="cardEscalaCompleta">
 <div class="roleTitle"><h3>Escala do dia — CLT, INT, PJ e freelancers, tudo num lugar só</h3><span><button class="btn" type="button" style="padding:6px 10px;font-size:12px" onclick="loadEscalaCompleta()">🔄 Atualizar</button></span></div>
 <div class="note">Quem está escalado hoje, em uma tabela só: CLT/INT/PJ (cadastro em RH → Colaboradores) + cada freelancer aprovado pelo RH (sugestão automática de horário calculada pra cobrir o pico de movimento do setor — cruza o cadastro com o faturamento por bloco de 30min do ZigPay). <b>Compareceu/Faltou</b> e <b>Observação</b> valem pros 4 tipos (CLT, INT, PJ e freelancer) e ficam <b>salvos</b> — dá pra conferir depois no histórico, não precisa marcar de novo toda vez que abrir a tela. Faltou de CLT tira a presença dele da conta de cobertura do setor (INT/PJ são só informativo nessa conta). Freelancer: depois que o RH aprova a quantidade, clique <b>Editar</b> pra escrever o(s) nome(s) (separe por vírgula se for mais de 1) e confirmar o horário; <b>Cancelar solicitação</b> apaga o pedido. A barrinha ao lado do horário é o calor de atendimento por horário (venda real/estimada da ZigPay, recortada no turno de cada um) — <span style="color:#f76e7c">vermelho</span> = horário de maior fluxo histórico, <span style="color:#34d399">verde</span> = menor.</div>
@@ -1638,6 +1631,7 @@ tbody tr:hover{background:#ffffff08}
   <div class="tbItem"><label class="mini">Dia</label><input type="date" id="ecDate" onchange="loadEscalaCompleta()"></div>
 </div>
 <div class="mini" id="ecPaxInfo" style="margin:6px 0 12px"></div>
+<div class="alert y hidden" id="ecAgrupadosBar" style="margin-bottom:12px"></div>
 <div class="alert y hidden" id="ecCalorEstimadoNote" style="margin-bottom:12px"></div>
 <div style="margin:6px 0;display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
   <span class="mini" id="ecFreelancerBulkStatus"></span>
@@ -1649,7 +1643,7 @@ tbody tr:hover{background:#ffffff08}
 <details class="full cardCollapse" data-card-id="op-solicitacao-freelancer"><summary class="cardCollapseHead"><span class="chev">▸</span> Solicitação de freelancers (avulsa)<span class="chHint">clique para abrir</span></summary>
 <div class="card full">
 <div class="roleTitle"><h3>Solicitação de freelancers (avulsa)</h3><span><button class="btn" type="button" style="padding:6px 10px;font-size:12px" onclick="loadFreelancerRequests()">🔄 Atualizar</button> <span class="badge p">APROVAÇÃO RH</span></span></div>
-<div class="note"><b>Use esta só pra reforço de última hora</b> — pro planejamento normal da semana, use a "Grade semanal de freelancers" (Operação). Peça um freelancer específico, por dia, setor e turno — cada pedido vai pra aprovação do RH. Depois que o dia passar, confirme aqui quem realmente compareceu: isso é o que conta no custo (falta não entra na conta). Quando o dia ainda não tem reserva lançada, a sugestão usa a média histórica daquele dia da semana (marcado "méd. hist." na tabela abaixo) em vez de sair zerada.</div>
+<div class="note"><b>Use esta só pra reforço de última hora</b> — pro planejamento normal da semana, use a "Solicitação semanal de freelancers" (Operação). Peça um freelancer específico, por dia, setor e turno — cada pedido vai pra aprovação do RH. Depois que o dia passar, confirme aqui quem realmente compareceu: isso é o que conta no custo (falta não entra na conta). Quando o dia ainda não tem reserva lançada, a sugestão usa a média histórica daquele dia da semana (marcado "méd. hist." na tabela abaixo) em vez de sair zerada.</div>
 <div class="toolbar">
   <div class="tbItem"><label class="mini">Data</label><input type="date" id="frDate" onchange="applyFreelancerSuggestion()"></div>
   <div class="tbItem"><label class="mini">Setor</label><select id="frSector" onchange="applyFreelancerSuggestion()"></select></div>
@@ -1847,6 +1841,7 @@ tbody tr:hover{background:#ffffff08}
     <option value="despedida">Despedida</option>
     <option value="aniversario">Aniversário</option>
   </select></div>
+  <div class="tbItem"><label class="mini">Horário de chegada (opcional)</label><input type="time" id="resHora" title="Ajuda o BI a escalar a equipe por hora"></div>
   <div class="tbItem"><label class="mini">Origem da reserva</label><select id="resOrigem" onchange="resOrigemMudou()">
     <option value="">Não informado</option>
     <option value="instagram">📸 Instagram</option>
@@ -6544,7 +6539,7 @@ function renderReservasHistory(){
     // (linha ~1416) tem ele por ÚLTIMO — desalinhava toda coluna em 1 posição, os
     // botões Editar/Apagar caíam embaixo do cabeçalho de checkbox em vez de "Ação"
     // (pareciam "não funcionar" porque quem clicava em "Ação" via só texto de Hora).
-    return `<tr><td>${fmtDate(e.date)}</td><td>${escapeHtml(e.nomeCliente||'—')}</td><td class="mini">${escapeHtml(e.telefone||'—')}</td><td class="mini">${escapeHtml(e.email||'—')}</td><td>${e.pax}</td><td>${RESERVATION_TIPO_LABEL[e.tipo]||e.tipo}${e.origem?`<br><span class="mini">${RESERVA_ORIGEM_LABEL[e.origem]||e.origem}</span>`:''}</td><td class="mini" style="text-align:left">${escapeHtml(e.observacao||'—')}</td><td class="mini">${escapeHtml(e.submittedByName||'—')}</td><td>${fmtTime(e.submittedAt)}</td><td class="stickyCol" style="white-space:nowrap">${acao}</td><td><input type="checkbox" ${checked} onchange="toggleReservaSelect('${e.id}',this.checked)"></td></tr>`;
+    return `<tr><td>${fmtDate(e.date)}${e.hora?`<br><span class="mini">chega ${e.hora}</span>`:''}</td><td>${escapeHtml(e.nomeCliente||'—')}</td><td class="mini">${escapeHtml(e.telefone||'—')}</td><td class="mini">${escapeHtml(e.email||'—')}</td><td>${e.pax}</td><td>${RESERVATION_TIPO_LABEL[e.tipo]||e.tipo}${e.origem?`<br><span class="mini">${RESERVA_ORIGEM_LABEL[e.origem]||e.origem}</span>`:''}</td><td class="mini" style="text-align:left">${escapeHtml(e.observacao||'—')}</td><td class="mini">${escapeHtml(e.submittedByName||'—')}</td><td>${fmtTime(e.submittedAt)}</td><td class="stickyCol" style="white-space:nowrap">${acao}</td><td><input type="checkbox" ${checked} onchange="toggleReservaSelect('${e.id}',this.checked)"></td></tr>`;
   }).join('');
 }
 
@@ -6574,7 +6569,8 @@ async function submitSingleReservation(){
   try{
     const origem=($('resOrigem')&&$('resOrigem').value)||'';
     const ativacaoId=origem==='instagram'?(($('resAtivacao')&&$('resAtivacao').value)||''):'';
-    const payload={date,pax,tipo,nomeCliente,telefone,email,observacao,submittedByName,convidados,origem,ativacaoId};
+    const hora=($('resHora')&&$('resHora').value)||'';
+    const payload={date,pax,tipo,nomeCliente,telefone,email,observacao,submittedByName,convidados,origem,ativacaoId,hora};
     // Reaproveita o mesmo clientRequestId em reenvios desse MESMO clique (ex.: usuário
     // clica "Enviar novamente" no overlay de erro) — gerar um novo aqui a cada chamada
     // desabilitaria a proteção contra duplicidade que o backend faz por esse id.
@@ -6593,7 +6589,7 @@ async function submitSingleReservation(){
       statusEl.textContent=editingId?'Atualizado.':'Enviado.';
       submitSingleReservation.__pendingReqId=null;
       if(editingId){cancelReservationEditUI()}
-      else{$('resPax').value=1;$('resNomeCliente').value='';$('resTelefone').value='';$('resEmail').value='';$('resObservacao').value='';$('resConvidados').value='';if($('resOrigem')){$('resOrigem').value='';resOrigemMudou()}}
+      else{$('resPax').value=1;$('resNomeCliente').value='';$('resTelefone').value='';$('resEmail').value='';$('resObservacao').value='';$('resConvidados').value='';if($('resOrigem')){$('resOrigem').value='';resOrigemMudou()}if($('resHora'))$('resHora').value=''}
       loadReservations();loadReservationEntries();
     }else{statusEl.textContent=editingId?'Falha ao salvar.':'Falha ao enviar.';showToast(editingId?'Não consegui salvar a edição.':'Não consegui enviar a reserva.',true)}
   }catch(e){statusEl.textContent='Falha ao conectar.';showToast('Falha ao conectar.',true)}
@@ -6613,6 +6609,7 @@ function editReservationEntryUI(id){
   $('resObservacao').value=e.observacao||'';
   $('resConvidados').value=e.convidados||'';
   if($('resOrigem')){$('resOrigem').value=e.origem||'';resOrigemMudou(e.ativacaoId||'')}
+  if($('resHora'))$('resHora').value=e.hora||'';
   $('resSendBtn').textContent='Salvar edição';
   $('resSendBtn').dataset.busy='Salvando…';
   $('resCancelEditBtn').classList.remove('hidden');
@@ -6625,6 +6622,7 @@ function cancelReservationEditUI(){
   $('resPax').value=1;$('resTipo').value='normal';
   $('resNomeCliente').value='';$('resTelefone').value='';$('resEmail').value='';$('resObservacao').value='';$('resConvidados').value='';
   if($('resOrigem')){$('resOrigem').value='';resOrigemMudou()}
+  if($('resHora'))$('resHora').value='';
   $('resSendBtn').textContent='Enviar';
   $('resSendBtn').dataset.busy='Enviando…';
   $('resCancelEditBtn').classList.add('hidden');
@@ -7157,7 +7155,41 @@ function curvaDoDia(date){
     dias.forEach(d=>{const t=soma(raw[d],f);Object.keys(raw[d]).forEach(off=>{m[off]=(m[off]||0)+raw[d][off][f]/t/dias.length})});
     frac[f]=m;
   });
+  // 23/10, pedido do Renato: a necessidade por hora usa o mapa de calor da Zig E as reservas por horário. A fatia do público esperado que já
+  // tem horário de chegada (reservas com horário, cada uma ocupando ~2h) segue o horário reservado; o resto segue a curva histórica.
+  try{
+    const rv=reservationsByDate[date];
+    if(rv&&rv.porHora){
+      const r=curvaReservasFrac(rv.porHora);
+      if(r){
+        const P=Math.max(1,expectedPaxForDate(date).pax),R=Object.values(rv.porHora).reduce((t,x)=>t+x,0),a=Math.min(1,R/P);
+        let aplicou=false;
+        CAMPOS_CURVA.forEach(f=>{
+          if(!frac[f])return;
+          const m={};new Set(Object.keys(frac[f]).concat(Object.keys(r))).forEach(o=>{m[o]=(1-a)*(frac[f][o]||0)+a*(r[o]||0)});
+          frac[f]=m;aplicou=true;
+        });
+        if(!aplicou){frac.total=r}
+        origem.reservas=R+' pax reservados com horário';
+      }
+    }
+  }catch(e){}
   return {frac,origem};
+}
+// fração do público por bloco de 30 min a partir de reservas {'20:30':pax}; cada reserva ocupa a mesa por RESERVA_PERMANENCIA_MIN
+const RESERVA_PERMANENCIA_MIN=120;
+function curvaReservasFrac(porHora){
+  const out={};let tot=0;
+  Object.keys(porHora||{}).forEach(h=>{
+    const p=Number(porHora[h])||0;if(p<=0)return;
+    let m=timeToMinutes(h);if(m==null)return;
+    if(m<6*60)m+=1440; // madrugada = depois da meia-noite do dia da casa
+    const nb=Math.max(1,Math.round(RESERVA_PERMANENCIA_MIN/30)),ini=Math.floor(m/30)*30;
+    for(let k=0;k<nb;k++){const off=ini+k*30;out[off]=(out[off]||0)+p/nb;tot+=p/nb}
+  });
+  if(tot<=0)return null;
+  Object.keys(out).forEach(k=>{out[k]/=tot});
+  return out;
 }
 
 // Necessário por bloco de 30 min pra um setor num dia (pré-abertura + horário de funcionamento).
@@ -7633,7 +7665,6 @@ async function applyFreelancerSuggestion(){
 
 // ---- Grade semanal (preenchimento rápido dia × setor) ----
 const WEEKDAY_LABEL=['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
-let weekGridDates=[];
 
 const MONTH_ABBR_PT=['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
 function weekLabelFromMonday(dateStr){
@@ -7725,49 +7756,253 @@ function weekGridDatesFrom(startStr){
   return dates;
 }
 
-let weekGridDraftList=[];
-
+// ---- Solicitação semanal de freelancers (23/10, pedido do Renato) ----
+// Um quadro só: abas por dia, 1 linha por setor com a quantidade SUGERIDA e os EXTRAS a solicitar (− / +), turno, custo e total da semana.
+// Antes de enviar, a escala completa (equipe fixa + 1 freelancer por linha, com horário sugerido pelo mapa de calor + reservas por hora)
+// abre numa janela pra conferência. Ao enviar, cada freelancer vai como 1 pedido próprio, já com o horário sugerido.
+let weekGridDates=[];
+let weekGridDraftList=[];      // {date,sector,shiftHours,qty,reason,note} — qty 0 = não solicitar
+let wgAusentes={},wgDiaAtual='',wgPronto={},wgEscalaCtx={date:'',modo:'consulta'};
+const WG_DIAS=['dom','seg','ter','qua','qui','sex','sáb'];
+function wgItem(date,sec){return weekGridDraftList.find(it=>it.date===date&&it.sector===sec)}
+function wgTotais(){
+  const q=weekGridDraftList.reduce((t,it)=>t+(Number(it.qty)||0),0);
+  const v=weekGridDraftList.reduce((t,it)=>t+(Number(it.qty)||0)*(FREELANCER_PAY_TABLE[it.shiftHours]||0),0);
+  return {q,v};
+}
+async function wgPreparar(date){
+  await Promise.all([loadZigHourlyLocal(),loadZigDetailLocal(),loadDailyAttendance(date)]);
+  zigRawSeriesCache=null;wgPronto[date]=true;
+}
 function loadWeekGrid(){
-  const startStr=$('weekGridStart')?.value;
+  const startStr=$('weekGridStart')?$('weekGridStart').value:'';
   if(!startStr){$('weekGridStatus').textContent='Escolha uma data.';return}
   weekGridDates=weekGridDatesFrom(startStr);
-  weekGridDraftList=[];
-  populateWeekGridDaySelect();
-  updateWeekGridSuggestionPanel();
-  renderWeekGridDraftList();
+  weekGridDraftList=[];wgAusentes={};wgPronto={};
+  const hoje=todayStr();
+  wgDiaAtual=weekGridDates.indexOf(hoje)>=0?hoje:(weekGridDates.find(function(d){return HORARIO_FUNCIONAMENTO[new Date(d+'T12:00:00').getDay()]})||weekGridDates[0]);
   $('weekGridStatus').textContent='';
+  wgRender();
+}
+function wgSelecionarDia(d){wgDiaAtual=d;wgRender()}
+function wgSetAus(sec,v){wgAusentes[wgDiaAtual+'|'+sec]=Math.max(0,Number(v)||0);wgRender()}
+function wgSetQty(sec,delta,abs){
+  const date=wgDiaAtual;if(!date)return;
+  let it=wgItem(date,sec);
+  const atual=it?it.qty:0;
+  let nova=abs!=null?Math.round(Number(abs)||0):atual+delta;
+  nova=Math.max(0,Math.min(40,nova));
+  if(!it){
+    if(nova<=0)return;
+    const fun=HORARIO_FUNCIONAMENTO[new Date(date+'T12:00:00').getDay()];
+    const turnoPad=(fun&&fun.fecha-fun.abre>12)?12:8;
+    it={date:date,sector:sec,shiftHours:turnoPad,qty:0,reason:'demanda',note:''};weekGridDraftList.push(it);
+  }
+  it.qty=nova;
+  if(nova<=0)weekGridDraftList=weekGridDraftList.filter(function(x){return x!==it});
+  wgRender();
+}
+function wgSetTurno(sec,h){const it=wgItem(wgDiaAtual,sec);if(it){it.shiftHours=Number(h)}wgRender()}
+function wgZerarDia(){weekGridDraftList=weekGridDraftList.filter(function(it){return it.date!==wgDiaAtual});wgRender()}
+async function wgSugerirDia(){
+  const date=wgDiaAtual;if(!date)return;
+  const fun=HORARIO_FUNCIONAMENTO[new Date(date+'T12:00:00').getDay()];
+  if(!fun){$('weekGridStatus').textContent='Casa fechada nesse dia (Manual) — nada pra sugerir.';return}
+  $('weekGridStatus').textContent='Calculando pelo mapa de calor e pelas reservas…';
+  await wgPreparar(date);
+  weekGridDraftList=weekGridDraftList.filter(function(it){return it.date!==date});
+  let n=0,semDado=0,turnoUsado=8;
+  FREELANCER_SECTORS.forEach(function(sec){
+    const st=freelancerSuggestion(date,sec,wgAusentes[date+'|'+sec]||0,8);
+    if(st.fechado)return;
+    turnoUsado=st.turnoEfetivo||turnoUsado;
+    if(st.semCurva)semDado++;
+    if(st.sugestao>0){weekGridDraftList.push({date:date,sector:sec,shiftHours:st.turnoEfetivo||8,qty:st.sugestao,reason:'demanda',note:''});n++}
+  });
+  const spanH=fun.fecha-fun.abre;
+  $('weekGridStatus').textContent=(n?n+' setor(es) com sugestão, turno de '+turnoUsado+'h':'Nenhum setor precisa de reforço nesse dia.')+(semDado?' • '+semDado+' setor(es) sem histórico de horário.':'')+(spanH>12?' • dia de '+spanH+'h: turno no máximo permitido (12h).':'');
+  wgRender();
+  if(n){try{await abrirEscalaPreview(date,'consulta')}catch(e){console.warn('escala',e)}}
+}
+function wgRender(){
+  const tabs=$('wgDayTabs'),tb=$('wgTabela');if(!tabs||!tb)return;
+  if(!weekGridDates.length){tabs.innerHTML='';tb.innerHTML='<tr><td colspan="9" class="mini">Carregue uma semana primeiro.</td></tr>';$('wgResumoSemana').innerHTML='';$('wgPaxInfo').innerHTML='';return}
+  tabs.innerHTML=weekGridDates.map(function(d){
+    const wd=new Date(d+'T12:00:00').getDay(),qd=weekGridDraftList.filter(function(it){return it.date===d}).reduce(function(t,it){return t+it.qty},0);
+    return '<button type="button" class="'+(d===wgDiaAtual?'active':'')+'" onclick="wgSelecionarDia(\''+d+'\')">'+WG_DIAS[wd]+' '+d.slice(8)+'/'+d.slice(5,7)+(HORARIO_FUNCIONAMENTO[wd]?'':' <span class="mini">fechado</span>')+(qd?' <span class="badge g" style="margin-left:4px">'+qd+'</span>':'')+'</button>';
+  }).join('');
+  const date=wgDiaAtual,wd=new Date(date+'T12:00:00').getDay(),fun=HORARIO_FUNCIONAMENTO[wd];
+  $('wgPaxInfo').innerHTML=paxContextText(date)+(function(){const rv=reservationsByDate[date];if(!rv||!rv.porHora)return '';const R=Object.values(rv.porHora).reduce(function(t,x){return t+x},0);return R?' <span class="mini" style="font-weight:400">• '+R+' pax de '+rv.pax+' reservados com horário (entram na curva por hora)</span>':''})();
+  if(!fun){tb.innerHTML='<tr><td colspan="9" class="mini">Casa fechada nesse dia (Manual).</td></tr>'}
+  else if(!wgPronto[date]){tb.innerHTML='<tr><td colspan="9" class="mini">Calculando pelo mapa de calor…</td></tr>';wgPreparar(date).then(function(){if(wgDiaAtual===date)wgRender()})}
+  else{
+    tb.innerHTML=FREELANCER_SECTORS.map(function(sec){
+      const aus=wgAusentes[date+'|'+sec]||0,it=wgItem(date,sec);
+      const st=freelancerSuggestion(date,sec,aus,it?it.shiftHours:8);
+      if(st.fechado)return '';
+      const qty=it?it.qty:0,turno=it?it.shiftHours:(st.turnoEfetivo||8);
+      const cor=qty>st.sugestao?'color:#e2a33d':(qty<st.sugestao?'color:#a78bfa':'');
+      const custo=qty*(FREELANCER_PAY_TABLE[turno]||0);
+      const opts=[8,9,10,11,12].map(function(h){return '<option value="'+h+'"'+(h===turno?' selected':'')+'>'+h+'h — R$ '+FREELANCER_PAY_TABLE[h]+'</option>'}).join('');
+      return '<tr'+(qty>0?' style="background:#241a12"':'')+'><td><b>'+FREELANCER_SECTOR_LABEL[sec]+'</b>'+(st.maxSimultaneo!=null?' <span class="mini">(máx. '+st.maxSimultaneo+')</span>':'')+(st.semCurva?'<br><span class="mini">sem histórico de horário</span>':'')+'</td>'
+        +'<td>'+st.brigada+'</td><td>'+st.necessario+'</td><td>'+st.cltPresente+(st.acimaDoTetoSoComClt?' <span class="badge r" title="Equipe fixa já passa do teto do setor">teto</span>':'')+'</td>'
+        +'<td><input type="number" min="0" value="'+aus+'" style="width:58px" onchange="wgSetAus(\''+sec+'\',this.value)"></td>'
+        +'<td><b>'+st.sugestao+'</b></td>'
+        +'<td><div style="display:flex;gap:4px;align-items:center;'+cor+'"><button type="button" class="btn" style="padding:2px 9px" onclick="wgSetQty(\''+sec+'\',-1)">−</button><input type="number" min="0" max="40" value="'+qty+'" style="width:56px;text-align:center" onchange="wgSetQty(\''+sec+'\',0,this.value)"><button type="button" class="btn" style="padding:2px 9px" onclick="wgSetQty(\''+sec+'\',1)">+</button></div></td>'
+        +'<td>'+(qty>0?'<select onchange="wgSetTurno(\''+sec+'\',this.value)">'+opts+'</select>':'<span class="mini">—</span>')+'</td>'
+        +'<td>'+(qty>0?brl(custo):'—')+'</td></tr>';
+    }).join('');
+  }
+  const T=wgTotais();
+  const porDia=weekGridDates.map(function(d){const l=weekGridDraftList.filter(function(it){return it.date===d});const q=l.reduce(function(t,it){return t+it.qty},0),v=l.reduce(function(t,it){return t+it.qty*(FREELANCER_PAY_TABLE[it.shiftHours]||0)},0);return q?'<span class="badge" style="margin-right:6px;cursor:pointer" onclick="wgSelecionarDia(\''+d+'\')">'+WG_DIAS[new Date(d+'T12:00:00').getDay()]+' '+d.slice(8)+': '+q+' • '+brl(v)+'</span>':''}).join('');
+  $('wgResumoSemana').innerHTML=T.q?'<div style="margin:6px 0"><b>Total da semana: '+T.q+' freelancer(s) • '+brl(T.v)+'</b></div><div>'+porDia+'</div>':'<div class="mini" style="margin:6px 0">Nenhum extra solicitado ainda nesta semana. Use <b>✨ Sugerir solicitação do dia</b> ou os botões <b>+</b> e <b>−</b>.</div>';
 }
 
-function populateWeekGridDaySelect(){
-  const sel=$('wgDay');if(!sel)return;
-  sel.innerHTML=weekGridDates.map(d=>`<option value="${d}">${fmtDate(d)}</option>`).join('');
+// ---- núcleo de planejamento (o mesmo pra sugestão, pra conferência e pro envio) ----
+function planoSetorDia(date,sec,ctx,ausentes){
+  const nec=necessidadeSetor(date,sec,ctx.curva,ctx.pax);if(!nec)return null;
+  const blocos=nec.blocos,need=blocos.map(function(b){return b.need});
+  const cp=cltPresenteBlocos(sec,date,blocos);
+  const gap=need.map(function(v,i){return Math.max(0,v-Math.max(0,cp.pres[i]-(ausentes||0)))});
+  return {sec:sec,blocos:blocos,need:need,pres:cp.pres,ativos:cp.ativos,gap:gap,semCurva:nec.semCurva};
 }
-
-async function updateWeekGridSuggestionPanel(){
-  const body=$('wgSuggestionBody');if(!body)return;
-  const date=$('wgDay')?.value,sector=$('wgSector')?.value;
-  if($('wgPaxInfo'))$('wgPaxInfo').innerHTML=date?paxContextText(date):'';
-  if(!date){body.innerHTML='<tr><td colspan="6" class="mini">Carregue uma semana primeiro.</td></tr>';return}
-  const turnoH=Number($('wgShift')?.value)||8;
-  await Promise.all([loadZigHourlyLocal(),loadZigDetailLocal(),loadDailyAttendance(date)]);
-  const {rowsHtml,selectedRow}=buildFreelancerSuggestionRows(date,sector,0,turnoH);
-  body.innerHTML=rowsHtml;
-  if(selectedRow){
-    if($('wgQty'))$('wgQty').value=Math.max(1,selectedRow.sugestao);
-    // turno sugerido pro dia (sobe sozinho até 12h em dia comprido) — reflete no
-    // dropdown, pra "+ Adicionar" já sair com o turno certo sem o gerente escolher
-    // manualmente (mesmo raciocínio do "✨ Sugerir solicitação do dia").
-    if($('wgShift')&&selectedRow.turnoEfetivo)$('wgShift').value=String(Math.round(selectedRow.turnoEfetivo));
+// põe N freelancers (1 por linha) em janelas de W blocos de 30 min, cada um onde ainda falta mais gente; devolve [{i,tam}] por início
+function distribuirFreelancers(gap,W,qtd,gapOrig){
+  const n=gap.length;if(!n||qtd<=0)return [];
+  W=Math.max(1,Math.min(W,n));
+  const res=gap.slice(),pessoas=[];
+  for(let q=0;q<qtd;q++){
+    const base=res.some(function(v){return v>0})?res:(gapOrig||gap);
+    let mi=0,ms=-1;
+    for(let i=0;i+W<=n;i++){let t=0;for(let k=0;k<W;k++)t+=base[i+k];if(t>ms){ms=t;mi=i}}
+    for(let k=0;k<W;k++)res[mi+k]=Math.max(0,res[mi+k]-1);
+    pessoas.push({i:mi,tam:W});
+  }
+  return pessoas.sort(function(a,b){return a.i-b.i});
+}
+async function escalaDiaModelo(date){
+  await wgPreparar(date);
+  const wd=new Date(date+'T12:00:00').getDay(),fun=HORARIO_FUNCIONAMENTO[wd];
+  if(!fun)return {date:date,fechado:true};
+  const exp=expectedPaxForDate(date),pax=Math.min(CAPACIDADE_MAXIMA_SIMULTANEA,exp.pax);
+  const ctx={pax:pax,curva:curvaDoDia(date)};
+  const setores=[];
+  FREELANCER_SECTORS.forEach(function(sec){
+    const P=planoSetorDia(date,sec,ctx,wgAusentes[date+'|'+sec]||0);if(!P)return;
+    const it=wgItem(date,sec),qtd=it?it.qty:0,H=it?it.shiftHours:((fun.fecha-fun.abre>12)?12:8);
+    const jan=distribuirFreelancers(P.gap,Math.round(H*2),qtd);
+    const pessoas=jan.map(function(j,k){
+      const pj=pausaDoTurno(P.need,j.i,j.tam);
+      return {n:k+1,i:j.i,tam:j.tam,entrada:fmtHHMM(P.blocos[j.i].off),saida:fmtHHMM(P.blocos[j.i].off+j.tam*30),pausa:pj!=null?fmtHHMM(P.blocos[pj].off):'',shiftHours:H};
+    });
+    const fl=P.blocos.map(function(_,i){return pessoas.filter(function(p){return i>=p.i&&i<p.i+p.tam}).length});
+    const fixos=P.ativos.filter(function(e){const d=(e.horarioSemanal&&e.horarioSemanal[wd])||{};return d.trabalha&&!feriasAtivas(e,date)&&!estaAusenteHoje(e.id,date)}).map(function(e){const d=e.horarioSemanal[wd]||{};return {nome:String(e.nome||''),tipo:e.contratacao,entrada:d.entrada||'',saida:d.saida||''}});
+    setores.push(Object.assign({},P,{qtd:qtd,H:H,pessoas:pessoas,fl:fl,fixos:fixos,custo:qtd*(FREELANCER_PAY_TABLE[H]||0)}));
+  });
+  return {date:date,fun:fun,wd:wd,exp:exp,pax:pax,setores:setores,spanH:fun.fecha-fun.abre};
+}
+function escalaDiaHtml(M){
+  if(M.fechado)return '<div class="note">Casa fechada nesse dia (Manual) — sem escala.</div>';
+  const S=M.setores;if(!S.length)return '<div class="mini">Sem dados pra montar a escala.</div>';
+  const blocos=S[0].blocos,horas=[];
+  blocos.forEach(function(b,i){const h=Math.floor(b.off/60);let g=horas[horas.length-1];if(!g||g.h!==h){g={h:h,idx:[]};horas.push(g)}g.idx.push(i)});
+  const cor=function(d){return d<0?'background:#4a1c24':(d>=2?'background:#4a3a14':'background:#1f3a26')};
+  let h='<div class="note"><b>Público esperado: '+M.pax.toLocaleString('pt-BR')+'</b> ('+(M.exp.fonte||'—')+') • funcionamento '+M.fun.abre+'h–'+(M.fun.fecha%24)+'h • equipe chega '+fmtHHMM(M.fun.abre*60-PRE_ABERTURA_MIN)+'</div>';
+  h+='<div class="mini" style="margin:6px 0">Cada célula: <b>pessoas escaladas / necessárias</b> (equipe fixa + freelancers). <span style="padding:1px 7px;border-radius:5px;background:#1f3a26">coberto</span> <span style="padding:1px 7px;border-radius:5px;background:#4a1c24">falta gente</span> <span style="padding:1px 7px;border-radius:5px;background:#4a3a14">sobra 2+</span> • a necessidade vem do mapa de calor da Zig e das reservas por horário.</div>';
+  h+='<div class="igTblWrap"><table class="igTbl" style="width:auto"><thead><tr><th>Setor</th>'+horas.map(function(g){return '<th style="text-align:center!important">'+String(g.h%24).padStart(2,'0')+'h</th>'}).join('')+'</tr></thead><tbody>';
+  S.forEach(function(L){
+    h+='<tr><td><b>'+FREELANCER_SECTOR_LABEL[L.sec]+'</b></td>'+horas.map(function(g){
+      const need=Math.max.apply(null,g.idx.map(function(i){return L.need[i]})),clt=Math.min.apply(null,g.idx.map(function(i){return L.pres[i]})),fl=Math.min.apply(null,g.idx.map(function(i){return L.fl[i]}));
+      const d=Math.min.apply(null,g.idx.map(function(i){return L.pres[i]+L.fl[i]-L.need[i]}));
+      if(!need&&!clt&&!fl)return '<td class="mini" style="text-align:center">—</td>';
+      return '<td style="text-align:center;white-space:nowrap;'+cor(d)+'" title="Necessário '+need+' • equipe fixa '+clt+' • freelancers '+fl+'">'+(clt+fl)+'<span class="mini">/'+need+'</span></td>';
+    }).join('')+'</tr>';
+  });
+  const totEsc=horas.map(function(g){return Math.min.apply(null,g.idx.map(function(i){return S.reduce(function(t,L){return t+L.pres[i]+L.fl[i]},0)}))});
+  const totNec=horas.map(function(g){return Math.max.apply(null,g.idx.map(function(i){return S.reduce(function(t,L){return t+L.need[i]},0)}))});
+  h+='<tr style="border-top:2px solid var(--line)"><td><b>Total da casa</b></td>'+horas.map(function(g,k){return '<td style="text-align:center;white-space:nowrap;font-weight:800'+(totEsc[k]<totNec[k]?';color:var(--red)':'')+'">'+totEsc[k]+'<span class="mini">/'+totNec[k]+'</span></td>'}).join('')+'</tr></tbody></table></div>';
+  // brigada completa, 1 pessoa por linha
+  h+='<h4 style="margin:14px 0 6px">Brigada completa do dia — 1 pessoa por linha</h4><div class="igTblWrap"><table class="igTbl"><thead><tr><th>Setor</th><th>Quem</th><th>Tipo</th><th>Horário</th><th>Pausa (1h)</th></tr></thead><tbody>';
+  let totFl=0,totCusto=0;
+  S.forEach(function(L){
+    L.fixos.slice().sort(function(a,b){return String(a.entrada).localeCompare(String(b.entrada))}).forEach(function(f){h+='<tr><td>'+FREELANCER_SECTOR_LABEL[L.sec]+'</td><td>'+escapeHtml(f.nome)+'</td><td><span class="badge">'+escapeHtml(f.tipo)+'</span></td><td>'+escapeHtml((f.entrada||'?')+' – '+(f.saida||'?'))+'</td><td class="mini">—</td></tr>'});
+    L.pessoas.forEach(function(p){totFl++;h+='<tr style="background:#241a12"><td>'+FREELANCER_SECTOR_LABEL[L.sec]+'</td><td><b>Freelancer '+p.n+'</b> <span class="mini">de '+L.qtd+'</span></td><td><span class="badge g">freelancer '+p.shiftHours+'h</span></td><td><b>'+p.entrada+' – '+p.saida+'</b></td><td>'+(p.pausa||'<span class="mini">—</span>')+'</td></tr>'});
+    totCusto+=L.custo;
+  });
+  h+='<tr style="border-top:2px solid var(--line)"><td><b>Total</b></td><td colspan="2"><b>'+totFl+' freelancer(s)</b></td><td colspan="2"><b>'+brl(totCusto)+'</b></td></tr></tbody></table></div>';
+  h+='<div class="mini" style="margin-top:8px">Os horários dos freelancers são os que cobrem onde ainda falta gente depois da equipe fixa (CLT, INT e PJ ativos, sem férias nem ausência). Para mudar, volte e ajuste a quantidade ou o turno do setor. Depois de aprovado pelo RH, cada freelancer pode ter nome e horário ajustados individualmente na Visualização da Escala Completa do dia.</div>';
+  return h;
+}
+async function abrirEscalaPreview(date,modo){
+  const ov=$('escalaDiaOverlay'),body=$('escalaDiaBody');if(!ov||!body)return;
+  wgEscalaCtx={date:date||wgDiaAtual,modo:modo||'consulta'};
+  ov.classList.remove('hidden');
+  $('escalaDiaTitulo').textContent=modo==='envio'?'Conferir a escala antes de enviar ao RH':'Escala do dia';
+  body.innerHTML='<div class="mini">Calculando pelo mapa de calor e pelas reservas…</div>';
+  const rodape=$('escalaDiaRodape');
+  const datas=modo==='envio'?weekGridDates.filter(function(d){return weekGridDraftList.some(function(it){return it.date===d&&it.qty>0})}):[wgEscalaCtx.date];
+  try{
+    if(!datas.length){body.innerHTML='<div class="note">Nenhum extra solicitado — nada pra conferir.</div>';if(rodape)rodape.innerHTML='';return}
+    if(datas.indexOf(wgEscalaCtx.date)<0)wgEscalaCtx.date=datas[0];
+    const modelos={};
+    for(const d of datas)modelos[d]=await escalaDiaModelo(d);
+    wgEscalaCtx.modelos=modelos;wgEscalaCtx.datas=datas;
+    escalaPreviewRender();
+  }catch(e){
+    console.warn('escala preview',e);
+    body.innerHTML='<div class="alert r">Não consegui montar a escala: '+escapeHtml(String(e&&e.message||e))+'</div>';
+    if(rodape)rodape.innerHTML='<button class="btn" type="button" onclick="fecharEscalaDia()">Fechar</button>';
   }
 }
-
-function addWeekGridDraft(){
-  const date=$('wgDay')?.value,sector=$('wgSector')?.value,shiftHours=Number($('wgShift')?.value),qty=Math.max(1,Number($('wgQty')?.value)||1);
-  if(!date){$('weekGridStatus').textContent='Carregue uma semana primeiro.';return}
-  weekGridDraftList.push({date,sector,shiftHours,qty,reason:'demanda',note:''});
-  renderWeekGridDraftList();
-  $('weekGridStatus').textContent='Adicionado — pode escolher o próximo dia/setor.';
+function escalaPreviewRender(){
+  const body=$('escalaDiaBody'),rodape=$('escalaDiaRodape'),C=wgEscalaCtx;if(!body||!C.modelos)return;
+  const tabs=C.datas.length>1?'<div class="nav" style="margin:0 0 10px">'+C.datas.map(function(d){return '<button type="button" class="'+(d===C.date?'active':'')+'" onclick="wgEscalaCtx.date=\''+d+'\';escalaPreviewRender()">'+WG_DIAS[new Date(d+'T12:00:00').getDay()]+' '+d.slice(8)+'/'+d.slice(5,7)+'</button>'}).join('')+'</div>':'';
+  $('escalaDiaTitulo').textContent=(C.modo==='envio'?'Conferir a escala antes de enviar ao RH • ':'Escala do dia • ')+fmtDate(C.date);
+  body.innerHTML=tabs+escalaDiaHtml(C.modelos[C.date]);
+  if(rodape){
+    const T=wgTotais();
+    rodape.innerHTML=C.modo==='envio'
+      ?'<span class="mini" style="flex:1">'+T.q+' freelancer(s) • '+brl(T.v)+' na semana — cada um vai como um pedido, já com o horário sugerido.</span><button class="btn" type="button" onclick="fecharEscalaDia()">← Voltar e ajustar</button><button class="btn" id="wgConfirmarBtn" type="button" style="background:#233a1f;border-color:#3a5c30" onclick="wgEnviarConfirmado()">✅ Confirmar e enviar ao RH</button>'
+      :'<button class="btn" type="button" onclick="abrirEscalaPreview(wgEscalaCtx.date,\'consulta\')" title="Recalcula com a lista como está agora">🔄 Atualizar</button><button class="btn" type="button" onclick="fecharEscalaDia()">Fechar</button>';
+  }
 }
+function fecharEscalaDia(){const o=$('escalaDiaOverlay');if(o)o.classList.add('hidden')}
+function wgVisualizarSemana(){
+  if(!weekGridDraftList.some(function(it){return it.qty>0})){$('weekGridStatus').textContent='Nenhum extra solicitado ainda — use ✨ Sugerir ou o botão +.';return}
+  abrirEscalaPreview(wgDiaAtual,'envio');
+}
+function wgEnviar(){wgVisualizarSemana()}  // o envio sempre passa pela conferência da escala
+async function wgEnviarConfirmado(){
+  const btn=$('wgConfirmarBtn');if(btn)btn.disabled=true;
+  const C=wgEscalaCtx,items=[];
+  (C.datas||[]).forEach(function(d){
+    const M=C.modelos[d];if(!M||M.fechado)return;
+    M.setores.forEach(function(L){L.pessoas.forEach(function(p){
+      items.push({date:d,sector:L.sec,shiftHours:p.shiftHours,qty:1,reason:'demanda',note:'',horaEntrada:p.entrada,horaSaida:p.saida,horaPausa:p.pausa||''});
+    })});
+  });
+  if(!items.length){if(btn)btn.disabled=false;return}
+  $('weekGridStatus').textContent='Enviando '+items.length+' freelancer(s) ao RH…';
+  try{
+    const r=await apiAuthRetry('submitFreelancerRequestsBatch',{items:items},3,true);
+    if(r&&r.ok){
+      showToast(r.count+' freelancer(s) enviado(s) pra aprovação do RH.');
+      $('weekGridStatus').textContent='Enviado: '+r.count+' freelancer(s), 1 por linha.';
+      weekGridDraftList=[];wgAusentes={};fecharEscalaDia();wgRender();loadFreelancerRequests();
+    }else{$('weekGridStatus').textContent='Falha ao enviar.';showToast('Não consegui enviar a semana'+(r&&(r.error||r.code)?' ('+(r.error||r.code)+')':'')+'.',true)}
+  }catch(e){$('weekGridStatus').textContent='Falha ao conectar.';showToast('Falha ao conectar.',true)}
+  if(btn)btn.disabled=false;
+}
+
+
+
+
+
+
+
+
+
+
 
 // Aplica de uma vez a sugestão de TODOS os setores pro dia escolhido — evita ter que
 // trocar setor um por um. Pula setor sem gente faltando e setor que já está na lista.
@@ -7787,148 +8022,20 @@ function addWeekGridDraft(){
 // ---- Popup "Escala do dia" (22/10, pedido do Renato): ao sugerir os freelancers, mostra hora a hora a equipe fixa + os
 // freelancers da lista da grade, setor por setor, pra analisar sobra e falta antes de enviar. Só leitura: ajuste na lista da grade
 // e clique em Atualizar. Mesma conta da sugestão (necessidadeSetor + cltPresenteBlocos + planejarTurnos).
-let escalaDiaAtual={date:'',turno:8};
-function fecharEscalaDia(){const o=$('escalaDiaOverlay');if(o)o.classList.add('hidden')}
+
 // igual a planejarTurnos, mas para em maxQ pessoas — reflete exatamente a quantidade que está na lista (editada ou não)
-function planejarTurnosCap(need,W,maxQ){
-  const n=need.length;if(!n||maxQ<=0)return [];
-  W=Math.max(1,Math.min(W,n));
-  const res=need.slice(),cont={};
-  for(let q=0;q<maxQ;q++){
-    const base=res.some(v=>v>0)?res:need;
-    let mi=0,ms=-1;
-    for(let i=0;i+W<=n;i++){let t=0;for(let k=0;k<W;k++)t+=base[i+k];if(t>ms){ms=t;mi=i}}
-    for(let k=0;k<W;k++)res[mi+k]=Math.max(0,res[mi+k]-1);
-    cont[mi]=(cont[mi]||0)+1;
-  }
-  return Object.keys(cont).map(Number).sort((a,b)=>a-b).map(i=>({i,tam:W,qtd:cont[i]}));
-}
-async function abrirEscalaDiaPopup(date,turnoH){
-  const ov=$('escalaDiaOverlay'),body=$('escalaDiaBody');if(!ov||!body)return;
-  if(!date){showToast('Escolha o dia primeiro.',true);return}
-  escalaDiaAtual={date,turno:turnoH||8};
-  ov.classList.remove('hidden');
-  body.innerHTML='<div class="mini">Calculando pelo mapa de calor…</div>';
-  await Promise.all([loadZigHourlyLocal(),loadZigDetailLocal(),loadDailyAttendance(date)]);
-  zigRawSeriesCache=null;
-  const wd=new Date(date+'T12:00:00').getDay(),fun=HORARIO_FUNCIONAMENTO[wd];
-  $('escalaDiaTitulo').textContent='Escala do dia • '+fmtDate(date);
-  if(!fun){body.innerHTML='<div class="note">Casa fechada nesse dia (Manual) — sem escala.</div>';return}
-  const exp=expectedPaxForDate(date),pax=Math.min(CAPACIDADE_MAXIMA_SIMULTANEA,exp.pax);
-  const spanH=fun.fecha-fun.abre;
-  const turnoEf=spanH>12?12:Math.min(12,Math.max(1,turnoH||8));
-  const W=Math.max(1,Math.round(turnoEf*2));
-  const curva=curvaDoDia(date);
-  const hh=m=>String(Math.floor(m/60)%24).padStart(2,'0');
-  const linhas=FREELANCER_SECTORS.map(sec=>{
-    const nec=necessidadeSetor(date,sec,curva,pax);if(!nec)return null;
-    const blocos=nec.blocos,need=blocos.map(b=>b.need);
-    const {pres,ativos}=cltPresenteBlocos(sec,date,blocos);
-    const gap=need.map((v,i)=>Math.max(0,v-pres[i]));
-    const planQtd=planejarTurnos(gap,Math.min(W,gap.length)).reduce((t,u)=>t+u.qtd,0);
-    const itens=weekGridDraftList.filter(it=>it.date===date&&it.sector===sec);
-    const naLista=itens.reduce((t,it)=>t+(Number(it.qty)||0),0);
-    const turnoLista=itens.length?Number(itens[0].shiftHours)||turnoEf:turnoEf;
-    const qtd=itens.length?naLista:planQtd;
-    const turnos=planejarTurnosCap(gap,Math.min(Math.round(turnoLista*2),gap.length),qtd);
-    const fl=blocos.map((_,i)=>turnos.reduce((t,u)=>t+((i>=u.i&&i<u.i+u.tam)?u.qtd:0),0));
-    const fixos=ativos.filter(e=>{const d=(e.horarioSemanal&&e.horarioSemanal[wd])||{};return d.trabalha&&!feriasAtivas(e,date)&&!estaAusenteHoje(e.id,date)});
-    return {sec,blocos,need,pres,fl,planQtd,naLista,usaLista:itens.length>0,qtd,turnoLista,turnos,fixos,semCurva:nec.semCurva,custo:qtd*(FREELANCER_PAY_TABLE[turnoLista]||0)};
-  }).filter(Boolean);
-  if(!linhas.length){body.innerHTML='<div class="mini">Sem dados pra montar a escala.</div>';return}
-  // colunas por hora cheia
-  const blocos=linhas[0].blocos;
-  const horas=[];blocos.forEach((b,i)=>{const h=Math.floor(b.off/60);let g=horas[horas.length-1];if(!g||g.h!==h){g={h,idx:[]};horas.push(g)}g.idx.push(i)});
-  const cor=d=>d<0?'background:#4a1c24':(d>=2?'background:#4a3a14':'background:#1f3a26');
-  const cel=(L)=>horas.map(g=>{
-    const need=Math.max(...g.idx.map(i=>L.need[i])),clt=Math.min(...g.idx.map(i=>L.pres[i])),fl=Math.min(...g.idx.map(i=>L.fl[i]));
-    const d=Math.min(...g.idx.map(i=>L.pres[i]+L.fl[i]-L.need[i]));
-    if(!need&&!clt&&!fl)return '<td class="mini" style="text-align:center">—</td>';
-    return '<td style="text-align:center;white-space:nowrap;'+cor(d)+'" title="Necessário '+need+' • equipe fixa '+clt+' • freelancers '+fl+'">'+(clt+fl)+'<span class="mini">/'+need+'</span></td>';
-  }).join('');
-  let h='<div class="note"><b>Público esperado: '+pax.toLocaleString('pt-BR')+'</b> ('+(exp.fonte||'—')+') • funcionamento '+fun.abre+'h–'+(fun.fecha%24)+'h • equipe chega '+fmtHHMM(fun.abre*60-PRE_ABERTURA_MIN)+' • turno dos freelancers: '+turnoEf+'h'+(spanH>12?' (dia comprido: teto de 12h)':'')+'</div>';
-  h+='<div class="mini" style="margin:6px 0">Cada célula mostra <b>pessoas escaladas / necessárias</b> (equipe fixa + freelancers). <span style="padding:1px 7px;border-radius:5px;background:#1f3a26">coberto</span> <span style="padding:1px 7px;border-radius:5px;background:#4a1c24">falta gente</span> <span style="padding:1px 7px;border-radius:5px;background:#4a3a14">sobra 2+</span> • passe o mouse para ver o detalhe.</div>';
-  h+='<div class="igTblWrap"><table class="igTbl" style="width:auto"><thead><tr><th>Setor</th>'+horas.map(g=>'<th style="text-align:center!important">'+String(g.h%24).padStart(2,'0')+'h</th>').join('')+'</tr></thead><tbody>';
-  linhas.forEach(L=>{h+='<tr><td><b>'+FREELANCER_SECTOR_LABEL[L.sec]+'</b></td>'+cel(L)+'</tr>'});
-  const totEsc=horas.map(g=>Math.min(...g.idx.map(i=>linhas.reduce((t,L)=>t+L.pres[i]+L.fl[i],0))));
-  const totNec=horas.map(g=>Math.max(...g.idx.map(i=>linhas.reduce((t,L)=>t+L.need[i],0))));
-  h+='<tr style="border-top:2px solid var(--line)"><td><b>Total da casa</b></td>'+horas.map((g,k)=>'<td style="text-align:center;white-space:nowrap;font-weight:800'+(totEsc[k]<totNec[k]?';color:var(--red)':'')+'">'+totEsc[k]+'<span class="mini">/'+totNec[k]+'</span></td>').join('')+'</tr>';
-  h+='</tbody></table></div>';
-  // resumo por setor
-  h+='<h4 style="margin:14px 0 6px">Resumo por setor</h4><div class="igTblWrap"><table class="igTbl"><thead><tr><th>Setor</th><th>Equipe fixa no dia</th><th>Freelancers</th><th>Janelas</th><th>Plano pelo mapa</th><th>Custo</th></tr></thead><tbody>';
-  linhas.forEach(L=>{
-    const nomes=L.fixos.map(e=>{const d=e.horarioSemanal[wd]||{};return escapeHtml(String(e.nome||'').split(' ')[0])+' <span class="mini">'+escapeHtml((d.entrada||'?')+'–'+(d.saida||'?'))+'</span>'}).join('<br>')||'<span class="mini">ninguém escalado</span>';
-    const jan=L.turnos.length?L.turnos.map(t=>'<b>'+t.qtd+'×</b> '+fmtHHMM(L.blocos[t.i].off)+'–'+fmtHHMM(L.blocos[t.i].off+t.tam*30)).join('<br>'):'<span class="badge g">sem freelancer</span>';
-    const dif=L.usaLista&&L.naLista!==L.planQtd?' <span class="badge y">lista '+L.naLista+' ≠ plano '+L.planQtd+'</span>':'';
-    h+='<tr><td><b>'+FREELANCER_SECTOR_LABEL[L.sec]+'</b>'+(L.semCurva?'<br><span class="mini">sem histórico de horário</span>':'')+'</td><td>'+nomes+'</td><td><b>'+L.qtd+'</b> <span class="mini">'+(L.qtd?'• '+L.turnoLista+'h':'')+'</span>'+dif+'</td><td>'+jan+'</td><td>'+L.planQtd+'</td><td>'+(L.custo?brl(L.custo):'—')+'</td></tr>';
-  });
-  const totQtd=linhas.reduce((t,L)=>t+L.qtd,0),totCusto=linhas.reduce((t,L)=>t+L.custo,0);
-  h+='<tr style="border-top:2px solid var(--line)"><td><b>Total</b></td><td></td><td><b>'+totQtd+'</b></td><td></td><td>'+linhas.reduce((t,L)=>t+L.planQtd,0)+'</td><td><b>'+brl(totCusto)+'</b></td></tr></tbody></table></div>';
-  h+='<div class="mini" style="margin-top:8px">Os freelancers vêm da <b>lista da grade</b> deste dia (se um setor não está na lista, mostra o plano sugerido). As janelas são a melhor distribuição dos turnos sobre a curva de movimento do dia. Para ajustar, edite a lista da grade e clique em <b>🔄 Atualizar</b> aqui. Equipe fixa = CLT, INT e PJ ativos com horário cadastrado nesse dia da semana, sem férias nem ausência.</div>';
-  body.innerHTML=h;
-}
 
-async function suggestWeekGridDay(){
-  const date=$('wgDay')?.value;
-  if(!date){$('weekGridStatus').textContent='Carregue uma semana primeiro.';return}
-  const wd=new Date(date+'T12:00:00').getDay();
-  const fun=HORARIO_FUNCIONAMENTO[wd];
-  if(!fun){$('weekGridStatus').textContent='Casa fechada nesse dia (Manual) — nada pra sugerir.';return}
-  $('weekGridStatus').textContent='Calculando pelo mapa de calor…';
-  await Promise.all([loadZigHourlyLocal(),loadZigDetailLocal(),loadDailyAttendance(date)]);
-  const turnoPedido=Number($('wgShift')?.value)||8;
-  let adicionados=0,pulados=0,semDado=0,turnoUsado=turnoPedido;
-  FREELANCER_SECTORS.forEach(sector=>{
-    const jaTem=weekGridDraftList.some(it=>it.date===date&&it.sector===sector);
-    if(jaTem){pulados++;return}
-    const st=freelancerSuggestion(date,sector,0,turnoPedido);
-    if(st.fechado)return;
-    turnoUsado=st.turnoEfetivo||turnoPedido;
-    if(st.semCurva)semDado++;
-    if(st.sugestao<=0)return;
-    weekGridDraftList.push({date,sector,shiftHours:turnoUsado,qty:st.sugestao,reason:'demanda',note:''});
-    adicionados++;
-  });
-  const turnoH=turnoUsado,spanH=fun.fecha-fun.abre;
-  renderWeekGridDraftList();
-  try{abrirEscalaDiaPopup(date,turnoUsado)}catch(e){console.warn('escala do dia',e)}
-  const avisoComprido=spanH>12?` Dia com ${spanH}h de funcionamento — turno no máximo permitido (12h), quantidade ajustada pra cobrir o resto guiada pelo mapa de calor.`:'';
-  if(!adicionados&&!pulados&&!semDado){$('weekGridStatus').textContent='Nenhum setor precisa de reforço nesse dia.'+avisoComprido}
-  else{$('weekGridStatus').textContent=`${adicionados} setor(es) adicionado(s), turno de ${turnoH}h`+(pulados?` — ${pulados} já estava(m) na lista.`:'')+(semDado?` ${semDado} setor(es) sem histórico de horário pra calcular.`:'')+avisoComprido}
-}
 
-function removeWeekGridDraft(idx){
-  weekGridDraftList.splice(idx,1);
-  renderWeekGridDraftList();
-}
 
-function renderWeekGridDraftList(){
-  const body=$('weekGridDraftBody');if(!body)return;
-  if(!weekGridDraftList.length){body.innerHTML='<tr><td colspan="6" class="mini">Nenhum item adicionado ainda.</td></tr>';updateWeekGridDraftTotal();return}
-  body.innerHTML=weekGridDraftList.map((it,idx)=>{
-    const custo=it.qty*FREELANCER_PAY_TABLE[it.shiftHours];
-    return `<tr><td>${fmtDate(it.date)}</td><td>${FREELANCER_SECTOR_LABEL[it.sector]}</td><td>${it.shiftHours}h</td><td>${it.qty}</td><td>${brl(custo)}</td>`+
-      `<td><button class="btn" style="padding:3px 8px;font-size:11px;background:#3a1620;border-color:#5c2530" onclick="removeWeekGridDraft(${idx})">Remover</button></td></tr>`;
-  }).join('');
-  updateWeekGridDraftTotal();
-}
 
-function updateWeekGridDraftTotal(){
-  const totQty=weekGridDraftList.reduce((s,it)=>s+it.qty,0);
-  const totVal=weekGridDraftList.reduce((s,it)=>s+it.qty*FREELANCER_PAY_TABLE[it.shiftHours],0);
-  if($('weekGridSubmitStatus'))$('weekGridSubmitStatus').textContent=totQty?`Total da semana: ${totQty} freelancer(s) • ${brl(totVal)}`:'';
-}
 
-async function submitWeekGrid(){
-  if(!weekGridDraftList.length){$('weekGridStatus').textContent='Adicione pelo menos um item.';return}
-  if(!confirm('Enviar '+weekGridDraftList.length+' solicitação(ões) de freelancer pra aprovação do RH?'))return;
-  $('weekGridStatus').textContent='Enviando…';
-  try{
-    const r=await apiAuthRetry('submitFreelancerRequestsBatch',{items:weekGridDraftList},3,true);
-    if(r&&r.ok){showToast(r.count+' solicitação(ões) enviada(s).');$('weekGridStatus').textContent='Enviado.';weekGridDraftList=[];renderWeekGridDraftList();loadFreelancerRequests();}
-    else{$('weekGridStatus').textContent='Falha ao enviar.';showToast('Não consegui enviar a semana.',true)}
-  }catch(e){$('weekGridStatus').textContent='Falha ao conectar.';showToast('Falha ao conectar.',true)}
-}
+
+
+
+
+
+
+
 
 // ---- Solicitação de freelancers (Gerente Operador → aprovação RH → presença) ----
 const FREELANCER_SECTORS=['salao','cumim','bar','cozinha','limpeza','seguranca','caixa','runner','manutencao','estoquista'];
@@ -7982,7 +8089,7 @@ async function saveDailyObservacaoUI(empId,inputId,stId,obsKey){
   }catch(e){if(statusEl)statusEl.textContent='Falha ao conectar.'}
 }
 
-// ---- Escala completa do dia: calor de atendimento (ZigPay, blocos de 30min) ×
+// ---- Visualização da Escala Completa do dia: calor de atendimento (ZigPay, blocos de 30min) ×
 // horário padrão de cada CLT ativo. Só organiza informação já existente — não
 // substitui a decisão do gestor sobre onde pedir freelancer. ----
 function timeToMinutes(hhmm){
@@ -8125,7 +8232,7 @@ function linhaExtraAprovado(it,sugEntrada,sugSaida,sugPausa,aviso,heatInfo){
   const obsHtml=buildObsCell(idBase,it.attendanceNote,obsId,obsStId,`saveFreelancerObservacaoUI('${it.id}','${obsId}','${obsStId}','${idBase}')`);
   const checked=ecFreelancerSelectedIds.has(it.id)?'checked':'';
   return `<tr><td>${colaboradorHtml}</td>`+
-    `<td>${FREELANCER_SECTOR_LABEL[it.sector]||it.sector}</td><td class="mini">Freelancer (${it.qty}, ${it.shiftHours}h)</td><td>${horarioHtml}</td>`+
+    `<td>${FREELANCER_SECTOR_LABEL[it.sector]||it.sector}</td><td class="mini">Freelancer${it.qty>1?' ('+it.qty+'× agrupados)':''} • ${it.shiftHours}h</td><td>${horarioHtml}</td>`+
     `<td>${obsHtml}</td><td><div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center">${acaoBtns} ${cancelarBtn} ${presencaHtml}</div></td>`+
     `<td><input type="checkbox" ${checked} onchange="toggleEcFreelancerSelect('${it.id}',this.checked)"></td></tr>`;
 }
@@ -8197,6 +8304,16 @@ async function saveFreelancerScheduleUI(id,nomeId,entId,saiId,pauId,stId){
   }catch(e){if(statusEl)statusEl.textContent='Falha ao conectar.';showToast('Falha ao conectar.',true)}
 }
 
+async function separarAgrupadosDoDia(){
+  const date=$('ecDate')?$('ecDate').value:'';
+  const ag=(freelancerRequests||[]).filter(it=>it.date===date&&it.status==='aprovado'&&Number(it.qty)>1);
+  if(!ag.length)return;
+  if(!confirm('Separar '+ag.length+' pedido(s) em linhas individuais (1 freelancer por linha)? Nome, horário e presença do pedido original passam para a primeira linha.'))return;
+  let ok=0,falhou=0;
+  for(const it of ag){try{const r=await apiAuthRetry('splitFreelancerRequest',{id:it.id},2);if(r&&r.ok)ok++;else falhou++}catch(e){falhou++}}
+  showToast(ok+' pedido(s) separado(s)'+(falhou?', '+falhou+' falhou(aram) — confira se o Code.gs novo foi publicado':'')+'.',falhou>0&&!ok);
+  await loadFreelancerRequests();loadEscalaCompleta();
+}
 async function loadEscalaCompleta(){
   const cltBody=$('ecCltBody');if(!cltBody)return;
   const date=$('ecDate')?.value;
@@ -8219,6 +8336,15 @@ async function loadEscalaCompleta(){
     cltBody.innerHTML='<tr><td colspan="7" class="mini">Sem acesso ao cadastro de Colaboradores (RH) pra listar aqui.</td></tr>';
   }
 
+  // pedidos antigos com mais de 1 freelancer na mesma linha: oferece separar (1 freelancer por linha, cada um com nome e horário próprios)
+  (function(){
+    const bar=$('ecAgrupadosBar');if(!bar)return;
+    const ag=(freelancerRequests||[]).filter(it=>it.date===date&&it.status==='aprovado'&&Number(it.qty)>1);
+    if(!ag.length){bar.classList.add('hidden');bar.innerHTML='';return}
+    const n=ag.reduce((t,it)=>t+Number(it.qty),0);
+    bar.classList.remove('hidden');
+    bar.innerHTML='<b>'+ag.length+' pedido(s) com vários freelancers na mesma linha ('+n+' pessoas).</b> Para ajustar nome e horário de cada um, separe em uma linha por freelancer. <button class="btn" type="button" style="padding:4px 10px;font-size:12px;margin-left:8px" onclick="separarAgrupadosDoDia()">Separar em linhas individuais</button>';
+  })();
   await loadDailyAttendance(date); // presença/observação persistida de CLT/INT/PJ — precisa estar fresca antes de montar as linhas e a conta de cobertura
   const todosBuckets=await loadZigHourlyLocal(); // já em horário de Brasília
   let buckets=todosBuckets.filter(b=>b.date===date).sort((a,b)=>a.start<b.start?-1:1);
@@ -8385,20 +8511,27 @@ async function loadEscalaCompleta(){
   FREELANCER_SECTORS.forEach(s=>{extraPresentPorSetorBloco[s]=buckets.map(()=>0)});
   const extrasAprovados=extrasAprovadosSempre;
   const extrasLinhas=[];
+  // 23/10: o horário sugerido de cada freelancer sai do MESMO plano da Solicitação semanal (necessidadeSetor: mapa de calor da Zig + reservas
+  // por horário, brigada e teto do setor, descontando a equipe fixa) — antes esta tela usava outra conta e dava horários diferentes.
+  const planoCtx=HORARIO_FUNCIONAMENTO[wd]?{pax:Math.min(CAPACIDADE_MAXIMA_SIMULTANEA,expectedPaxForDate(date).pax),curva:curvaDoDia(date)}:null;
+  const planosSetor={},gapResSetor={};
+  const planoDe=sec=>{if(!planoCtx||FREELANCER_SECTORS.indexOf(sec)<0)return null;if(!(sec in planosSetor)){planosSetor[sec]=planoSetorDia(date,sec,planoCtx,0);if(planosSetor[sec])gapResSetor[sec]=planosSetor[sec].gap.slice()}return planosSetor[sec]};
+  const ocupaBlocos=(sec,P,entrada,saida,qtd)=>{
+    P.blocos.forEach((b,i)=>{if(isWorkingAtMinute(entrada,saida,b.off%1440))gapResSetor[sec][i]=Math.max(0,gapResSetor[sec][i]-qtd)});
+    buckets.forEach((bk,k)=>{if(extraPresentPorSetorBloco[sec]&&isWorkingAtMinute(entrada,saida,timeToMinutes(bk.start.slice(11,16))))extraPresentPorSetorBloco[sec][k]+=qtd});
+  };
+  // 1ª passada: quem já tem horário salvo ocupa a janela dele
+  extrasAprovados.forEach(it=>{if(it.horaEntrada&&it.horaSaida){const P=planoDe(it.sector);if(P)ocupaBlocos(it.sector,P,it.horaEntrada,it.horaSaida,Number(it.qty)||1)}});
   extrasAprovados.forEach(it=>{
-    if(!necessarioPorSetorBloco[it.sector]){extrasLinhas.push({it,sugEntrada:'',sugSaida:'',sugPausa:''});return}
-    const deficitResidual=necessarioPorSetorBloco[it.sector].map((nec,i)=>Math.max(0,nec-presentesCltPorSetorBloco[it.sector][i]-extraPresentPorSetorBloco[it.sector][i]));
-    const windowBlocks=Math.max(1,Math.round((it.shiftHours||8)*2));
-    const {idx,tam}=melhorJanela(deficitResidual,windowBlocks);
-    for(let k=0;k<tam;k++)extraPresentPorSetorBloco[it.sector][idx+k]+=it.qty;
-    const inicioTxt=buckets[idx].start.slice(11,16);
-    const fimBucketIdx=Math.min(buckets.length-1,idx+tam-1);
-    const fimTxt=(()=>{const m=timeToMinutes(buckets[fimBucketIdx].start.slice(11,16));const f=(m+30)%(24*60);return String(Math.floor(f/60)).padStart(2,'0')+':'+String(f%60).padStart(2,'0')})();
-    const idxsDaJanela=Array.from({length:tam},(_,k)=>idx+k);
-    const pausaTxt=melhorPausa(deficitResidual,idxsDaJanela);
-    // pausaTxt vem como "hh:mm – hh:mm" (mesmo formato de janela) — só o início interessa
-    // pro campo de horário de pausa (fim é sempre +1h, mesma regra de sempre).
-    extrasLinhas.push({it,sugEntrada:inicioTxt,sugSaida:fimTxt,sugPausa:pausaTxt?pausaTxt.split(' – ')[0]:''});
+    const P=planoDe(it.sector);
+    if(!P){extrasLinhas.push({it,sugEntrada:'',sugSaida:'',sugPausa:''});return}
+    const W=Math.max(1,Math.round((it.shiftHours||8)*2));
+    const j=distribuirFreelancers(gapResSetor[it.sector],W,1,P.gap)[0];
+    if(!j){extrasLinhas.push({it,sugEntrada:'',sugSaida:'',sugPausa:''});return}
+    const ent=fmtHHMM(P.blocos[j.i].off),sai=fmtHHMM(P.blocos[j.i].off+j.tam*30);
+    const pj=pausaDoTurno(P.need,j.i,j.tam);
+    if(!(it.horaEntrada&&it.horaSaida))ocupaBlocos(it.sector,P,ent,sai,1);
+    extrasLinhas.push({it,sugEntrada:ent,sugSaida:sai,sugPausa:pj!=null?fmtHHMM(P.blocos[pj].off):''});
   });
   // Escala combinada: CLT (com pausa sugerida quando não tem almoço/jantar
   // cadastrado no RH, presença marcável) + extras aprovados (nome editável na hora)
@@ -8563,23 +8696,42 @@ function toggleAllFreelancerApprovalSelect(checked){
   else visiveis.forEach(id=>freelancerApprovalSelectedIds.delete(id));
   renderFreelancerApprovalList();
 }
+// 23/10: a aprovação do RH travava (1 chamada por pedido relendo a planilha inteira + tela refeita a cada passo). Agora: 1 chamada em lote,
+// resposta imediata na tela, e a lista guarda a sugestão de cada dia/setor uma vez só por desenho.
+let freelancerDecidindo=false;
 async function decideSelectedFreelancerRequests(approve){
   const ids=Array.from(freelancerApprovalSelectedIds);
   const statusEl=$('freelancerApprovalBulkStatus');
   if(!ids.length){if(statusEl)statusEl.textContent='Marque pelo menos um pedido.';return}
-  if(!confirm(`${approve?'Aprovar':'Recusar'} ${ids.length} solicitação(ões) selecionada(s)?`))return;
-  if(statusEl)statusEl.textContent='Processando…';
-  let ok=0,falhou=0;
-  for(const id of ids){
-    try{const r=await apiAuthRetry('decideFreelancerRequest',{id,approve});if(r&&r.ok)ok++;else falhou++}catch(e){falhou++}
-    if(statusEl)statusEl.textContent=`Processando… (${ok+falhou}/${ids.length})`;
+  if(freelancerDecidindo){showToast('Aguarde a decisão anterior terminar.',true);return}
+  if(!confirm((approve?'Aprovar ':'Recusar ')+ids.length+' solicitação(ões) selecionada(s)?'))return;
+  freelancerDecidindo=true;
+  if(statusEl)statusEl.textContent='Processando '+ids.length+' pedido(s)…';
+  const antes={};ids.forEach(id=>{const it=freelancerRequests.find(x=>x.id===id);if(it){antes[id]=it.status;it.status=approve?'aprovado':'recusado'}});
+  renderFreelancerApprovalList();
+  let ok=0,falhou=0,erro='';
+  try{
+    const r=await apiAuthRetry('decideFreelancerRequestsBatch',{ids,approve},2);
+    if(r&&r.ok){ok=r.count||0;falhou=ids.length-ok}
+    else{
+      // Code.gs ainda sem a ação em lote (ou ocupado): cai no caminho antigo, pedido a pedido
+      erro=(r&&(r.error||r.code))||'';
+      for(const id of ids){
+        try{const r2=await apiAuthRetry('decideFreelancerRequest',{id,approve},2);if(r2&&r2.ok)ok++;else{falhou++;const it=freelancerRequests.find(x=>x.id===id);if(it&&antes[id])it.status=antes[id]}}catch(e){falhou++}
+        if(statusEl)statusEl.textContent='Processando… ('+(ok+falhou)+'/'+ids.length+')';
+      }
+    }
+  }catch(e){
+    falhou=ids.length;ids.forEach(id=>{const it=freelancerRequests.find(x=>x.id===id);if(it&&antes[id])it.status=antes[id]});erro='conexão';
   }
   freelancerApprovalSelectedIds.clear();
-  if(statusEl)statusEl.textContent=`${ok} ${approve?'aprovada(s)':'recusada(s)'}`+(falhou?`, ${falhou} falhou(aram).`:'.');
-  showToast(`${ok} solicitação(ões) ${approve?'aprovada(s)':'recusada(s)'}.`+(falhou?` ${falhou} falhou(aram).`:''));
+  if(statusEl)statusEl.textContent=ok+' '+(approve?'aprovada(s)':'recusada(s)')+(falhou?', '+falhou+' falhou(aram)'+(erro?' ('+erro+')':'')+'.':'.');
+  showToast(ok+' solicitação(ões) '+(approve?'aprovada(s)':'recusada(s)')+'.'+(falhou?' '+falhou+' falhou(aram).':''),falhou>0&&!ok);
+  freelancerDecidindo=false;
   loadFreelancerRequests();
   refreshArea('rh',12);
 }
+
 
 function renderFreelancerApprovalList(){
   const body=$('freelancerApprovalBody');if(!body)return;
@@ -8587,13 +8739,15 @@ function renderFreelancerApprovalList(){
   if($('freelancerPendingBadge'))$('freelancerPendingBadge').textContent=pending?(pending+' pendente(s)'):'nenhum pendente';
   const lista=(freelancerApprovalShowHistory?freelancerRequests:freelancerRequests.filter(it=>it.status==='pendente')).slice(0,80);
   if(!lista.length){body.innerHTML=`<tr><td colspan="12" class="mini">${freelancerApprovalShowHistory?'Nenhuma solicitação ainda.':'Nenhum pedido pendente. <button class="btn" style="padding:2px 8px;font-size:11px" onclick="toggleFreelancerApprovalHistory()">Ver histórico</button>'}</td></tr>`;return}
+  const stMemo={};
   body.innerHTML=lista.map(it=>{
     const presenca=it.attendance?(FREELANCER_ATTENDANCE_BADGE[it.attendance]||it.attendance):'<span class="mini">—</span>';
     const acao=it.status==='pendente'?
       `<button class="btn" style="padding:4px 9px;font-size:11px" onclick="decideFreelancerRequestUI('${it.id}',true)">Aprovar</button> <button class="btn" style="padding:4px 9px;font-size:11px;background:#3a1620;border-color:#5c2530" onclick="decideFreelancerRequestUI('${it.id}',false)">Recusar</button>`:
       '<span class="mini">—</span>';
     const checkTd=`<td><input type="checkbox" ${freelancerApprovalSelectedIds.has(it.id)?'checked':''} onchange="toggleFreelancerApprovalSelect('${it.id}',this.checked)"></td>`;
-    const st=freelancerSuggestion(it.date,it.sector,0);
+    const stKey=it.date+'|'+it.sector;
+    const st=stMemo[stKey]||(stMemo[stKey]=freelancerSuggestion(it.date,it.sector,0));
     const divergeStyle=it.qty>st.sugestao?'color:#e2a33d':(it.qty<st.sugestao?'color:#a78bfa':'');
     const sugestaoTxt=`<span style="${divergeStyle}">${st.sugestao}</span> <span class="mini">(mín ${st.minimo}, CLT ${st.cltPresente}, pax ${st.pax||'—'})</span>`;
     return `<tr><td>${fmtDate(it.date)}</td><td>${FREELANCER_SECTOR_LABEL[it.sector]||it.sector}</td><td class="mini">${FREELANCER_REASON_LABEL[it.reason]||it.reason||'—'}</td><td>${it.shiftHours}h</td><td>${it.qty}</td><td>${sugestaoTxt}</td><td>${brl(it.totalCost)}</td><td class="mini">${escapeHtml(it.requestedByEmail)}</td><td>${presenca}</td><td>${FREELANCER_STATUS_BADGE[it.status]||it.status}</td><td class="stickyCol">${acao}</td>${checkTd}</tr>`;
@@ -8620,12 +8774,22 @@ function applyRhFreelancerHint(){
 }
 
 async function decideFreelancerRequestUI(id,approve){
+  if(freelancerDecidindo){showToast('Aguarde a decisão anterior terminar.',true);return}
+  freelancerDecidindo=true;
+  const it=freelancerRequests.find(x=>x.id===id),antes=it?it.status:null;
+  if(it){it.status=approve?'aprovado':'recusado';renderFreelancerApprovalList()} // resposta imediata; reverte se o servidor recusar
   try{
-    const r=await apiAuthRetry('decideFreelancerRequest',{id,approve},3,true);
-    if(r&&r.ok){showToast(approve?'Solicitação aprovada.':'Solicitação recusada.');loadFreelancerRequests();refreshArea('rh',12);}
-    else{showToast('Não consegui registrar a decisão.',true)}
-  }catch(e){showToast('Falha ao conectar.',true)}
+    const r=await apiAuthRetry('decideFreelancerRequest',{id,approve},3);
+    if(r&&r.ok){showToast(approve?'Solicitação aprovada.':'Solicitação recusada.');freelancerDecidindo=false;loadFreelancerRequests();refreshArea('rh',12);return}
+    if(it){it.status=antes;renderFreelancerApprovalList()}
+    showToast('Não consegui registrar a decisão'+(r&&(r.error||r.code)?' ('+(r.error||r.code)+')':'')+'.',true);
+  }catch(e){
+    if(it){it.status=antes;renderFreelancerApprovalList()}
+    showToast('Falha ao conectar.',true);
+  }
+  freelancerDecidindo=false;
 }
+
 
 async function markFreelancerAttendanceUI(id,attended){
   if(!confirm(attended?'Confirmar que o freelancer compareceu?':'Confirmar que o freelancer FALTOU? Isso tira o custo dele da conta.'))return;
