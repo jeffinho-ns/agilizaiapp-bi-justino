@@ -431,6 +431,15 @@ function doPost(e) {
     // O robô (robo-zigpay/robo_zigpay.ps1) loga com conta de usuário de verdade e usa o
     // token de sessão normal — funciona desde que essa conta tenha a área financeiro/
     // master liberada (Renato vai conferir isso na aba de usuários antes de implantar).
+    // Dionísio CRM (23/10): o robô (robo-dionisio, 10h/15h/18h) manda as reservas SEM dados pessoais e o funil do relatório; o painel (aba Reservas) lê.
+    if (action === 'submitCrmReservas' || action === 'submitCrmFunil') {
+      if (!hasAreaAccess_(auth, 'financeiro')) return jsonOut_({ ok: false, code: 'forbidden' });
+      return jsonOut_(action === 'submitCrmReservas' ? submitCrmReservas_(body) : submitCrmFunil_(body));
+    }
+    if (action === 'getCrmReservas' || action === 'getCrmFunil') {
+      if (!(hasAreaAccess_(auth, 'reservas') || hasAreaAccess_(auth, 'marketing') || hasAreaAccess_(auth, 'operacao') || hasAreaAccess_(auth, 'financeiro'))) return jsonOut_({ ok: false, code: 'forbidden' });
+      return jsonOut_(action === 'getCrmReservas' ? getCrmReservas_() : getCrmFunil_());
+    }
     // IA do BI (23/10, pedido do Renato): botão "IA" da aba Marketing. O painel manda a pergunta e um resumo dos dados que já carregou
     // (sem nome/telefone/e-mail de clientes); aqui só repassa à API da Anthropic. Chave na propriedade do script ANTHROPIC_API_KEY.
     if (action === 'getIaResposta') {
@@ -5304,6 +5313,50 @@ function verifyToken_(token) {
   const expiresAt = Number(expiresAtStr);
   if (!expiresAt || Date.now() > expiresAt) return { ok: false };
   return { ok: true, email, role, areas: parseAreasCsv_(areasCsv || '') };
+}
+
+// ---------- Dionísio CRM (atendimento por IA) → BI ----------
+// Só campos sem dado pessoal (sem nome, telefone, e-mail, CPF, observação). Datas em yyyy-MM-dd; hora e hora de criação como número (19:30 → 1930, 17 h → 17)
+// para a planilha não converter em data/hora. Upsert por id: o robô reenvia o ano inteiro a cada rodada e o status (concluída, cancelada…) vai sendo atualizado.
+const CRMRES_HEADERS = ['id', 'data', 'hora', 'status', 'area', 'pessoas', 'motivo', 'origem', 'criadoData', 'criadoHora', 'atendidoIA', 'criadoIA', 'capturedAt'];
+const CRMFUNIL_HEADERS = ['capturedAt', 'periodo', 'conversas', 'duvida', 'inicio', 'finalizaram', 'reservasFunil', 'reservasVar', 'sessoes', 'sessoesVar',
+  'resolucaoPct', 'atendimentosIA', 'handoff', 'handoffPct', 'metaAds', 'whatsapp', 'instagram', 'comparecimentoPct', 'totalReservas', 'noShows', 'canceladas', 'receita', 'porIAPct'];
+function submitCrmReservas_(body) {
+  const rows = Array.isArray(body.rows) ? body.rows : [];
+  if (!rows.length) return { ok: false, error: 'sem_linhas' };
+  const sh = ensureSheet_('CrmReservas', CRMRES_HEADERS);
+  const H = CRMRES_HEADERS.length, last = sh.getLastRow();
+  const data = last > 1 ? sh.getRange(2, 1, last - 1, H).getValues() : [];
+  const idx = {};
+  data.forEach(function (r, i) { idx[String(r[0])] = i; });
+  const now = new Date().toISOString();
+  let novos = 0, atualizados = 0;
+  rows.forEach(function (r) {
+    if (!r || !r.id) return;
+    const linha = CRMRES_HEADERS.map(function (h) { return h === 'capturedAt' ? now : (r[h] === undefined || r[h] === null ? '' : r[h]); });
+    const at = idx[String(r.id)];
+    if (at !== undefined) { data[at] = linha; atualizados++; } else { idx[String(r.id)] = data.length; data.push(linha); novos++; }
+  });
+  sh.getRange(2, 1, data.length, H).setValues(data);
+  return { ok: true, novos: novos, atualizados: atualizados, total: data.length };
+}
+function getCrmReservas_() {
+  const rows = sheetToObjects_(ensureSheet_('CrmReservas', CRMRES_HEADERS));
+  let ultima = '';
+  rows.forEach(function (r) { if (String(r.capturedAt || '') > ultima) ultima = String(r.capturedAt); });
+  return { ok: true, rows: rows, atualizadoEm: ultima };
+}
+function submitCrmFunil_(body) {
+  const sh = ensureSheet_('CrmFunil', CRMFUNIL_HEADERS);
+  const f = body.funil || {};
+  const linha = CRMFUNIL_HEADERS.map(function (h) { return h === 'capturedAt' ? new Date().toISOString() : (f[h] === undefined || f[h] === null ? '' : f[h]); });
+  sh.appendRow(linha);
+  return { ok: true };
+}
+function getCrmFunil_() {
+  const rows = sheetToObjects_(ensureSheet_('CrmFunil', CRMFUNIL_HEADERS));
+  rows.sort(function (a, b) { return String(a.capturedAt) < String(b.capturedAt) ? 1 : -1; });
+  return { ok: true, rows: rows.slice(0, 90) };
 }
 
 // IA do BI: responde só com o resumo de dados que o painel enviou. Limite de 40 perguntas por hora por usuário (controle de custo).

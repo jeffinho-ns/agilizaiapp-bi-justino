@@ -1882,6 +1882,15 @@ tbody tr:hover{background:#ffffff08}
 </div></section>
 
 <section id="reservas" class="tab hidden"><div class="grid" data-sortable-grid="reservas">
+<details class="full cardCollapse" data-card-id="res-crm-conversao" open><summary class="cardCollapseHead"><span class="chev">▸</span> Conversão e perdas • Dionísio CRM<span class="chHint">robô atualiza às 10h, 15h e 18h</span></summary>
+<div class="card full"><div class="roleTitle"><h3>📈 Conversão e perdas de reservas • Dionísio CRM</h3><span class="badge p" id="crmBadge">—</span></div>
+<div class="note">Reservas do atendimento por IA (WhatsApp, Instagram, Meta Ads, portal e equipe). Dados <b>sem nome, telefone nem e-mail</b>; o robô lê 100% das reservas do último ano a cada rodada.</div>
+<div class="toolbar">
+  <div class="tbItem"><label class="mini">Reservas criadas nos últimos</label><select id="crmPeriodo" onchange="crmRender()"><option value="30">30 dias</option><option value="60">60 dias</option><option value="90" selected>90 dias</option><option value="400">todo o período</option></select></div>
+  <button class="btn" type="button" onclick="loadCrm(true)">↻ Atualizar tela</button>
+</div>
+<div id="crmBody" class="mini">Carregando dados do Dionísio…</div>
+</div></details>
 <details class="full cardCollapse" data-card-id="res-nova-reserva"><summary class="cardCollapseHead"><span class="chev">▸</span> Nova reserva • Seu Justino<span class="chHint">clique para abrir</span></summary>
 <div class="card full"><div class="roleTitle"><h3>Nova reserva • Seu Justino</h3><span class="badge p">ALIMENTA SUGESTÃO DE FREELANCER</span></div>
 <div class="note">Lance cada reserva separadamente — o quadro geral da semana e a sugestão de freelancer (aba Gerente Operador) somam tudo sozinhos.</div>
@@ -6715,6 +6724,7 @@ async function loadReservations(){
     reservationsByDate={};
     (r.docs||[]).forEach(d=>{reservationsByDate[d.date]=d});
     applyFreelancerSuggestion();
+    try{loadCrm()}catch(e){}
     if($('resViewMode')?.value==='mes'){if($('resMonthPicker')?.value)renderReservasMonthly();}
     else if($('resWeekStart')?.value)renderReservasWeekly();
   }catch(e){console.warn('loadReservations exceção',e);showToast('Falha ao conectar pra carregar o quadro de reservas.',true)}
@@ -8292,6 +8302,97 @@ async function iaPerguntar(texto){
     if(el){el.classList.add('err');el.textContent=falha}
   }
   box.scrollTop=box.scrollHeight;
+}
+
+
+// ---- Conversão e perdas • Dionísio CRM (23/10, pedido do Renato): lê o que o robo-dionisio mandou (CrmReservas/CrmFunil), 3x ao dia ----
+let crmRows=[],crmFunil=[],crmAtualizadoEm='',crmCarregado=false;
+const CRM_META={cancel:10,noshow:8,comparece:90};
+async function loadCrm(forca){
+  if(!$('crmBody'))return;
+  if(!hasAreaAccessClient('reservas')&&!hasAreaAccessClient('marketing')&&!hasAreaAccessClient('operacao')&&!hasAreaAccessClient('financeiro')){$('crmBody').textContent='Sem acesso.';return}
+  if(crmCarregado&&!forca){crmRender();return}
+  try{
+    const [a,b]=await Promise.all([apiAuth('getCrmReservas',{}),apiAuth('getCrmFunil',{})]);
+    if(a&&a.ok){crmRows=a.rows||[];crmAtualizadoEm=a.atualizadoEm||''}
+    else{$('crmBody').innerHTML='<div class="alert y">'+(a&&a.error==='unknown_action'?'O servidor ainda não tem o módulo do Dionísio: cole o Code.gs novo no Apps Script e republique.':'Não consegui carregar os dados do Dionísio.')+'</div>';return}
+    crmFunil=(b&&b.ok&&b.rows)||[];
+    crmCarregado=true;crmRender();
+  }catch(e){$('crmBody').innerHTML='<div class="alert r">Falha ao carregar os dados do Dionísio.</div>'}
+}
+function crmGrupo(st){st=String(st||'').toLowerCase();if(st.indexOf('conclu')>=0)return 'ok';if(st.indexOf('compare')>=0&&st.indexOf('n')===0)return 'noshow';if(st.indexOf('cancel')>=0)return 'cancel';return 'aberta'}
+function crmPct(a,b){return b>0?a/b*100:null}
+function crmFmt(v,d){return v==null?'—':v.toFixed(d==null?1:d).replace('.',',')+'%'}
+function crmCor(v,meta,menorMelhor){if(v==null)return '';const ruim=menorMelhor?v>meta:v<meta;const quase=menorMelhor?v>meta*0.85:v<meta*1.05;return ruim?'color:var(--red)':(quase?'color:var(--yellow)':'color:var(--green)')}
+function crmDow(d){return new Date(d+'T12:00:00').getDay()}
+function crmMediana(a){if(!a.length)return null;a=a.slice().sort(function(x,y){return x-y});const m=Math.floor(a.length/2);return a.length%2?a[m]:(a[m-1]+a[m])/2}
+function crmRender(){
+  const body=$('crmBody');if(!body)return;
+  const dias=Number(($('crmPeriodo')||{}).value)||90;
+  const corte=new Date(Date.now()-dias*86400000).toISOString().slice(0,10);
+  const R=(crmRows||[]).filter(function(r){return r.criadoData&&String(r.criadoData)>=corte}).map(function(r){
+    const lead=r.data&&r.criadoData?Math.round((new Date(r.data+'T12:00:00')-new Date(r.criadoData+'T12:00:00'))/86400000):null;
+    return Object.assign({},r,{g:crmGrupo(r.status),lead:lead,pes:Number(r.pessoas)||0})});
+  const n=R.length;
+  if(!n){body.innerHTML='<div class="alert y">Ainda não há reservas do Dionísio no BI. O robô roda às 10h, 15h e 18h; para rodar agora: robo-zigpay\\robo_dionisio.ps1.</div>';return}
+  const c={ok:0,noshow:0,cancel:0,aberta:0};R.forEach(function(r){c[r.g]++});
+  const cancelPct=crmPct(c.cancel,n),nsPct=crmPct(c.noshow,n),compPct=crmPct(c.ok,c.ok+c.noshow);
+  const iaPct=crmPct(R.filter(function(r){return Number(r.criadoIA)===1}).length,n),atIAPct=crmPct(R.filter(function(r){return Number(r.atendidoIA)===1}).length,n);
+  const medLead=crmMediana(R.filter(function(r){return r.lead!=null&&r.lead>=0}).map(function(r){return r.lead}));
+  const medPes=crmMediana(R.map(function(r){return r.pes}));
+  const horasAtras=crmAtualizadoEm?(Date.now()-new Date(crmAtualizadoEm).getTime())/3600000:null;
+  if($('crmBadge')){$('crmBadge').textContent=crmAtualizadoEm?('atualizado '+new Date(crmAtualizadoEm).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})):'sem atualização';$('crmBadge').className='badge '+(horasAtras!=null&&horasAtras>9?'r':'p')}
+  const kpi=function(t,v,sub,st){return '<div class="miniKpi"><small>'+t+'</small><div class="v" style="'+(st||'')+'">'+v+'</div><span class="mini">'+sub+'</span></div>'};
+  let h='<div class="miniKpiGrid">'
+    +kpi('Reservas no período',n,'últimos '+(dias>=400?'todo o período':dias+' dias')+' • mediana '+(medPes==null?'—':medPes)+' pessoas')
+    +kpi('Compareceram',crmFmt(compPct),'meta ≥ '+CRM_META.comparece+'% • '+c.ok+' de '+(c.ok+c.noshow),crmCor(compPct,CRM_META.comparece,false))
+    +kpi('Cancelamento',crmFmt(cancelPct),'meta ≤ '+CRM_META.cancel+'% • '+c.cancel+' reservas',crmCor(cancelPct,CRM_META.cancel,true))
+    +kpi('No-show',crmFmt(nsPct),'meta ≤ '+CRM_META.noshow+'% • '+c.noshow+' reservas',crmCor(nsPct,CRM_META.noshow,true))
+    +kpi('Criadas pela IA',crmFmt(iaPct),'atendidas por IA: '+crmFmt(atIAPct,0))
+    +kpi('Antecedência (mediana)',medLead==null?'—':medLead+' dia(s)','entre criar e visitar')
+    +'</div>';
+  // alertas
+  const al=[];
+  if(horasAtras!=null&&horasAtras>9)al.push(['r','Dados desatualizados: o robô do Dionísio não atualiza há '+Math.round(horasAtras)+' h (PC desligado ou sessão do CRM vencida — veja o arquivo na Área de Trabalho).']);
+  if(nsPct!=null&&nsPct>CRM_META.noshow)al.push(['y','No-show de '+crmFmt(nsPct)+' (meta '+CRM_META.noshow+'%): reforçar reconfirmação 48 h antes.']);
+  if(cancelPct!=null&&cancelPct>CRM_META.cancel)al.push(['y','Cancelamento de '+crmFmt(cancelPct)+' (meta '+CRM_META.cancel+'%).']);
+  const porOrig={};R.forEach(function(r){const o=r.origem||'—';const x=porOrig[o]||(porOrig[o]={n:0,ok:0,ns:0,ca:0});x.n++;if(r.g==='ok')x.ok++;if(r.g==='noshow')x.ns++;if(r.g==='cancel')x.ca++});
+  Object.keys(porOrig).forEach(function(o){const x=porOrig[o];if(x.n>=15&&crmPct(x.ns,x.n)>12)al.push(['y',o+': no-show de '+crmFmt(crmPct(x.ns,x.n))+' em '+x.n+' reservas.']);if(x.n>=15&&crmPct(x.ca,x.n)>22)al.push(['y',o+': cancelamento de '+crmFmt(crmPct(x.ca,x.n))+' em '+x.n+' reservas.']);});
+  const lg=R.filter(function(r){return r.lead!=null&&r.lead>=8&&r.lead<=30});
+  if(lg.length>=15&&crmPct(lg.filter(function(r){return r.g==='cancel'}).length,lg.length)>20)al.push(['y','Reservas feitas com 8–30 dias de antecedência cancelam '+crmFmt(crmPct(lg.filter(function(r){return r.g==='cancel'}).length,lg.length))+': reconfirmar 48 h antes.']);
+  const f=crmFunil[0];
+  if(f&&f.sessoesVar>15&&f.reservasVar<0)al.push(['y','Sessões '+(f.sessoesVar>0?'+':'')+crmFmt(f.sessoesVar,0)+' e reservas '+crmFmt(f.reservasVar,0)+' no período: tráfego novo sem intenção de reservar (anúncios/disparos) — a conversão cai mesmo sem erro da IA.']);
+  const mesIA={};R.forEach(function(r){const m=String(r.criadoData).slice(0,7);const x=mesIA[m]||(mesIA[m]={n:0,ia:0});x.n++;if(Number(r.criadoIA)===1)x.ia++});
+  Object.keys(mesIA).forEach(function(m){if(mesIA[m].n>=30&&mesIA[m].ia===0)al.push(['y','Em '+m.slice(5)+'/'+m.slice(0,4)+' a IA não criou nenhuma das '+mesIA[m].n+' reservas: conferir a integração.'])});
+  h+='<div style="margin-top:12px">'+(al.length?al.map(function(a){return '<div class="alert '+a[0]+'">'+escapeHtml(a[1])+'</div>'}).join(''):'<div class="alert g">Sem alertas: cancelamento, no-show e origens dentro das metas.</div>')+'</div>';
+  // funil
+  if(f){
+    const base=Number(f.conversas)||0,bar=function(t,v,ref,cor){const p=ref>0?Math.min(100,v/ref*100):0;return '<div style="display:flex;align-items:center;gap:10px;margin:5px 0"><div style="width:230px;font-size:12px">'+t+'</div><div style="flex:1;background:#221c17;border-radius:6px;height:16px"><div style="width:'+p+'%;background:'+cor+';height:16px;border-radius:6px"></div></div><div style="width:150px;font-size:12px;text-align:right"><b>'+Number(v).toLocaleString('pt-BR')+'</b> <span class="mini">'+crmFmt(crmPct(v,base))+'</span></div></div>'};
+    h+='<h4 style="margin:16px 0 4px">Funil da IA • '+escapeHtml(f.periodo||'')+' <span class="mini">(lido '+new Date(f.capturedAt).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+')</span></h4>'
+      +bar('Conversas iniciadas',f.conversas,base,'#a78bfa')+bar('Tiraram dúvida / pediram informação',f.duvida,base,'#8b6bd8')+bar('Começaram pedido ou reserva',f.inicio,base,'#c96736')+bar('Finalizaram e pagaram',f.finalizaram,base,'#34d399')
+      +'<div class="mini" style="margin-top:6px">Dúvida → início de reserva: <b>'+crmFmt(crmPct(f.inicio,f.duvida))+'</b> • Início → finalizou: <b>'+crmFmt(crmPct(f.finalizaram,f.inicio))+'</b> • Resolução autônoma da IA: <b>'+crmFmt(Number(f.resolucaoPct))+'</b> • Encaminhadas a humano: <b>'+(f.handoff||'—')+'</b> ('+crmFmt(Number(f.handoffPct))+') • Sessões: <b>'+(f.sessoes||'—')+'</b> ('+(Number(f.sessoesVar)>0?'+':'')+crmFmt(Number(f.sessoesVar))+') • Meta Ads '+(f.metaAds||0)+' / WhatsApp '+(f.whatsapp||0)+' / Instagram '+(f.instagram||0)+'</div>'
+      +'<div class="mini">Atenção: "conversas iniciadas" inclui disparos em massa e tráfego pago; a conversão real é medida sobre quem respondeu (exige exportação de conversas do Dionísio).</div>';
+  }
+  // tabelas
+  const tb=function(cab,linhas){return '<div class="igTblWrap"><table class="igTbl" style="width:auto"><thead><tr>'+cab.map(function(x){return '<th>'+x+'</th>'}).join('')+'</tr></thead><tbody>'+linhas.map(function(l){return '<tr>'+l.map(function(x){return '<td>'+x+'</td>'}).join('')+'</tr>'}).join('')+'</tbody></table></div>'};
+  const linhaOr=Object.keys(porOrig).sort(function(a,b){return porOrig[b].n-porOrig[a].n}).map(function(o){const x=porOrig[o];return [escapeHtml(o),x.n,crmFmt(crmPct(x.ok,x.n),0),'<span style="'+crmCor(crmPct(x.ca,x.n),CRM_META.cancel,true)+'">'+crmFmt(crmPct(x.ca,x.n),0)+'</span>','<span style="'+crmCor(crmPct(x.ns,x.n),CRM_META.noshow,true)+'">'+crmFmt(crmPct(x.ns,x.n),0)+'</span>']});
+  const dn=['dom','seg','ter','qua','qui','sex','sáb'];
+  const vis=[0,0,0,0,0,0,0],cri=[0,0,0,0,0,0,0];R.forEach(function(r){if(r.data)vis[crmDow(r.data)]++;cri[crmDow(r.criadoData)]++});
+  const linhaDia=dn.map(function(d,i){return [d,vis[i],crmFmt(crmPct(vis[i],n),0),cri[i],crmFmt(crmPct(cri[i],n),0)]});
+  const bk=[['0–1 dia',0,1],['2–7 dias',2,7],['8–30 dias',8,30],['31+ dias',31,9999]];
+  const linhaLead=bk.map(function(b){const g=R.filter(function(r){return r.lead!=null&&r.lead>=b[1]&&r.lead<=b[2]});return [b[0],g.length,crmFmt(crmPct(g.length,n),0),'<span style="'+crmCor(crmPct(g.filter(function(r){return r.g==='cancel'}).length,g.length),CRM_META.cancel,true)+'">'+crmFmt(crmPct(g.filter(function(r){return r.g==='cancel'}).length,g.length),0)+'</span>',crmFmt(crmPct(g.filter(function(r){return r.g==='noshow'}).length,g.length),0)]});
+  const meses=Object.keys(mesIA).sort();
+  const linhaMes=meses.map(function(m){const g=R.filter(function(r){return String(r.criadoData).slice(0,7)===m});return [m.slice(5)+'/'+m.slice(0,4),g.length,crmFmt(crmPct(g.filter(function(r){return Number(r.criadoIA)===1}).length,g.length),0),crmFmt(crmPct(g.filter(function(r){return r.g==='cancel'}).length,g.length),0),crmFmt(crmPct(g.filter(function(r){return r.g==='noshow'}).length,g.length),0)]});
+  const hr={};R.forEach(function(r){if(r.criadoHora!=null&&r.criadoHora!==''){const b=Math.floor(Number(r.criadoHora)/3)*3;hr[b]=(hr[b]||0)+1}});
+  const linhaHr=Object.keys(hr).map(Number).sort(function(a,b){return a-b}).map(function(b){return [String(b).padStart(2,'0')+'h–'+String(b+2).padStart(2,'0')+'h59',hr[b],crmFmt(crmPct(hr[b],n),0)]});
+  h+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px;margin-top:14px">'
+    +'<div><h4 style="margin:0 0 4px">Por origem</h4>'+tb(['Origem','Reservas','Compareceu','Cancel.','No-show'],linhaOr)+'</div>'
+    +'<div><h4 style="margin:0 0 4px">Por dia da semana</h4>'+tb(['Dia','Visitas','%','Criadas','%'],linhaDia)+'</div>'
+    +'<div><h4 style="margin:0 0 4px">Antecedência × perda</h4>'+tb(['Antecedência','Reservas','%','Cancel.','No-show'],linhaLead)+'</div>'
+    +'<div><h4 style="margin:0 0 4px">Mês de criação</h4>'+tb(['Mês','Reservas','Pela IA','Cancel.','No-show'],linhaMes)+'</div>'
+    +'<div><h4 style="margin:0 0 4px">Horário em que a reserva é criada</h4>'+tb(['Faixa','Reservas','%'],linhaHr)+'</div>'
+    +'</div>';
+  body.innerHTML=h;
 }
 
 function wgSetPermanencia(v){const n=Number(v);if(!(n>=1&&n<=8))return;try{localStorage.setItem('sjBIperm2',String(n))}catch(e){}wgRender()}
