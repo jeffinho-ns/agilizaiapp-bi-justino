@@ -276,10 +276,21 @@ function Read-RelatoriosTextos($drv) {
   Close-Overlays $drv
   $vendas = Get-PageText $drv
   $oper = ''
-  for ($t = 1; $t -le 3 -and $oper -notmatch 'Taxa de Resolu'; $t++) {
-    $drv.ExecuteScript("var t=[...document.querySelectorAll('.q-tab,[role=tab],button,div')].filter(function(e){return e.innerText&&e.innerText.trim()==='Operação'})[0];if(t)t.click();return !!t") | Out-Null
-    Start-Sleep -Seconds 10
-    $oper = Get-PageText $drv
+  for ($t = 1; $t -le 3 -and -not ($oper -match 'Taxa de Resolu[^
+]*
+\s*[\d.]+\s*%'); $t++) {
+    $tab = Find-SeElement -Driver $drv -XPath "//div[contains(concat(' ',normalize-space(@class),' '),' q-tab ') and contains(normalize-space(.),'Operação')]" -ErrorAction SilentlyContinue
+    if ($tab) { try { @($tab)[0].Click() } catch { Log ("AVISO: clique na aba Operacao falhou: " + $_.Exception.Message) } }
+    # os numeros aparecem depois do rotulo: espera ate 45 s por "Taxa de Resolucao ... 87.6%" e "Encaminhados ... 528"
+    for ($w = 0; $w -lt 9; $w++) {
+      Start-Sleep -Seconds 5
+      $oper = Get-PageText $drv
+      if (($oper -match 'Taxa de Resolu[^
+]*
+\s*[\d.]+\s*%') -and ($oper -match 'Encaminhados para Humano\s*
+\s*[\d.]+') -and ($oper -match 'Sess[^
+]*o no per')) { break }
+    }
   }
   return @{ vendas = $vendas; oper = $oper }
 }
