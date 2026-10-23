@@ -5531,9 +5531,86 @@ function zigSyncFaturamento() {
   zigSyncFaturamento_(3, true).forEach(function (l) { Logger.log(l); });
 }
 
-// Rode UMA vez no editor: cria o gatilho de hora em hora.
+// ---------------- ZigPay API de integração: venda por item + CMV teórico parcial (23/10) ----------------
+// /erp/saida-produtos (só type "Normal", sem estorno; bruto = unitValue x count). Conferido: bebida de 22/10 bate ao centavo com o robô
+// (R$ 3.255,00); a comida vem R$ 168,50 maior porque a API inclui o Brunch vendido pelo iFood, que o relatório do robô não trazia.
+// O custo unitário (ficha técnica) vem da própria planilha de itens: reaproveita o último custoUnit já gravado de cada SKU.
+const ZIG_CAT_COMIDA = ['PORÇÕES', 'LANCHE', 'LANCHES', 'CAFE', 'SOBREMESAS', 'ACOMPANHAMENTOS', 'CHAPAS', 'PRATOS', 'BRUNCH', 'BUFFET', 'SALADAS', 'ENTRADAS', 'CARNES'];
+const ZIG_CAT_BEBIDA = ['TEQUILAS', 'GTS', 'LONG NECKS', 'APERITIVOS', 'CLASSICOS', 'AUTORAIS', 'ENERGETICOS', 'CAIPIS', 'LICORES', 'CHOPPS', 'VINHOS TINTOS', 'SUCOS', 'GINS', 'Cerveja', 'WHISKIES', 'AGUAS', 'DRINKS SEM ALCOOL', 'LATAS', 'REFRIGERANTES', 'RUMS', 'VODKAS', 'VINHOS ESPUMANTES'];
+
+function zigCustosConhecidos_() {
+  const custos = {};
+  sheetToObjects_(getZigItemSalesSheet_()).forEach(function (r) {
+    if (r.sku && r.custoUnit !== '' && r.custoUnit !== null && !isNaN(Number(r.custoUnit))) custos[String(r.sku)] = Number(r.custoUnit);
+  });
+  return custos;
+}
+
+function zigItensDia_(iso, custos) {
+  const loja = (PropertiesService.getScriptProperties().getProperty('ZIG_LOJA') || '').trim();
+  const linhas = zigGet_('/erp/saida-produtos', { dtinicio: iso, dtfim: iso, loja: loja });
+  const porSku = {};
+  linhas.forEach(function (l) {
+    if (l.type !== 'Normal' || l.isRefunded) return;
+    const sku = String(l.productSku || l.productId || '');
+    if (!sku) return;
+    const cat = String(l.productCategory || '');
+    const tipo = ZIG_CAT_COMIDA.indexOf(cat) >= 0 ? 'comida' : (ZIG_CAT_BEBIDA.indexOf(cat) >= 0 ? 'bebida' : 'outro');
+    if (!porSku[sku]) porSku[sku] = { sku: sku, nome: l.productName || '', categoria: cat, tipo: tipo, quantidade: 0, valorTotal: 0, custoUnit: custos[sku] !== undefined ? custos[sku] : null };
+    porSku[sku].quantidade += Number(l.count) || 0;
+    porSku[sku].valorTotal += (Number(l.unitValue) || 0) * (Number(l.count) || 0) / 100;
+  });
+  return Object.keys(porSku).map(function (k) { return porSku[k]; });
+}
+
+function zigAgregarCmv_(itens) {
+  const a = { custoFoodTeorico: 0, valorCobertoFood: 0, valorTotalFood: 0, custoBevTeorico: 0, valorCobertoBev: 0, valorTotalBev: 0, valorTotalMisto: 0, itensComFicha: 0, itensSemFicha: 0 };
+  itens.forEach(function (i) {
+    const tem = i.custoUnit !== null && i.custoUnit !== undefined;
+    if (i.tipo === 'comida') { a.valorTotalFood += i.valorTotal; if (tem) { a.custoFoodTeorico += i.custoUnit * i.quantidade; a.valorCobertoFood += i.valorTotal; } }
+    else if (i.tipo === 'bebida') { a.valorTotalBev += i.valorTotal; if (tem) { a.custoBevTeorico += i.custoUnit * i.quantidade; a.valorCobertoBev += i.valorTotal; } }
+    else a.valorTotalMisto += i.valorTotal;
+    if (tem) a.itensComFicha++; else a.itensSemFicha++;
+  });
+  return a;
+}
+
+function zigSyncItens_(dias, gravar) {
+  const tz = 'America/Sao_Paulo';
+  const custos = zigCustosConhecidos_();
+  const out = [];
+  for (let i = 0; i < dias; i++) {
+    const iso = Utilities.formatDate(new Date(Date.now() - i * 86400000), tz, 'yyyy-MM-dd');
+    const itens = zigItensDia_(iso, custos);
+    const agg = zigAgregarCmv_(itens);
+    let msg = iso + ': ' + itens.length + ' itens | comida R$ ' + agg.valorTotalFood.toFixed(2) + ' | bebida R$ ' + agg.valorTotalBev.toFixed(2) + ' | outros R$ ' + agg.valorTotalMisto.toFixed(2) + ' | com ficha ' + agg.itensComFicha + ', sem ' + agg.itensSemFicha;
+    if (gravar && itens.length) {
+      let r = submitZigItemSales_({ date: iso, items: itens, source: 'zig-api' });
+      if (!r.ok && String(r.error).indexOf('inconsistente_com_faturamento') === 0) r = submitZigItemSales_({ date: iso, items: itens, source: 'zig-api', conferir: true });
+      const corpo = { date: iso, source: 'zig-api' }; Object.keys(agg).forEach(function (k) { corpo[k] = agg[k]; });
+      let c = submitCmvTeoricoParcial_(corpo);
+      if (!c.ok && String(c.error).indexOf('inconsistente_com_faturamento') === 0) { corpo.conferir = true; c = submitCmvTeoricoParcial_(corpo); }
+      msg += ' | itens ' + (r.ok ? 'GRAVADO' : 'recusado: ' + r.error) + ' | CMV ' + (c.ok ? 'GRAVADO' : 'recusado: ' + c.error);
+    }
+    out.push(msg);
+  }
+  return out;
+}
+
+// Teste (não grava): Executar > zigTesteItens
+function zigTesteItens() {
+  zigSyncItens_(4, false).forEach(function (l) { Logger.log(l); });
+}
+
+// Rotina completa (gatilho): faturamento primeiro, depois itens e CMV dos últimos 3 dias.
+function zigSyncTudo() {
+  zigSyncFaturamento_(3, true).forEach(function (l) { Logger.log(l); });
+  zigSyncItens_(3, true).forEach(function (l) { Logger.log(l); });
+}
+
+// Rode UMA vez no editor (substitui o gatilho anterior): zigSyncTudo a cada 1 hora.
 function zigInstalarGatilho() {
-  ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'zigSyncFaturamento') ScriptApp.deleteTrigger(t); });
-  ScriptApp.newTrigger('zigSyncFaturamento').timeBased().everyHours(1).create();
-  Logger.log('Gatilho criado: zigSyncFaturamento a cada 1 hora.');
+  ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'zigSyncFaturamento' || t.getHandlerFunction() === 'zigSyncTudo') ScriptApp.deleteTrigger(t); });
+  ScriptApp.newTrigger('zigSyncTudo').timeBased().everyHours(1).create();
+  Logger.log('Gatilho criado: zigSyncTudo (faturamento + itens + CMV) a cada 1 hora.');
 }
