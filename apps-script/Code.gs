@@ -5614,3 +5614,15 @@ function zigInstalarGatilho() {
   ScriptApp.newTrigger('zigSyncTudo').timeBased().everyHours(1).create();
   Logger.log('Gatilho criado: zigSyncTudo (faturamento + itens + CMV) a cada 1 hora.');
 }
+
+// Lista as propriedades do script para montar um checklist (ex.: passar o que falta para outra pessoa configurar).
+// Segredos (SECRET, TOKEN, KEY, SENHA) saem só como "definido, N caracteres"; o resto (IDs de pasta, e-mails) sai por extenso.
+// Rodar no editor: Executar > propriedadesResumo.
+function propriedadesResumo() {
+  const todas = PropertiesService.getScriptProperties().getProperties();
+  Object.keys(todas).sort().forEach(function (k) {
+    const v = String(todas[k] || '');
+    const segredo = /SECRET|TOKEN|KEY|SENHA|PASSWORD/i.test(k);
+    Logger.log(k + ' = ' + (!v ? '(vazio)' : (segredo ? 'definido, ' + v.length + ' caracteres' : (v.length > 120 ? v.slice(0, 120) + '… (' + v.length + ' caracteres)' : v))));
+  });
+}
