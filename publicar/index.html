@@ -1631,7 +1631,7 @@ tbody tr:hover{background:#ffffff08}
 <div class="toolbar">
   <button class="btn" type="button" style="background:#233a1f;border-color:#3a5c30" onclick="wgSugerirDia()" title="Preenche de uma vez a sugestão de todos os setores do dia escolhido (mapa de calor da Zig + reservas por horário) — turno sobe sozinho até 12h em dia comprido">✨ Sugerir solicitação do dia</button>
   <button class="btn" type="button" style="background:#3a1620;border-color:#5c2530" onclick="wgZerarDia()">Zerar o dia</button>
-  <label class="mini" style="display:flex;align-items:center;gap:6px" title="Quanto tempo, em média, o cliente fica na casa. Define quantos estão presentes ao mesmo tempo (máx. 360) a partir da chegada gradual do mapa de calor."><span>Permanência do cliente (h)</span><input type="number" id="wgPermanencia" min="1" max="8" step="0.5" value="3" style="width:64px" onchange="wgSetPermanencia(this.value)"></label>
+  <label class="mini" style="display:flex;align-items:center;gap:6px" title="Quanto tempo, em média, o cliente fica na casa. Define quantos estão presentes ao mesmo tempo (máx. 360) a partir da chegada gradual do mapa de calor."><span>Permanência do cliente (h)</span><input type="number" id="wgPermanencia" min="1" max="8" step="0.1" value="3.9" style="width:64px" onchange="wgSetPermanencia(this.value)"></label>
   <button class="btn" type="button" id="cmoFlBtn" data-nofeedback onclick="cmoFlAbrir()" title="CMO dos freelancers da semana contra o teto de 8% do faturamento">💰 CMO freelancers: —</button>
 </div>
 <div id="cmoFlFaixa" class="hidden" style="margin:6px 0"></div>
@@ -1666,7 +1666,7 @@ tbody tr:hover{background:#ffffff08}
 <div class="note">A regra de "atendimento por pessoa" é de clientes atendidos por uma pessoa <b>ao mesmo tempo</b>. O estudo mostra, para o dia escolhido, o caminho completo: público do dia → chegadas por meia hora (mapa de calor da ZigPay) → clientes presentes ao mesmo tempo → pessoas necessárias por setor → o que a equipe fixa já cobre → freelancers.</div>
 <div class="toolbar">
   <div class="tbItem"><label class="mini">Dia do estudo</label><input type="date" id="estDate" onchange="estudoEscalaRender()"></div>
-  <div class="tbItem"><label class="mini">Permanência do cliente (h)</label><input type="number" id="estPerm" min="1" max="8" step="0.5" value="3" style="width:80px" onchange="estudoSetPerm(this.value)"></div>
+  <div class="tbItem"><label class="mini">Permanência do cliente (h)</label><input type="number" id="estPerm" min="1" max="8" step="0.1" value="3.9" style="width:80px" onchange="estudoSetPerm(this.value)"></div>
   <button class="btn" type="button" onclick="estudoEscalaRender()">📐 Calcular estudo</button>
 </div>
 <div id="estudoEscalaBody" class="mini">Escolha o dia e clique em <b>Calcular estudo</b>.</div>
@@ -7460,7 +7460,7 @@ function curvaReservasFrac(porHora){
 
 // Necessário por bloco de 30 min pra um setor num dia (pré-abertura + horário de funcionamento).
 // Permanência média do cliente na casa (h): define quantos estão presentes ao mesmo tempo a partir da chegada gradual. Ajustável no quadro da escala.
-function permanenciaClienteH(){if(window.__permOverride>0)return window.__permOverride;try{const v=Number(localStorage.getItem('sjBIperm'));if(v>=1&&v<=8)return v}catch(e){}return 3}
+function permanenciaClienteH(){if(window.__permOverride>0)return window.__permOverride;try{const v=Number(localStorage.getItem('sjBIperm2'));if(v>=1&&v<=8)return v}catch(e){}return 3.9}
 // maior fração do público do dia presente ao mesmo tempo = maior soma das chegadas (mapa de calor de entradas) numa janela igual à permanência
 function ocupacaoPicoFrac(curva,S){
   const ent=curva&&curva.frac&&(curva.frac.entradas||curva.frac.total);
@@ -8137,7 +8137,7 @@ function loadWeekGrid(){
 }
 
 // ---- Estudo de dimensionamento (23/10, pedido do Renato) ----
-function estudoSetPerm(v){const n=Number(v);if(!(n>=1&&n<=8))return;try{localStorage.setItem('sjBIperm',String(n))}catch(e){}if($('wgPermanencia'))$('wgPermanencia').value=String(n);estudoEscalaRender();try{wgRender()}catch(e){}}
+function estudoSetPerm(v){const n=Number(v);if(!(n>=1&&n<=8))return;try{localStorage.setItem('sjBIperm2',String(n))}catch(e){}if($('wgPermanencia'))$('wgPermanencia').value=String(n);estudoEscalaRender();try{wgRender()}catch(e){}}
 function estudoCenario(date,S){
   window.__permOverride=S;
   try{
@@ -8197,7 +8197,7 @@ async function estudoEscalaRender(){
     });
     h+='</tbody></table></div><div class="mini">Atendimento por pessoa usado: '+planos.map(function(P){return FREELANCER_SECTOR_LABEL[P.sec]+' '+(baseS(P.sec).atendimentoPorPessoa||'—')+' (brigada '+(baseS(P.sec).brigadaPadrao||0)+(limiteBrigadaSetor(P.sec)?', limite '+limiteBrigadaSetor(P.sec):'')+')'}).join(' • ')+'.</div>';
     // 4) sensibilidade à permanência
-    const cen=[2,3,4,5].map(function(x){return estudoCenario(date,x)});
+    const cen=[2,3,3.9,5].map(function(x){return estudoCenario(date,x)});
     h+='<h4 style="margin:14px 0 6px">4) E se o cliente ficar mais ou menos tempo?</h4><div class="igTblWrap"><table class="igTbl"><thead><tr><th>Permanência</th><th>Presentes no pico</th>'+planos.map(function(P){return '<th>Pico '+FREELANCER_SECTOR_LABEL[P.sec]+'</th>'}).join('')+'<th>Falta (pessoa-h)</th><th>Freelancers</th><th>Custo</th></tr></thead><tbody>'
       +cen.map(function(c){const at=Math.abs(c.S-S)<0.01;return '<tr'+(at?' style="background:#241a12"':'')+'><td><b>'+c.S+' h</b>'+(at?' <span class="mini">(em uso)</span>':'')+'</td><td>~'+Math.round(c.pico)+'</td>'+c.setores.map(function(x){return '<td>'+x.picoNec+'</td>'}).join('')+'<td>'+c.nec.toFixed(0)+'</td><td><b>'+c.q+'</b></td><td>'+brl(c.custo)+'</td></tr>'}).join('')+'</tbody></table></div>';
     // 5) conferência com os mesmos dias da semana já realizados
@@ -8210,7 +8210,7 @@ async function estudoEscalaRender(){
   }catch(e){body.innerHTML='<div class="alert r">Não consegui montar o estudo: '+escapeHtml(String(e&&e.message||e))+'</div>'}
 }
 
-function wgSetPermanencia(v){const n=Number(v);if(!(n>=1&&n<=8))return;try{localStorage.setItem('sjBIperm',String(n))}catch(e){}wgRender()}
+function wgSetPermanencia(v){const n=Number(v);if(!(n>=1&&n<=8))return;try{localStorage.setItem('sjBIperm2',String(n))}catch(e){}wgRender()}
 function wgSelecionarDia(d){wgDiaAtual=d;wgRender()}
 function wgSetAus(sec,v){wgAusentes[wgDiaAtual+'|'+sec]=Math.max(0,Number(v)||0);wgRender()}
 function wgSetQty(sec,delta,abs){

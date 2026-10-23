@@ -85,6 +85,7 @@ $ScriptDir = $PSScriptRoot
 $CredPath = "$env:USERPROFILE\.seujustino\zigpay_credentials.json"
 $LogPath = "$ScriptDir\robo_zigpay.log"
 $DebugDir = "$ScriptDir\.debug"
+$ChromeProfileDir = "$env:USERPROFILE\.seujustino\chrome-profile"
 $DriverCacheDir = "$ScriptDir\chromedriver-cache"
 $AppsScriptUrl = 'https://script.google.com/macros/s/AKfycbzsXAoBmnHvfocbC3JWiVtiHaSwkzrCX3hKdtRsz_YRoatP3qrksSOj3J8776S3bJXVuA/exec'
 $ZigPayLoginUrl = 'https://dashboard.zigpay.com.br/login'
@@ -341,6 +342,13 @@ return JSON.stringify({mes: m.textContent.trim(), ano: y.textContent.trim()});
 }
 
 function Connect-ZigPay($driver, $cred) {
+  # 23/10: a ZigPay passou a exigir o teste "Confirme que e humano" (Cloudflare) no login, que o robo nao
+  # passa. O robo agora usa um perfil proprio do Chrome ($ChromeProfileDir): o Renato entra UMA vez a mao
+  # (login_manual_zigpay.ps1) e a sessao salva no perfil e reaproveitada. So tenta digitar a senha se a
+  # sessao nao estiver valida.
+  Enter-SeUrl -Driver $driver -Url 'https://dashboard.zigpay.com.br/' | Out-Null
+  Start-Sleep -Seconds 4
+  if ($driver.Url -notlike '*login*') { Log ("Sessao ZigPay do perfil ainda valida. URL: " + $driver.Url); return }
   Enter-SeUrl -Driver $driver -Url $ZigPayLoginUrl | Out-Null
   (Wait-Element $driver "//input[@id='login-organization']").SendKeys($cred.zigpay.organization) | Out-Null
   (Wait-Element $driver "//input[@id='login-username']").SendKeys($cred.zigpay.username) | Out-Null
@@ -350,7 +358,7 @@ function Connect-ZigPay($driver, $cred) {
   $limite = (Get-Date).AddSeconds(20)
   while ($driver.Url -like '*login*' -and (Get-Date) -lt $limite) { Start-Sleep -Milliseconds 500 }
   if ($driver.Url -like '*login*') {
-    throw "Login na ZigPay (navegador) nao saiu da tela de login - confira usuario/senha/organizacao em $CredPath."
+    throw "Login na ZigPay (navegador) nao saiu da tela de login - a sessao do perfil expirou ou ha teste 'Confirme que e humano'. Rode login_manual_zigpay.ps1 e entre a mao uma vez (ou confira usuario/senha/organizacao em $CredPath)."
   }
   Log ("Login ZigPay (navegador) ok. URL pos-login: " + $driver.Url)
 }
@@ -359,7 +367,7 @@ function New-ZigPaySession($cred, $driverDir, $pidsAntes) {
   $novoDriver = $null
   for ($tentativa = 1; $tentativa -le 3; $tentativa++) {
     try {
-      $novoDriver = Start-SeChrome -Headless -Quiet -BinaryPath "C:\Program Files\Google\Chrome\Application\chrome.exe" -WebDriverDirectory $driverDir -Arguments @('--window-size=1920,1080')
+      $novoDriver = Start-SeChrome -Headless -Quiet -BinaryPath "C:\Program Files\Google\Chrome\Application\chrome.exe" -WebDriverDirectory $driverDir -Arguments @('--window-size=1920,1080', "--user-data-dir=$ChromeProfileDir")
       break
     } catch {
       if ($tentativa -eq 3) { throw }
