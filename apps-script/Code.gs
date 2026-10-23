@@ -639,6 +639,23 @@ function doPost(e) {
     if (action === 'getDuvidas') return jsonOut_(getDuvidas_());
     if (action === 'responderDuvida') return jsonOut_(responderDuvida_(body, auth)); // já audita via logAudit_
     if (action === 'getContatosEmergencia') return jsonOut_(getContatosEmergencia_());
+    // 23/10, pedido do Renato: quem NÃO é Diretoria só consegue SOLICITAR criar/editar/apagar contato; a Diretoria (dono ou área Diretoria) aprova.
+    if (action === 'getContatoSolicitacoes') return jsonOut_({ ok: true, items: getContatoSolicitacoes_(auth), diretoria: isDiretoria_(auth) });
+    if (action === 'decideContatoSolicitacao') {
+      const r = decidirSolicitacaoContato_(auth, body.id, !!body.approve, body.nota);
+      if (r.ok) logAudit_(auth, 'update', 'geral', 'contatoSolicitacao', body.id, 'Solicitação de contato ' + (body.approve ? 'aprovada' : 'recusada') + (r.resumo ? ' — ' + r.resumo : ''), null, body);
+      return jsonOut_(r);
+    }
+    if (action === 'saveContatoEmergencia' && !isDiretoria_(auth)) {
+      const r = criarSolicitacaoContato_(auth, body.id ? 'editar' : 'criar', body);
+      if (r.ok) logAudit_(auth, 'create', 'geral', 'contatoSolicitacao', r.id, 'Solicitação de contato (' + (body.id ? 'editar' : 'criar') + ') — ' + (body.nome || ''), null, body);
+      return jsonOut_(r);
+    }
+    if (action === 'deleteContatoEmergencia' && !isDiretoria_(auth)) {
+      const r = criarSolicitacaoContato_(auth, 'apagar', { id: body.id });
+      if (r.ok) logAudit_(auth, 'create', 'geral', 'contatoSolicitacao', r.id, 'Solicitação de contato (apagar)', null, body);
+      return jsonOut_(r);
+    }
     if (action === 'saveContatoEmergencia') {
       const wasNew = !body.id;
       const r = saveContatoEmergencia_(body, auth);
@@ -3989,6 +4006,61 @@ function responderDuvida_(body, auth) {
 
 // ---------- Contatos de emergência (prestadores de confiança) ----------
 
+// ---- solicitações de alteração de contatos (a Diretoria aprova) ----
+const CONTATO_SOLIC_HEADERS = ['id', 'tipo', 'contatoId', 'contatoNome', 'dataJson', 'solicitadoPorEmail', 'solicitadoEm', 'status', 'decididoPorEmail', 'decididoEm', 'nota'];
+function getContatoSolicSheet_() { return ensureSheet_('ContatosSolicitacoes', CONTATO_SOLIC_HEADERS) }
+function isDiretoria_(auth) { return auth.role === 'owner' || hasAreaAccess_(auth, 'master') }
+function criarSolicitacaoContato_(auth, tipo, body) {
+  const sh = getContatoSolicSheet_();
+  const rows = sheetToObjects_(sh);
+  let nome = String(body.nome || '').trim(), dados;
+  if (tipo === 'apagar') {
+    const c = sheetToObjects_(getContatosEmergenciaSheet_()).find(function (r) { return r.id === body.id });
+    if (!c) return { ok: false, error: 'not_found' };
+    nome = c.nome; dados = { id: body.id };
+  } else {
+    if (!nome || !String(body.telefone || '').trim()) return { ok: false, error: 'missing_fields' };
+    dados = { id: body.id || '', nome: nome, categoria: String(body.categoria || '').trim(), telefone: String(body.telefone || '').trim(), observacao: String(body.observacao || '').trim(), ativo: body.ativo !== false };
+  }
+  // já existe pedido igual esperando a Diretoria? devolve o mesmo (evita fila duplicada)
+  const dup = rows.find(function (r) { return r.status === 'pendente' && r.tipo === tipo && String(r.solicitadoPorEmail).toLowerCase() === String(auth.email).toLowerCase() && (tipo === 'criar' ? String(r.contatoNome).toLowerCase() === nome.toLowerCase() : r.contatoId === (body.id || '')) });
+  if (dup) return { ok: true, solicitacao: true, id: dup.id, repetida: true };
+  const id = Utilities.getUuid();
+  sh.appendRow([id, tipo, body.id || '', nome, JSON.stringify(dados), String(auth.email || '').toLowerCase(), new Date().toISOString(), 'pendente', '', '', '']);
+  return { ok: true, solicitacao: true, id: id };
+}
+function getContatoSolicitacoes_(auth) {
+  const dir = isDiretoria_(auth);
+  return sheetToObjects_(getContatoSolicSheet_())
+    .filter(function (r) { return dir || String(r.solicitadoPorEmail).toLowerCase() === String(auth.email || '').toLowerCase() })
+    .sort(function (a, b) { return a.solicitadoEm < b.solicitadoEm ? 1 : -1 })
+    .slice(0, 80)
+    .map(function (r) {
+      return { id: r.id, tipo: r.tipo, contatoId: r.contatoId || '', contatoNome: r.contatoNome || '', dados: safeParse_(r.dataJson, {}), solicitadoPorEmail: r.solicitadoPorEmail, solicitadoEm: r.solicitadoEm, status: r.status, decididoPorEmail: r.decididoPorEmail || '', decididoEm: r.decididoEm || '', nota: r.nota || '' };
+    });
+}
+function decidirSolicitacaoContato_(auth, id, approve, nota) {
+  if (!isDiretoria_(auth)) return { ok: false, code: 'forbidden' };
+  if (!id) return { ok: false, error: 'missing_id' };
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(25000) } catch (e) { return { ok: false, error: 'busy' } }
+  try {
+    const sh = getContatoSolicSheet_();
+    const row = sheetToObjects_(sh).find(function (r) { return r.id === id });
+    if (!row) return { ok: false, error: 'not_found' };
+    if (row.status !== 'pendente') return { ok: false, error: 'ja_decidida' };
+    const d = safeParse_(row.dataJson, {});
+    let resumo = row.tipo + ' — ' + (row.contatoNome || '');
+    if (approve) {
+      let r;
+      if (row.tipo === 'apagar') { r = deleteContatoEmergencia_(auth, d.id); if (!r.ok && r.error === 'not_found') r = { ok: true } }
+      else r = saveContatoEmergencia_(d, { email: row.solicitadoPorEmail });
+      if (!r.ok) return r;
+    }
+    sh.getRange(row.__row, 8, 1, 4).setValues([[approve ? 'aprovado' : 'recusado', auth.email, new Date().toISOString(), String(nota || '')]]);
+    return { ok: true, resumo: resumo };
+  } finally { lock.releaseLock() }
+}
 function getContatosEmergenciaSheet_() { return ensureSheet_('ContatosEmergencia', CONTATO_EMERGENCIA_HEADERS) }
 
 function getContatosEmergencia_() {
