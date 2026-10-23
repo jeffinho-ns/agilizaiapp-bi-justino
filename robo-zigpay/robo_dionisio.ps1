@@ -299,8 +299,14 @@ function Read-RelatoriosTextos($drv) {
 # ---------------- configuracao e saude do atendimento (so leitura; 23/10) ----------------
 # Le as telas de configuracao da IA do Dionisio e o SAC e manda pro BI so numeros/estados (nada de conversa nem dado de cliente).
 function Open-CrmPage($drv, [string]$path, [int]$espera = 11) {
-  Enter-SeUrl -Driver $drv -Url "$CrmBase/$path" | Out-Null
-  Start-Sleep -Seconds $espera
+  # o CRM as vezes cai em /reports na 1a abertura (sessao ainda carregando): confere o endereco e tenta de novo
+  for ($t = 1; $t -le 3; $t++) {
+    Enter-SeUrl -Driver $drv -Url "$CrmBase/$path" | Out-Null
+    Start-Sleep -Seconds $espera
+    if ($drv.Url -like "*$path*") { break }
+    Log ("AVISO: abriu $($drv.Url) em vez de /$path (tentativa $t/3).")
+    Start-Sleep -Seconds 4
+  }
   Close-Overlays $drv
 }
 function Click-CrmText($drv, [string]$texto) {
@@ -309,9 +315,12 @@ function Click-CrmText($drv, [string]$texto) {
   return $false
 }
 function Get-SwitchByLabel($drv, [string]$rotulo) {
-  # estado (true/false/null) do interruptor que fica no mesmo bloco do rotulo
-  $js = "var l=[...document.querySelectorAll('*')].filter(function(x){return x.children.length===0&&(x.innerText||'').trim()===arguments[0]})[0];if(!l)return null;var p=l;for(var i=0;i<6&&p;i++){var s=p.querySelector('[role=switch]');if(s)return s.getAttribute('aria-checked')==='true';p=p.parentElement}return null"
-  return $drv.ExecuteScript($js, $rotulo)
+  # estado (true/false/null) do interruptor cujo bloco de texto contem o rotulo
+  $js = "return JSON.stringify([...document.querySelectorAll('[role=switch],.q-toggle')].map(function(e){var p=e,t='';for(var i=0;i<6&&p;i++){p=p.parentElement;t=((p&&p.innerText)||'').trim();if(t.length>20)break}return {on:e.getAttribute('aria-checked')==='true',t:t.replace(/\s+/g,' ')}}))"
+  $arr = ConvertFrom-Json -InputObject ([string]$drv.ExecuteScript($js))
+  if ($env:DION_DEBUG) { Log ('DEBUG switches (' + $arr.Count + '): ' + (($arr | ForEach-Object { '' + $_.on + '=' + $_.t.Substring(0, [math]::Min(28, $_.t.Length)) }) -join ' || ')) }
+  foreach ($x in @($arr)) { if ($x.t -and ([string]$x.t).StartsWith($rotulo)) { return [bool]$x.on } }
+  return $null
 }
 function Read-HistoricoIA([string]$texto) {
   $ev = New-Object System.Collections.ArrayList
@@ -353,9 +362,9 @@ function Read-SacMetricas($drv) {
   $fins = @{}; $porConv = @{}; $inis = New-Object System.Collections.ArrayList
   for ($k = 1; $k -lt $rows.Count; $k++) {
     $r = $rows[$k]; $tot++
-    $ini = $null; $fim = $null
-    [void][datetime]::TryParseExact([string]$r[$h['Começo']], 'dd/MM/yyyy, HH:mm', $cult, 'None', [ref]$ini)
-    [void][datetime]::TryParseExact([string]$r[$h['Término']], 'dd/MM/yyyy, HH:mm', $cult, 'None', [ref]$fim)
+    [datetime]$tmpI = [datetime]::MinValue; [datetime]$tmpF = [datetime]::MinValue
+    $ini = $null; $okI = [datetime]::TryParseExact([string]$r[$h['Começo']], 'dd/MM/yyyy, HH:mm', $cult, [System.Globalization.DateTimeStyles]::None, [ref]$tmpI); if ($okI) { $ini = $tmpI }
+    $fim = $null; $okF = [datetime]::TryParseExact([string]$r[$h['Término']], 'dd/MM/yyyy, HH:mm', $cult, [System.Globalization.DateTimeStyles]::None, [ref]$tmpF); if ($okF) { $fim = $tmpF }
     $conv = [string]$r[$h['Conversa']]
     if ($ini) { [void]$inis.Add(@{ c = $conv; t = $ini }) }
     if ($ini -and $fim) {
@@ -420,7 +429,7 @@ function Read-ConfigSnapshot($drv) {
   # 2) Comportamento
   try {
     Open-CrmPage $drv 'ai-configuration' 11
-    [void](Click-CrmText $drv 'Comportamento'); Start-Sleep -Seconds 6
+    [void](Click-CrmText $drv 'Comportamento'); Start-Sleep -Seconds 14   # os interruptores aparecem 'ligados' por um instante antes de carregar o valor real
     $cfg.humanoGrupoGrande = Get-SwitchByLabel $drv 'Grupo maior que o limite'
     $cfg.humanoSemMesas = Get-SwitchByLabel $drv 'Sem mesas disponíveis'
     $cfg.humanoForaPrazo = Get-SwitchByLabel $drv 'Pedido fora do prazo'
@@ -434,7 +443,7 @@ function Read-ConfigSnapshot($drv) {
   } catch { Log ("AVISO config/comportamento: " + $_.Exception.Message) }
   # 3) Follow-up
   try {
-    [void](Click-CrmText $drv 'Follow-up'); Start-Sleep -Seconds 6
+    [void](Click-CrmText $drv 'Follow-up'); Start-Sleep -Seconds 12
     $cfg.followUpLigado = Get-SwitchByLabel $drv 'Habilitar follow-up automático'
     $vals = @($drv.ExecuteScript("return [...document.querySelectorAll('input[type=number]')].map(function(i){return i.value})"))
     $cfg.followUpIntervalos = @($vals | Where-Object { $_ -match '^\d+$' -and [int]$_ -gt 0 } | ForEach-Object { [int]$_ })
