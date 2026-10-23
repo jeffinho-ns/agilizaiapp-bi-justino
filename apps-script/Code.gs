@@ -128,7 +128,7 @@ const SECTOR_BASE_DEFAULTS = [
   { sector: 'manutencao', atendimentoPorPessoa: 400, clt: 0, brigadaPadrao: 1 },
   { sector: 'estoquista', atendimentoPorPessoa: 400, clt: 0, brigadaPadrao: 1 }
 ];
-const SECTOR_BASE_HEADERS = ['sector', 'atendimentoPorPessoa', 'clt', 'brigadaPadrao'];
+const SECTOR_BASE_HEADERS = ['sector', 'atendimentoPorPessoa', 'clt', 'brigadaPadrao', 'limiteBrigada']; // 23/10: limiteBrigada = máx. de pessoas do setor ao mesmo tempo (0 = sem limite)
 
 // Quadro de colaboradores (RH) — o "CLT" do quadro mínimo por setor deixa de ser
 // digitado à mão e passa a ser CONTADO daqui: colaborador ativo + contratação CLT +
@@ -958,10 +958,10 @@ function getSectorBase_() {
   const intCount = getActiveCountBySector_('INT');
   const pjCount = getActiveCountBySector_('PJ');
   const bySector = {};
-  rows.forEach(r => { bySector[r.sector] = { atendimentoPorPessoa: Number(r.atendimentoPorPessoa) || 1, clt: cltCount[r.sector] || 0, int: intCount[r.sector] || 0, pj: pjCount[r.sector] || 0, brigadaPadrao: Number(r.brigadaPadrao) || 0 } });
+  rows.forEach(r => { bySector[r.sector] = { atendimentoPorPessoa: Number(r.atendimentoPorPessoa) || 1, clt: cltCount[r.sector] || 0, int: intCount[r.sector] || 0, pj: pjCount[r.sector] || 0, brigadaPadrao: Number(r.brigadaPadrao) || 0, limiteBrigada: Number(r.limiteBrigada) || 0 } });
   // Setor novo (adicionado depois da planilha já semeada) ainda sem linha: usa o padrão até o RH salvar.
   SECTOR_BASE_DEFAULTS.forEach(d => {
-    if (!bySector[d.sector]) bySector[d.sector] = { atendimentoPorPessoa: d.atendimentoPorPessoa, clt: cltCount[d.sector] || 0, int: intCount[d.sector] || 0, pj: pjCount[d.sector] || 0, brigadaPadrao: d.brigadaPadrao };
+    if (!bySector[d.sector]) bySector[d.sector] = { atendimentoPorPessoa: d.atendimentoPorPessoa, clt: cltCount[d.sector] || 0, int: intCount[d.sector] || 0, pj: pjCount[d.sector] || 0, brigadaPadrao: d.brigadaPadrao, limiteBrigada: 0 };
   });
   return { ok: true, bySector: bySector };
 }
@@ -1199,11 +1199,12 @@ function saveSectorBase_(rows) {
       sector: r.sector,
       atendimentoPorPessoa: Math.max(1, Number(r.atendimentoPorPessoa) || 1),
       clt: Math.max(0, Number(r.clt) || 0),
-      brigadaPadrao: Math.max(0, Number(r.brigadaPadrao) || 0)
+      brigadaPadrao: Math.max(0, Number(r.brigadaPadrao) || 0),
+      limiteBrigada: Math.max(0, Math.round(Number(r.limiteBrigada) || 0))
     };
   });
   const values = FREELANCER_SECTORS.map(s => {
-    const r = bySector[s] || { sector: s, atendimentoPorPessoa: 1, clt: 0, brigadaPadrao: 0 };
+    const r = bySector[s] || { sector: s, atendimentoPorPessoa: 1, clt: 0, brigadaPadrao: 0, limiteBrigada: 0 };
     return SECTOR_BASE_HEADERS.map(h => r[h]);
   });
   sh.getRange(2, 1, values.length, SECTOR_BASE_HEADERS.length).setValues(values);

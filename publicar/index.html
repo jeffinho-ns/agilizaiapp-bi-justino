@@ -760,7 +760,7 @@ tbody tr:hover{background:#ffffff08}
 <details class="full cardCollapse" data-card-id="doc-lista"><summary class="cardCollapseHead"><span class="chev">▸</span> Documentos cadastrados<span class="chHint">clique para abrir</span></summary>
 <div class="card full">
 <div class="roleTitle"><h3>Documentos cadastrados</h3><span><button class="btn" type="button" style="padding:6px 10px;font-size:12px" onclick="loadDocumentacoes()">🔄 Atualizar</button> <button class="btn" type="button" style="padding:6px 10px;font-size:12px;background:#3a1620;border-color:#5c2530" data-busy="Apagando…" onclick="deleteSelectedDocumentacoes()">🗑 Apagar selecionados</button> <span class="mini" id="documentacoesBulkStatus"></span></span></div>
-<div class="tablewrap"><table><thead><tr><th>Nome</th><th>Tipo</th><th>Número</th><th>Órgão</th><th>Validade</th><th>Situação</th><th>Arquivo</th><th class="stickyCol">Ação</th><th><input type="checkbox" title="Selecionar todos" onchange="toggleAllDocumentacaoSelect(this.checked)"></th></tr></thead><tbody id="documentacoesBody"><tr><td colspan="9" class="mini">Carregando…</td></tr></tbody></table></div>
+<div class="tablewrap"><table><thead><tr><th>Nome</th><th>Tipo</th><th>Número</th><th>Órgão</th><th>Validade</th><th>Situação</th><th>Arquivo</th><th class="stickyCol">Ação</th><th><input type="checkbox" title="Selecionar todos" onchange="toggleAllDocumentacaoSelect(this.checked)"></th></tr></thead><tbody id="documentacoesBody"><tr><td colspan="10" class="mini">Carregando…</td></tr></tbody></table></div>
 </div></details>
 
 </div></section>
@@ -1447,8 +1447,8 @@ tbody tr:hover{background:#ffffff08}
 <details class="full cardCollapse" open data-card-id="rh-quadro-minimo"><summary class="cardCollapseHead"><span class="chev">▸</span> Quadro mínimo por setor<span class="chHint">clique para abrir</span></summary>
 <div class="card full">
 <div class="roleTitle"><h3>Quadro mínimo por setor</h3><button class="btn" type="button" style="padding:6px 10px;font-size:12px" onclick="loadSectorBase()">🔄 Atualizar</button></div>
-<div class="note">Alimenta a sugestão automática de freelancer na aba Gerente Operador: necessário = Pax ÷ atendimento por pessoa; mínimo do dia = maior entre necessário e brigada padrão; sugestão = mínimo − CLT presente. <b>CLT agora é automático</b> — conta os colaboradores ativos com contratação CLT no quadro "Colaboradores" abaixo, por cargo. Atendimento por pessoa e brigada padrão continuam editáveis aqui. <b>Cozinha tem teto fixo de 5 pessoas ao mesmo tempo</b> (espaço físico, não cabe mais gente) — a sugestão nunca passa disso, mesmo em dia de público alto.</div>
-<div class="tablewrap"><table><thead><tr><th>Setor</th><th>Atendimento por pessoa</th><th>CLT</th><th title="Intermitente">INT</th><th>PJ</th><th>Brigada padrão</th></tr></thead><tbody id="sectorBaseBody"><tr><td colspan="6" class="mini">Carregando…</td></tr></tbody></table></div>
+<div class="note">Alimenta a sugestão automática de freelancer na aba Gerente Operador: necessário = Pax ÷ atendimento por pessoa; mínimo do dia = maior entre necessário e brigada padrão; sugestão = mínimo − CLT presente. <b>Limite de brigada</b> = máximo de pessoas do setor ao mesmo tempo (equipe fixa + freelancers): trava a solicitação de freelancers no quadro do Gerente Operador (0 = sem limite). <b>CLT agora é automático</b> — conta os colaboradores ativos com contratação CLT no quadro "Colaboradores" abaixo, por cargo. Atendimento por pessoa e brigada padrão continuam editáveis aqui. <b>Cozinha tem teto fixo de 5 pessoas ao mesmo tempo</b> (espaço físico, não cabe mais gente) — a sugestão nunca passa disso, mesmo em dia de público alto.</div>
+<div class="tablewrap"><table><thead><tr><th>Setor</th><th>Atendimento por pessoa</th><th>CLT</th><th title="Intermitente">INT</th><th>PJ</th><th>Brigada padrão</th><th title="Máximo de pessoas do setor trabalhando AO MESMO TEMPO (equipe fixa + freelancers). 0 ou vazio = sem limite. Trava a solicitação de freelancers no quadro do Gerente Operador.">Limite de brigada</th></tr></thead><tbody id="sectorBaseBody"><tr><td colspan="7" class="mini">Carregando…</td></tr></tbody></table></div>
 <div style="margin-top:8px;display:flex;gap:10px;align-items:center">
   <button class="btn hidden" type="button" id="sectorBaseEditBtn" onclick="toggleSectorBaseEdit(true)">Editar</button>
   <button class="btn hidden" type="button" id="sectorBaseSaveBtn" onclick="saveSectorBaseUI()">Salvar quadro mínimo</button>
@@ -1635,7 +1635,7 @@ tbody tr:hover{background:#ffffff08}
   <button class="btn" type="button" id="cmoFlBtn" data-nofeedback onclick="cmoFlAbrir()" title="CMO dos freelancers da semana contra o teto de 8% do faturamento">💰 CMO freelancers: —</button>
 </div>
 <div id="cmoFlFaixa" class="hidden" style="margin:6px 0"></div>
-<div class="tablewrap"><table class="wgTbl"><thead><tr><th>Setor</th><th title="Mínimo de referência do setor, cadastrado em RH → Base de setores">Brigada padrão</th><th title="Pico de necessidade calculado pelo mapa de calor da Zig e pelas reservas por horário">Necessário no pico</th><th title="CLT + INT + PJ escalados hoje, já descontando férias e ausência informada">Equipe fixa hoje</th><th title="Pessoas da equipe fixa que não vêm hoje (ajuste rápido)">Ausências</th><th>Sugerido</th><th title="Quantos freelancers extras solicitar — mude com − e +">Extras a solicitar</th><th>Turno</th><th>Custo</th></tr></thead><tbody id="wgTabela"><tr><td colspan="9" class="mini">Carregue uma semana primeiro.</td></tr></tbody></table></div>
+<div class="tablewrap"><table class="wgTbl"><thead><tr><th>Setor</th><th title="Mínimo de referência do setor, cadastrado em RH → Base de setores">Brigada padrão</th><th title="Máximo de pessoas do setor ao mesmo tempo (equipe fixa + freelancers). Definido no Quadro mínimo por setor.">Limite de brigada</th><th title="Pico de necessidade calculado pelo mapa de calor da Zig e pelas reservas por horário">Necessário no pico</th><th title="CLT + INT + PJ escalados hoje, já descontando férias e ausência informada">Equipe fixa hoje</th><th title="Pessoas da equipe fixa que não vêm hoje (ajuste rápido)">Ausências</th><th>Sugerido</th><th title="Quantos freelancers extras solicitar — mude com − e +">Extras a solicitar</th><th>Turno</th><th>Custo</th></tr></thead><tbody id="wgTabela"><tr><td colspan="10" class="mini">Carregue uma semana primeiro.</td></tr></tbody></table></div>
 <div id="wgResumoSemana"></div>
 <div style="margin-top:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
   <button class="btn" type="button" onclick="wgVisualizarSemana()" title="Escala completa com o horário de cada freelancer, sem enviar">🔍 Visualizar escala completa</button>
@@ -1660,6 +1660,17 @@ tbody tr:hover{background:#ffffff08}
 <div class="tablewrap"><table><thead><tr><th>Colaborador</th><th>Setor</th><th>Tipo</th><th>Horário</th><th>Presença hoje</th><th>Ação</th><th><input type="checkbox" title="Selecionar todos os freelancers" onchange="toggleAllEcFreelancerSelect(this.checked)"></th></tr></thead><tbody id="ecCltBody"><tr><td colspan="7" class="mini">—</td></tr></tbody></table></div>
 </div>
 </details>
+<details class="full cardCollapse" data-card-id="op-estudo-escala"><summary class="cardCollapseHead"><span class="chev">▸</span> Estudo de dimensionamento da escala<span class="chHint">clique para abrir</span></summary>
+<div class="card full">
+<div class="roleTitle"><h3>📐 Estudo de dimensionamento • como o BI calcula quantas pessoas cada setor precisa</h3></div>
+<div class="note">A regra de "atendimento por pessoa" é de clientes atendidos por uma pessoa <b>ao mesmo tempo</b>. O estudo mostra, para o dia escolhido, o caminho completo: público do dia → chegadas por meia hora (mapa de calor da ZigPay) → clientes presentes ao mesmo tempo → pessoas necessárias por setor → o que a equipe fixa já cobre → freelancers.</div>
+<div class="toolbar">
+  <div class="tbItem"><label class="mini">Dia do estudo</label><input type="date" id="estDate" onchange="estudoEscalaRender()"></div>
+  <div class="tbItem"><label class="mini">Permanência do cliente (h)</label><input type="number" id="estPerm" min="1" max="8" step="0.5" value="3" style="width:80px" onchange="estudoSetPerm(this.value)"></div>
+  <button class="btn" type="button" onclick="estudoEscalaRender()">📐 Calcular estudo</button>
+</div>
+<div id="estudoEscalaBody" class="mini">Escolha o dia e clique em <b>Calcular estudo</b>.</div>
+</div></details>
 <details class="full cardCollapse" data-card-id="op-solicitacao-freelancer"><summary class="cardCollapseHead"><span class="chev">▸</span> Solicitação de freelancers (avulsa)<span class="chHint">clique para abrir</span></summary>
 <div class="card full">
 <div class="roleTitle"><h3>Solicitação de freelancers (avulsa)</h3><span><button class="btn" type="button" style="padding:6px 10px;font-size:12px" onclick="loadFreelancerRequests()">🔄 Atualizar</button> <span class="badge p">APROVAÇÃO RH</span></span></div>
@@ -4463,7 +4474,7 @@ async function deleteSelectedDocumentacoes(){
 }
 function renderDocumentacoes(){
   const body=$('documentacoesBody');if(!body)return;
-  if(!documentacoesList.length){body.innerHTML='<tr><td colspan="9" class="mini">Nenhum documento cadastrado ainda.</td></tr>';return}
+  if(!documentacoesList.length){body.innerHTML='<tr><td colspan="10" class="mini">Nenhum documento cadastrado ainda.</td></tr>';return}
   body.innerHTML=documentacoesList.map(d=>{
     const tipoTxt=d.tipo==='outro'?(d.tipoOutro||'Outro'):(DOCUMENTACAO_TIPO_LABEL[d.tipo]||d.tipo);
     const arquivo=d.arquivoUrl?`<a href="${escapeHtml(d.arquivoUrl)}" target="_blank">${escapeHtml(d.arquivoNome||'ver')}</a>`:'<span class="mini">—</span>';
@@ -6595,7 +6606,7 @@ function renderMkPlanTable(){
   if(!body)return;
   const dates=new Set([...Object.keys(mkPlansByDate),...Object.keys(mkActualByDate)]);
   const sorted=Array.from(dates).sort().reverse().slice(0,60);
-  if(!sorted.length){body.innerHTML='<tr><td colspan="9" class="mini">Sem projeção nem envio ainda.</td></tr>';return}
+  if(!sorted.length){body.innerHTML='<tr><td colspan="10" class="mini">Sem projeção nem envio ainda.</td></tr>';return}
   const tot={planRevenue:0,actRevenue:0,diffRevenue:0,planSpend:0,actSpend:0,diffSpend:0};
   const hojeStr=todayStr();
   body.innerHTML=sorted.map(date=>{
@@ -6995,14 +7006,15 @@ function renderSectorBaseTable(){
     // Code.gs ainda não tiver sido reimplantado com b.pj.
     const pjN=b.pj!=null?b.pj:(typeof employees!=='undefined'?employees:[]).filter(e=>e.ativo&&e.contratacao==='PJ'&&e.cargo===s).length;
     if(!sectorBaseEditing){
-      return `<tr><td>${FREELANCER_SECTOR_LABEL[s]}</td><td>${b.atendimentoPorPessoa}</td><td>${b.clt}</td><td>${intN}</td><td>${pjN}</td><td>${b.brigadaPadrao}</td></tr>`;
+      return `<tr><td>${FREELANCER_SECTOR_LABEL[s]}</td><td>${b.atendimentoPorPessoa}</td><td>${b.clt}</td><td>${intN}</td><td>${pjN}</td><td>${b.brigadaPadrao}</td><td>${b.limiteBrigada>0?b.limiteBrigada:'<span class="mini">sem limite</span>'}</td></tr>`;
     }
     return `<tr><td>${FREELANCER_SECTOR_LABEL[s]}</td>`+
       `<td><input type="number" min="1" step="1" id="sb_${s}_atendimento" value="${b.atendimentoPorPessoa}" style="max-width:100px"></td>`+
       `<td>${b.clt} <span class="mini">(colaboradores ativos)</span></td>`+
       `<td>${intN} <span class="mini">(colaboradores ativos)</span></td>`+
       `<td>${pjN} <span class="mini">(colaboradores ativos)</span></td>`+
-      `<td><input type="number" min="0" step="1" id="sb_${s}_brigada" value="${b.brigadaPadrao}" style="max-width:80px"></td></tr>`;
+      `<td><input type="number" min="0" step="1" id="sb_${s}_brigada" value="${b.brigadaPadrao}" style="max-width:80px"></td>`+
+      `<td><input type="number" min="0" step="1" id="sb_${s}_limite" value="${b.limiteBrigada||0}" placeholder="sem limite" style="max-width:90px" title="Máx. de pessoas do setor ao mesmo tempo (equipe fixa + freelancers). 0 = sem limite."></td></tr>`;
   }).join('');
 }
 
@@ -7011,7 +7023,8 @@ async function saveSectorBaseUI(){
   const rows=FREELANCER_SECTORS.map(s=>({
     sector:s,
     atendimentoPorPessoa:Number($('sb_'+s+'_atendimento')?.value)||1,
-    brigadaPadrao:Number($('sb_'+s+'_brigada')?.value)||0
+    brigadaPadrao:Number($('sb_'+s+'_brigada')?.value)||0,
+    limiteBrigada:Math.max(0,Math.round(Number($('sb_'+s+'_limite')?.value)||0))
   }));
   statusEl.textContent='Salvando…';
   try{
@@ -7447,7 +7460,7 @@ function curvaReservasFrac(porHora){
 
 // Necessário por bloco de 30 min pra um setor num dia (pré-abertura + horário de funcionamento).
 // Permanência média do cliente na casa (h): define quantos estão presentes ao mesmo tempo a partir da chegada gradual. Ajustável no quadro da escala.
-function permanenciaClienteH(){try{const v=Number(localStorage.getItem('sjBIperm'));if(v>=1&&v<=8)return v}catch(e){}return 3}
+function permanenciaClienteH(){if(window.__permOverride>0)return window.__permOverride;try{const v=Number(localStorage.getItem('sjBIperm'));if(v>=1&&v<=8)return v}catch(e){}return 3}
 // maior fração do público do dia presente ao mesmo tempo = maior soma das chegadas (mapa de calor de entradas) numa janela igual à permanência
 function ocupacaoPicoFrac(curva,S){
   const ent=curva&&curva.frac&&(curva.frac.entradas||curva.frac.total);
@@ -7457,11 +7470,47 @@ function ocupacaoPicoFrac(curva,S){
   return Math.min(1,Math.max(best,0.05));
 }
 function picoPresentes(curva,pax){return Math.min(CAPACIDADE_MAXIMA_SIMULTANEA,pax*ocupacaoPicoFrac(curva,permanenciaClienteH()))}
+// Limite de brigada (quadro mínimo por setor): máximo de pessoas do setor ao mesmo tempo, equipe fixa + freelancers. 0 = sem limite.
+function limiteBrigadaSetor(sec){const b=sectorBase&&sectorBase[sec],v=b&&Number(b.limiteBrigada);return v>0?v:0}
+// pico de pessoas do setor ao mesmo tempo com qtd freelancers de turno H (equipe fixa descontando as ausências informadas)
+function simultaneoMaximo(P,H,qtd,aus){
+  const jan=qtd>0?distribuirFreelancers(P.gap,Math.min(Math.round(H*2),P.gap.length),qtd,null,P.iniAberto):[];
+  let mx=0;
+  for(let i=0;i<P.blocos.length;i++){const f=jan.filter(function(p){return i>=p.i&&i<p.i+p.tam}).length;mx=Math.max(mx,Math.max(0,P.pres[i]-(aus||0))+f)}
+  return mx;
+}
+function planoDoSetorNoDia(date,sec){
+  const ctx={pax:expectedPaxForDate(date).pax,curva:curvaDoDia(date)};
+  return planoSetorDia(date,sec,ctx,0);
+}
+// maior número de freelancers que o setor aceita no dia sem passar do limite de brigada (999 = sem limite)
+function qtdMaximaPermitida(date,sec,H){
+  const lim=limiteBrigadaSetor(sec);if(!lim)return 999;
+  const P=planoDoSetorNoDia(date,sec);if(!P)return 999;
+  const aus=wgAusentes[date+'|'+sec]||0;
+  let ok=0;for(let q=1;q<=40;q++){if(simultaneoMaximo(P,H,q,aus)>lim)break;ok=q}
+  return ok;
+}
+// confere o rascunho inteiro; devolve a lista de setores/dias acima do limite
+function wgVerificaLimites(){
+  const bad=[];
+  weekGridDraftList.forEach(function(it){
+    const lim=limiteBrigadaSetor(it.sector);if(!lim||!(it.qty>0))return;
+    const P=planoDoSetorNoDia(it.date,it.sector);if(!P)return;
+    const mx=simultaneoMaximo(P,it.shiftHours,it.qty,wgAusentes[it.date+'|'+it.sector]||0);
+    if(mx>lim)bad.push({date:it.date,sec:it.sector,mx:mx,lim:lim});
+  });
+  return bad;
+}
+function wgAvisoLimites(bad){
+  avisarFaltaPreenchimento('Limite de brigada excedido','<div class="mini">A solicitação passa do máximo de pessoas ao mesmo tempo definido para o setor. Reduza os extras (ou peça à Diretoria para revisar o limite no Quadro mínimo por setor):</div><ul style="margin:8px 0 0 18px;line-height:1.7">'+bad.map(function(b){return '<li><b>'+FREELANCER_SECTOR_LABEL[b.sec]+'</b> • '+fmtDate(b.date).slice(5,10)+': '+b.mx+' ao mesmo tempo (limite '+b.lim+')</li>'}).join('')+'</ul>',[]);
+}
 function necessidadeSetor(date,setor,curva,paxCap){
   const wd=new Date(date+'T12:00:00').getDay(),fun=HORARIO_FUNCIONAMENTO[wd];
   if(!fun)return null;
   const base=sectorBase[setor]||SECTOR_BASE_FALLBACK[setor]||{atendimentoPorPessoa:1,clt:0,brigadaPadrao:0};
-  const atend=base.atendimentoPorPessoa||1,brigada=base.brigadaPadrao||0,teto=SECTOR_MAX_SIMULTANEO[setor];
+  const lim=limiteBrigadaSetor(setor),teto0=SECTOR_MAX_SIMULTANEO[setor];
+  const atend=base.atendimentoPorPessoa||1,brigada=base.brigadaPadrao||0,teto=lim>0?(teto0!=null?Math.min(teto0,lim):lim):teto0;
   const drv=SETOR_DRIVER[setor]||'itens';
   const pedidos=drv==='entradas+itens'?['entradas','itens']:(drv==='fixo'?[]:[drv]);
   const usados=pedidos.map(c=>curva.frac[c]?c:(curva.frac.total?'total':null)).filter((c,i,a)=>c&&a.indexOf(c)===i);
@@ -7474,11 +7523,19 @@ function necessidadeSetor(date,setor,curva,paxCap){
   const vmax=Math.max(0,...blocos.map(b=>b.v));
   // 23/10, pedido do Renato: calcular só com clientes PRESENTES (máx. 360 ao mesmo tempo, pela chegada gradual do mapa de calor) e, como no começo e
   // no fim o movimento é fraco, a brigada padrão também escala com o movimento (mín. 25% dela, ou 1 pessoa) em vez de valer cheia o dia todo.
-  const ppico=picoPresentes(curva,paxCap);
+  // Regra do Renato (23/10): "atendimento por pessoa" = clientes atendidos por UMA pessoa AO MESMO TEMPO. Logo, em cada meia hora:
+  //   presentes = público do dia × (soma das chegadas das últimas S horas, pelo mapa de calor de ENTRADAS da ZigPay), no máx. 380;
+  //   necessário = presentes ÷ atendimento por pessoa (arredonda pra cima). Sem curva de chegadas, volta ao cálculo antigo pelo movimento do setor.
+  const arr=(curva&&curva.frac)?(curva.frac.entradas||curva.frac.total):null;
+  const nbS=Math.max(1,Math.round(permanenciaClienteH()*2));
+  if(arr)blocos.forEach(b=>{let t=0;for(let k=0;k<nbS;k++)t+=(arr[b.off-k*30]||0);b.pres=Math.min(CAPACIDADE_MAXIMA_SIMULTANEA,paxCap*t)});
+  const picoPres=arr?Math.max(0,...blocos.map(b=>b.pres||0)):0;
+  const usaPresenca=!!arr&&picoPres>0&&drv!=='fixo';
+  const ppico=usaPresenca?picoPres:picoPresentes(curva,paxCap);
   blocos.forEach(b=>{
-    const rel=vmax>0?b.v/vmax:1;
-    const calc=(vmax>0&&b.aberto)?Math.ceil(ppico*rel/atend):0;
-    const fator=vmax>0?Math.max(0.25,Math.min(1,rel/0.6)):1;
+    const rel=usaPresenca?(b.pres/picoPres):(vmax>0?b.v/vmax:1);
+    const calc=usaPresenca?(b.aberto?Math.ceil(b.pres/atend):0):((vmax>0&&b.aberto)?Math.ceil(ppico*rel/atend):0);
+    const fator=(usaPresenca||vmax>0)?Math.max(0.25,Math.min(1,rel/0.6)):1;
     const brig=brigada>0?Math.max(1,Math.round(brigada*fator)):0;
     let n=Math.max(calc,brig);
     if(teto!=null)n=Math.min(n,teto);
@@ -7811,8 +7868,8 @@ function expectedPaxForDate(date){
 // Limite simultâneo real da casa (Renato, 2026-09-25) — nenhum cálculo de escala
 // pode assumir mais gente ao mesmo tempo do que isso cabe, mesmo que o público
 // TOTAL do dia (ex.: soma de giros/turnover na Zig) seja maior que isso.
-// 23/10, pedido do Renato: o dimensionamento usa os clientes PRESENTES ao mesmo tempo, no máximo 360 (antes: 380, aplicado ao público do dia inteiro)
-const CAPACIDADE_MAXIMA_SIMULTANEA=360;
+// 23/10, pedido do Renato: o dimensionamento usa os clientes PRESENTES ao mesmo tempo, no máximo 380 (o limite vale para os presentes, não para o público do dia)
+const CAPACIDADE_MAXIMA_SIMULTANEA=380;
 // Teto de gente trabalhando ao mesmo tempo, por setor — espaço físico, não
 // economia (Renato, 2026-09-25: cozinha não cabe mais que 5 ao mesmo tempo,
 // senão sobra gente parada em horário de pouco fluxo). Setor sem entrada aqui
@@ -7869,7 +7926,8 @@ function freelancerSuggestion(date,sector,ausentes,turnoH){
   // freelancerCostByDate logo abaixo, pra não contar como "confirmado" quem não veio).
   const aprovadosQty=(freelancerRequests||[]).filter(fr=>fr.date===date&&fr.sector===sector&&fr.status==='aprovado'&&fr.attendance!=='faltou').reduce((s,fr)=>s+(Number(fr.qty)||0),0);
   const contratados=cltPresente+aprovadosQty;
-  const maxSimultaneo=SECTOR_MAX_SIMULTANEO[sector];
+  const lim0=limiteBrigadaSetor(sector),teto0=SECTOR_MAX_SIMULTANEO[sector];
+  const maxSimultaneo=lim0>0?(teto0!=null?Math.min(teto0,lim0):lim0):teto0;
   const wd=new Date(date+'T12:00:00').getDay();
   const fun=HORARIO_FUNCIONAMENTO[wd];
   if(!fun){
@@ -8077,6 +8135,81 @@ function loadWeekGrid(){
   wgRender();
   cmoFlCarregarFat().then(()=>{try{cmoFlAtualizarBotao()}catch(e){}});
 }
+
+// ---- Estudo de dimensionamento (23/10, pedido do Renato) ----
+function estudoSetPerm(v){const n=Number(v);if(!(n>=1&&n<=8))return;try{localStorage.setItem('sjBIperm',String(n))}catch(e){}if($('wgPermanencia'))$('wgPermanencia').value=String(n);estudoEscalaRender();try{wgRender()}catch(e){}}
+function estudoCenario(date,S){
+  window.__permOverride=S;
+  try{
+    const exp=expectedPaxForDate(date),pax=exp.pax,curva=curvaDoDia(date);
+    const out={S:S,pax:pax,pico:picoPresentes(curva,pax),setores:[],nec:0,q:0,custo:0};
+    FREELANCER_SECTORS.forEach(function(sec){
+      const P=planoSetorDia(date,sec,{pax:pax,curva:curva},0);if(!P||P.manual)return;
+      const st=freelancerSuggestion(date,sec,0,'auto');
+      out.setores.push({sec:sec,picoNec:Math.max.apply(null,P.need)});
+      out.nec+=P.gap.reduce(function(t,x){return t+x},0)/2;out.q+=st.sugestao;out.custo+=st.sugestao*(FREELANCER_PAY_TABLE[st.turnoEfetivo]||0);
+    });
+    return out;
+  }finally{window.__permOverride=null}
+}
+async function estudoEscalaRender(){
+  const body=$('estudoEscalaBody');if(!body)return;
+  if($('estPerm'))$('estPerm').value=String(permanenciaClienteH());
+  const date=($('estDate')&&$('estDate').value)||(typeof wgDiaAtual!=='undefined'&&wgDiaAtual)||todayStr();
+  if($('estDate')&&!$('estDate').value)$('estDate').value=date;
+  const wd=new Date(date+'T12:00:00').getDay(),fun=HORARIO_FUNCIONAMENTO[wd];
+  if(!fun){body.innerHTML='<div class="note">Casa fechada nesse dia (Manual) — sem estudo.</div>';return}
+  body.innerHTML='Calculando pelo mapa de calor…';
+  try{
+    await wgPreparar(date);
+    const S=permanenciaClienteH();
+    const exp=expectedPaxForDate(date),pax=exp.pax,curva=curvaDoDia(date);
+    const arr=curva.frac.entradas||curva.frac.total||{};
+    const planos=FREELANCER_SECTORS.map(function(sec){return planoSetorDia(date,sec,{pax:pax,curva:curva},0)}).filter(function(P){return P&&!P.manual});
+    if(!planos.length){body.innerHTML='<div class="note">Sem dados pra montar o estudo.</div>';return}
+    const blocos=planos[0].blocos;
+    const horas=[];blocos.forEach(function(b,i){const h=Math.floor(b.off/60);let g=horas[horas.length-1];if(!g||g.h!==h){g={h:h,idx:[]};horas.push(g)}g.idx.push(i)});
+    const baseS=function(sec){return sectorBase[sec]||SECTOR_BASE_FALLBACK[sec]||{}};
+    const picoP=Math.max.apply(null,blocos.map(function(b){return b.pres||0}));
+    let h='';
+    // 1) premissas
+    h+='<h4 style="margin:6px 0">1) Premissas do dia</h4><div class="kpiRow" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px">'
+      +'<div class="miniKpi"><small>Público do dia</small><div class="v">'+pax.toLocaleString('pt-BR')+'</div><span class="mini">'+(exp.fonte||'—')+'</span></div>'
+      +'<div class="miniKpi"><small>Permanência do cliente</small><div class="v">'+String(S).replace('.',',')+' h</div><span class="mini">ajustável acima</span></div>'
+      +'<div class="miniKpi"><small>Presentes ao mesmo tempo (pico)</small><div class="v">~'+Math.round(picoP)+'</div><span class="mini">'+Math.round(picoP/Math.max(1,pax)*100)+'% do público • máx. '+CAPACIDADE_MAXIMA_SIMULTANEA+'</span></div>'
+      +'<div class="miniKpi"><small>Funcionamento</small><div class="v">'+fun.abre+'h–'+(fun.fecha%24)+'h</div><span class="mini">equipe chega '+fmtHHMM(fun.abre*60-PRE_ABERTURA_MIN)+'</span></div></div>';
+    // 2) lógica
+    h+='<h4 style="margin:14px 0 6px">2) A lógica, passo a passo</h4><ol style="margin:0 0 0 18px;line-height:1.7">'
+      +'<li><b>Chegadas por meia hora</b> = público do dia × % de entradas daquela meia hora (mapa de calor de entradas da ZigPay: média dos mesmos dias da semana; se houver reservas com horário, entram aqui).</li>'
+      +'<li><b>Presentes ao mesmo tempo</b> = soma das chegadas das últimas <b>'+String(S).replace('.',',')+' h</b> (cada cliente fica esse tempo), limitado a <b>'+CAPACIDADE_MAXIMA_SIMULTANEA+'</b>.</li>'
+      +'<li><b>Necessário no setor</b> = presentes ÷ <b>atendimento por pessoa ao mesmo tempo</b> (quadro mínimo por setor), arredondado pra cima.</li>'
+      +'<li><b>Começo e fim do dia</b>: a brigada padrão vale cheia só quando o movimento passa de 60% do pico; abaixo disso cai proporcionalmente (mínimo de 25% dela, ou 1 pessoa).</li>'
+      +'<li>Respeita o <b>teto/limite de brigada</b> do setor. Depois desconta a <b>equipe fixa</b> (CLT, INT e PJ do horário cadastrado) → o que sobra é a <b>falta</b>.</li>'
+      +'<li><b>Freelancers</b> = turnos de 8 a 12 h que cobrem a falta pelo menor custo (horas ociosas contam R$ 15/h).</li></ol>';
+    // 3) passo a passo hora a hora
+    h+='<h4 style="margin:14px 0 6px">3) Hora a hora</h4><div class="igTblWrap"><table class="igTbl" style="width:auto"><thead><tr><th>Hora</th><th>Chegadas</th><th>Presentes</th><th>% pico</th>'+planos.map(function(P){return '<th>'+FREELANCER_SECTOR_LABEL[P.sec]+'</th>'}).join('')+'<th>Total</th></tr></thead><tbody>';
+    horas.forEach(function(g){
+      const cheg=g.idx.reduce(function(t,i){return t+pax*(arr[blocos[i].off]||0)},0);
+      const pr=Math.max.apply(null,g.idx.map(function(i){return blocos[i].pres||0}));
+      const needs=planos.map(function(P){return Math.max.apply(null,g.idx.map(function(i){return P.need[i]}))});
+      const p=picoP>0?Math.round(pr/picoP*100):0;
+      h+='<tr><td><b>'+String(g.h%24).padStart(2,'0')+'h</b></td><td>'+Math.round(cheg)+'</td><td><b>'+Math.round(pr)+'</b></td><td style="background:rgba(247,110,124,'+(0.08+0.55*p/100).toFixed(2)+')">'+p+'%</td>'+needs.map(function(n){return '<td>'+n+'</td>'}).join('')+'<td><b>'+needs.reduce(function(t,x){return t+x},0)+'</b></td></tr>';
+    });
+    h+='</tbody></table></div><div class="mini">Atendimento por pessoa usado: '+planos.map(function(P){return FREELANCER_SECTOR_LABEL[P.sec]+' '+(baseS(P.sec).atendimentoPorPessoa||'—')+' (brigada '+(baseS(P.sec).brigadaPadrao||0)+(limiteBrigadaSetor(P.sec)?', limite '+limiteBrigadaSetor(P.sec):'')+')'}).join(' • ')+'.</div>';
+    // 4) sensibilidade à permanência
+    const cen=[2,3,4,5].map(function(x){return estudoCenario(date,x)});
+    h+='<h4 style="margin:14px 0 6px">4) E se o cliente ficar mais ou menos tempo?</h4><div class="igTblWrap"><table class="igTbl"><thead><tr><th>Permanência</th><th>Presentes no pico</th>'+planos.map(function(P){return '<th>Pico '+FREELANCER_SECTOR_LABEL[P.sec]+'</th>'}).join('')+'<th>Falta (pessoa-h)</th><th>Freelancers</th><th>Custo</th></tr></thead><tbody>'
+      +cen.map(function(c){const at=Math.abs(c.S-S)<0.01;return '<tr'+(at?' style="background:#241a12"':'')+'><td><b>'+c.S+' h</b>'+(at?' <span class="mini">(em uso)</span>':'')+'</td><td>~'+Math.round(c.pico)+'</td>'+c.setores.map(function(x){return '<td>'+x.picoNec+'</td>'}).join('')+'<td>'+c.nec.toFixed(0)+'</td><td><b>'+c.q+'</b></td><td>'+brl(c.custo)+'</td></tr>'}).join('')+'</tbody></table></div>';
+    // 5) conferência com os mesmos dias da semana já realizados
+    const hoje=todayStr(),passados=Object.keys(zigPublicoByDate||{}).filter(function(d){return d<hoje&&new Date(d+'T12:00:00').getDay()===wd&&zigPublicoByDate[d]>0}).sort().slice(-8).reverse();
+    if(passados.length){
+      h+='<h4 style="margin:14px 0 6px">5) Conferência: mesmos dias da semana já realizados</h4><div class="igTblWrap"><table class="igTbl"><thead><tr><th>Dia</th><th>Público real</th><th>Presentes no pico</th><th>% da capacidade ('+CAPACIDADE_MAXIMA_SIMULTANEA+')</th></tr></thead><tbody>'
+        +passados.map(function(d){const cv=curvaDoDia(d),pp=Math.min(CAPACIDADE_MAXIMA_SIMULTANEA,zigPublicoByDate[d]*ocupacaoPicoFrac(cv,S)),pc=pp/CAPACIDADE_MAXIMA_SIMULTANEA*100;return '<tr><td>'+fmtDate(d)+'</td><td>'+zigPublicoByDate[d]+'</td><td>~'+Math.round(pp)+'</td><td style="color:'+(pc>100?'var(--red)':(pc>85?'var(--yellow)':'var(--green)'))+'">'+Math.round(pc)+'%</td></tr>'}).join('')+'</tbody></table></div><div class="mini">Se dias muito cheios passam de 100%, a permanência escolhida está alta demais; se nenhum chega perto da capacidade, pode estar baixa.</div>';
+    }
+    body.innerHTML=h;
+  }catch(e){body.innerHTML='<div class="alert r">Não consegui montar o estudo: '+escapeHtml(String(e&&e.message||e))+'</div>'}
+}
+
 function wgSetPermanencia(v){const n=Number(v);if(!(n>=1&&n<=8))return;try{localStorage.setItem('sjBIperm',String(n))}catch(e){}wgRender()}
 function wgSelecionarDia(d){wgDiaAtual=d;wgRender()}
 function wgSetAus(sec,v){wgAusentes[wgDiaAtual+'|'+sec]=Math.max(0,Number(v)||0);wgRender()}
@@ -8086,16 +8219,35 @@ function wgSetQty(sec,delta,abs){
   const atual=it?it.qty:0;
   let nova=abs!=null?Math.round(Number(abs)||0):atual+delta;
   nova=Math.max(0,Math.min(40,nova));
+  let H=it?it.shiftHours:8;
+  if(!it){try{H=freelancerSuggestion(date,sec,wgAusentes[date+'|'+sec]||0,'auto').turnoEfetivo||8}catch(e){}}
+  // TRAVA: limite de brigada do setor (máx. de pessoas ao mesmo tempo, equipe fixa + freelancers)
+  if(nova>atual){
+    const mx=qtdMaximaPermitida(date,sec,H);
+    if(nova>mx){
+      const lim=limiteBrigadaSetor(sec);
+      nova=Math.max(atual,mx);
+      showToast('Limite de brigada de '+FREELANCER_SECTOR_LABEL[sec]+': no máximo '+lim+' pessoas ao mesmo tempo (equipe fixa + freelancers). '+(nova>atual?'Ajustei para '+nova+'.':'Já está no máximo.'),true);
+      if(nova===atual){wgRender();return}
+    }
+  }
   if(!it){
     if(nova<=0)return;
-    let turnoPad=8;try{turnoPad=freelancerSuggestion(date,sec,wgAusentes[date+'|'+sec]||0,'auto').turnoEfetivo||8}catch(e){}
-    it={date:date,sector:sec,shiftHours:turnoPad,qty:0,reason:'demanda',note:''};weekGridDraftList.push(it);
+    it={date:date,sector:sec,shiftHours:H,qty:0,reason:'demanda',note:''};weekGridDraftList.push(it);
   }
   it.qty=nova;
   if(nova<=0)weekGridDraftList=weekGridDraftList.filter(function(x){return x!==it});
   wgRender();
 }
-function wgSetTurno(sec,h){const it=wgItem(wgDiaAtual,sec);if(it){it.shiftHours=Number(h)}wgRender()}
+function wgSetTurno(sec,h){
+  const it=wgItem(wgDiaAtual,sec);
+  if(it){
+    it.shiftHours=Number(h);
+    const mx=qtdMaximaPermitida(wgDiaAtual,sec,it.shiftHours);
+    if(it.qty>mx){it.qty=mx;showToast('Com esse turno o setor passaria do limite de brigada; ajustei para '+mx+' freelancer(s).',true);if(mx<=0)weekGridDraftList=weekGridDraftList.filter(function(x){return x!==it})}
+  }
+  wgRender();
+}
 function wgZerarDia(){weekGridDraftList=weekGridDraftList.filter(function(it){return it.date!==wgDiaAtual});wgRender()}
 async function wgSugerirDia(){
   const date=wgDiaAtual;if(!date)return;
@@ -8118,26 +8270,29 @@ async function wgSugerirDia(){
 }
 function wgRender(){
   const tabs=$('wgDayTabs'),tb=$('wgTabela');if(!tabs||!tb)return;
-  if(!weekGridDates.length){tabs.innerHTML='';tb.innerHTML='<tr><td colspan="9" class="mini">Carregue uma semana primeiro.</td></tr>';$('wgResumoSemana').innerHTML='';$('wgPaxInfo').innerHTML='';return}
+  if(!weekGridDates.length){tabs.innerHTML='';tb.innerHTML='<tr><td colspan="10" class="mini">Carregue uma semana primeiro.</td></tr>';$('wgResumoSemana').innerHTML='';$('wgPaxInfo').innerHTML='';return}
   tabs.innerHTML=weekGridDates.map(function(d){
     const wd=new Date(d+'T12:00:00').getDay(),qd=weekGridDraftList.filter(function(it){return it.date===d}).reduce(function(t,it){return t+it.qty},0);
     return '<button type="button" class="'+(d===wgDiaAtual?'active':'')+'" onclick="wgSelecionarDia(\''+d+'\')">'+WG_DIAS[wd]+' '+d.slice(8)+'/'+d.slice(5,7)+(HORARIO_FUNCIONAMENTO[wd]?'':' <span class="mini">fechado</span>')+(qd?' <span class="badge g" style="margin-left:4px">'+qd+'</span>':'')+'</button>';
   }).join('');
   const date=wgDiaAtual,wd=new Date(date+'T12:00:00').getDay(),fun=HORARIO_FUNCIONAMENTO[wd];
   $('wgPaxInfo').innerHTML=paxContextText(date)+(function(){const rv=reservationsByDate[date];if(!rv||!rv.porHora)return '';const R=Object.values(rv.porHora).reduce(function(t,x){return t+x},0);return R?' <span class="mini" style="font-weight:400">• '+R+' pax de '+rv.pax+' reservados com horário (entram na curva por hora)</span>':''})();
-  if(!fun){tb.innerHTML='<tr><td colspan="9" class="mini">Casa fechada nesse dia (Manual).</td></tr>'}
-  else if(!wgPronto[date]){tb.innerHTML='<tr><td colspan="9" class="mini">Calculando pelo mapa de calor…</td></tr>';wgPreparar(date).then(function(){if(wgDiaAtual===date)wgRender()})}
+  if(!fun){tb.innerHTML='<tr><td colspan="10" class="mini">Casa fechada nesse dia (Manual).</td></tr>'}
+  else if(!wgPronto[date]){tb.innerHTML='<tr><td colspan="10" class="mini">Calculando pelo mapa de calor…</td></tr>';wgPreparar(date).then(function(){if(wgDiaAtual===date)wgRender()})}
   else{
+    const ctxL={pax:expectedPaxForDate(date).pax,curva:curvaDoDia(date)};
     tb.innerHTML=FREELANCER_SECTORS.map(function(sec){
       const aus=wgAusentes[date+'|'+sec]||0,it=wgItem(date,sec);
       const st=freelancerSuggestion(date,sec,aus,'auto');
       if(st.fechado)return '';
       const qty=it?it.qty:0,turno=it?it.shiftHours:(st.turnoEfetivo||8);
+      const limS=limiteBrigadaSetor(sec);let limCel='<span class="mini">—</span>';
+      if(limS>0){let mxS=0;try{const Pq=planoSetorDia(date,sec,ctxL,aus);if(Pq)mxS=simultaneoMaximo(Pq,turno,qty,aus)}catch(e){}limCel='<b>'+limS+'</b>'+(qty>0?' <span class="mini" style="'+(mxS>=limS?'color:var(--yellow)':'')+'">(agora '+mxS+(mxS>=limS?' • no limite':'')+')</span>':'')}
       const cor=st.manual?'':qty>st.sugestao?'color:#e2a33d':(qty<st.sugestao?'color:#a78bfa':'');
       const custo=qty*(FREELANCER_PAY_TABLE[turno]||0);
       const opts=[8,9,10,11,12].map(function(h){return '<option value="'+h+'"'+(h===turno?' selected':'')+'>'+h+'h — R$ '+FREELANCER_PAY_TABLE[h]+'</option>'}).join('');
       return '<tr'+(qty>0?' style="background:#241a12"':'')+'><td><b>'+FREELANCER_SECTOR_LABEL[sec]+'</b>'+(st.manual?' <span class="badge" title="Fora da sugestão automática: só entra por solicitação manual (+)">só manual</span>':'')+(st.maxSimultaneo!=null?' <span class="mini">(máx. '+st.maxSimultaneo+')</span>':'')+(st.semCurva?'<br><span class="mini">sem histórico de horário</span>':'')+'</td>'
-        +'<td>'+st.brigada+'</td><td>'+st.necessario+'</td><td>'+st.cltPresente+(st.acimaDoTetoSoComClt?' <span class="badge r" title="Equipe fixa já passa do teto do setor">teto</span>':'')+'</td>'
+        +'<td>'+st.brigada+'</td><td>'+limCel+'</td><td>'+st.necessario+'</td><td>'+st.cltPresente+(st.acimaDoTetoSoComClt?' <span class="badge r" title="Equipe fixa já passa do teto do setor">teto</span>':'')+'</td>'
         +'<td><input type="number" min="0" value="'+aus+'" style="width:58px" onchange="wgSetAus(\''+sec+'\',this.value)"></td>'
         +'<td>'+(st.manual?'<span class="mini" title="Só solicitação manual">—</span>':'<b>'+st.sugestao+'</b>'+(st.sugestao>0?' <span class="mini">('+st.turnoEfetivo+'h)</span>':''))+'</td>'
         +'<td><div style="display:flex;gap:4px;align-items:center;'+cor+'"><button type="button" class="btn" style="padding:2px 9px" onclick="wgSetQty(\''+sec+'\',-1)">−</button><input type="number" min="0" max="40" value="'+qty+'" style="width:56px;text-align:center" onchange="wgSetQty(\''+sec+'\',0,this.value)"><button type="button" class="btn" style="padding:2px 9px" onclick="wgSetQty(\''+sec+'\',1)">+</button></div></td>'
@@ -8386,9 +8541,11 @@ function wgVisualizarSemana(){
 }
 function wgEnviar(){
   if(!weekGridDraftList.some(function(it){return it.qty>0})){$('weekGridStatus').textContent='Nenhum extra solicitado ainda — use ✨ Sugerir ou o botão +.';return}
+  const lim=wgVerificaLimites();if(lim.length){wgAvisoLimites(lim);return}
   abrirEscalaPreview(wgDiaAtual,'envio'); // o envio sempre passa pela conferência da escala
 }
 async function wgEnviarConfirmado(){
+  const lim=wgVerificaLimites();if(lim.length){wgAvisoLimites(lim);return}
   const cmo=cmoFlCalc();
   if(cmo&&cmo.status==='acima'&&!confirm('⚠ O CMO de freelancers da semana ficará em '+cmo.pct.toFixed(1).replace('.',',')+'% do faturamento (teto '+cmo.tetoPct+'%, ou seja, '+brl(cmo.teto)+'). Enviar mesmo assim ao RH?'))return;
   const btn=$('wgConfirmarBtn');if(btn)btn.disabled=true;
@@ -9024,6 +9181,15 @@ async function submitFreelancerRequest(){
   const date=$('frDate').value,sector=$('frSector').value,reason=$('frReason').value,shiftHours=Number($('frShift').value),qty=Math.max(1,Number($('frQty').value)||1);
   const note=($('frNote').value||'').trim();
   if(!date){statusEl.textContent='Escolha uma data.';return}
+  const limAv=limiteBrigadaSetor(sector);
+  if(limAv>0){
+    let clt=0;try{clt=freelancerSuggestion(date,sector,0,shiftHours).cltPresente||0}catch(e){}
+    const ja=(freelancerRequests||[]).filter(x=>x.date===date&&x.sector===sector&&x.status!=='recusado'&&x.attendance!=='faltou').reduce((t,x)=>t+(Number(x.qty)||0),0);
+    if(clt+ja+qty>limAv){
+      avisarFaltaPreenchimento('Limite de brigada excedido','<div>'+FREELANCER_SECTOR_LABEL[sector]+' tem limite de <b>'+limAv+'</b> pessoas ao mesmo tempo. Hoje já são <b>'+clt+'</b> da equipe fixa e <b>'+ja+'</b> freelancer(s) solicitado(s); com mais <b>'+qty+'</b> passaria do limite (conta conservadora: considera todos ao mesmo tempo). Reduza a quantidade ou peça à Diretoria para revisar o limite.</div>',['frQty']);
+      statusEl.textContent='Acima do limite de brigada.';return;
+    }
+  }
   statusEl.textContent='Enviando…';
   try{
     const r=await apiAuthRetry('submitFreelancerRequest',{date,sector,reason,shiftHours,qty,note},3,true);
@@ -10033,7 +10199,7 @@ CARD_NEW_HOME['mk-duvidas']='marketing-daily';
 // 22/10: Gerente Operador em temas (a ordem salva antes cita tudo no bloco 'operacao')
 ['op-envio','op-form-campos','op-historico'].forEach(id=>{CARD_NEW_HOME[id]='operacao-registro'});
 ['op-alertas','op-kpi-public','op-kpi-loss','op-kpi-sensitive','op-kpi-cmv','op-kpi-cmvdev','op-kpi-rate','op-kpi-bonus','op-trend-chart','op-ticket-semanal'].forEach(id=>{CARD_NEW_HOME[id]='operacao-indicadores'});
-['op-horario-funcionamento','op-grade-semanal','op-escala-completa','op-solicitacao-freelancer'].forEach(id=>{CARD_NEW_HOME[id]='operacao-escala'});
+['op-horario-funcionamento','op-grade-semanal','op-escala-completa','op-estudo-escala','op-solicitacao-freelancer'].forEach(id=>{CARD_NEW_HOME[id]='operacao-escala'});
 ['op-leitura-medidores','op-historico-medidores'].forEach(id=>{CARD_NEW_HOME[id]='operacao-medidores'});
 ['op-fechar-mes','op-duvidas'].forEach(id=>{CARD_NEW_HOME[id]='operacao-fechamento'});
 function cardPullBlocked(id,gridId,layouts){
