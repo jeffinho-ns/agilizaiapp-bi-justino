@@ -5464,10 +5464,10 @@ function zigTeste() {
   if (!token) { Logger.log('FALTA a propriedade ZIG_TOKEN (ou o Valor está vazio).'); return; }
   if (!rede) { Logger.log('FALTA a propriedade ZIG_REDE (ou o Valor está vazio).'); return; }
   // diagnóstico do formato (sem revelar o token): tamanho, pontos (JWT tem 2), aspas/espaços/quebras dentro, prefixo
-  Logger.log('Token: ' + token.length + ' caracteres | pontos: ' + (token.split('.').length - 1) + ' | tem aspas: ' + /["']/.test(token) + ' | tem espaço/quebra: ' + /s/.test(token) + ' | começa com Bearer: ' + /^bearers/i.test(token));
+  Logger.log('Token: ' + token.length + ' caracteres | pontos: ' + (token.split('.').length - 1) + ' | tem aspas: ' + /["']/.test(token) + ' | tem espaço/quebra: ' + /\s/.test(token) + ' | começa com Bearer: ' + /^bearer\s/i.test(token));
   Logger.log('Rede: ' + rede.length + ' caracteres');
   const url = 'https://api.zigcore.com.br/integration/erp/lojas?rede=' + encodeURIComponent(rede);
-  const tk = token.replace(/^bearers+/i, '');
+  const tk = token.replace(/^bearer\s+/i, '');
   let resp = UrlFetchApp.fetch(url, { method: 'get', headers: { Authorization: tk }, muteHttpExceptions: true });
   if (resp.getResponseCode() !== 200) { Logger.log('Sem prefixo: HTTP ' + resp.getResponseCode() + '. Tentando com Bearer...'); const r2 = UrlFetchApp.fetch(url, { method: 'get', headers: { Authorization: 'Bearer ' + tk }, muteHttpExceptions: true }); if (r2.getResponseCode() === 200) resp = r2; else Logger.log('Com Bearer: HTTP ' + r2.getResponseCode()); }
   const code = resp.getResponseCode();
