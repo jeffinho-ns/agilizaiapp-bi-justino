@@ -4867,11 +4867,13 @@ function getCmvDatasSuspeitas_() {
   });
   return out;
 }
+// 23/10: conferir=true (robô, depois de uma recusa por inconsistência) GRAVA o dia mesmo assim, para o Renato conferir; na leitura ele segue
+// marcado como suspeito (fora dos cálculos e dos rankings) pela mesma regra de cmvTotalInconsistente_.
 function submitCmvTeoricoParcial_(body) {
   if (!body.date) return { ok: false, error: 'missing_date' };
   const num = (v) => { const n = Number(v); return isNaN(n) ? 0 : n };
   { const rev = receitaPorDataZig_(); const t = num(body.valorTotalFood) + num(body.valorTotalBev);
-    if (body.date in rev && cmvTotalInconsistente_(t, rev[body.date])) return { ok: false, error: 'inconsistente_com_faturamento: venda por item R$ ' + Math.round(t) + ' x faturamento R$ ' + Math.round(rev[body.date]) }; }
+    if (body.conferir !== true && body.date in rev && cmvTotalInconsistente_(t, rev[body.date])) return { ok: false, error: 'inconsistente_com_faturamento: venda por item R$ ' + Math.round(t) + ' x faturamento R$ ' + Math.round(rev[body.date]) }; }
   upsertByKeys_(getCmvTeoricoSheet_(), CMVTEORICO_HEADERS, ['date'], {
     date: body.date,
     custoFoodTeorico: num(body.custoFoodTeorico),
@@ -4938,7 +4940,7 @@ function submitZigItemSales_(body) {
   if (!body.date) return { ok: false, error: 'missing_date' };
   const items = Array.isArray(body.items) ? body.items : [];
   { const rev = receitaPorDataZig_(); const t = items.filter(function (i) { return i.tipo === 'comida' || i.tipo === 'bebida' }).reduce(function (s, i) { return s + (Number(i.valorTotal) || 0) }, 0);
-    if (body.date in rev && cmvTotalInconsistente_(t, rev[body.date])) return { ok: false, error: 'inconsistente_com_faturamento: venda por item R$ ' + Math.round(t) + ' x faturamento R$ ' + Math.round(rev[body.date]) }; }
+    if (body.conferir !== true && body.date in rev && cmvTotalInconsistente_(t, rev[body.date])) return { ok: false, error: 'inconsistente_com_faturamento: venda por item R$ ' + Math.round(t) + ' x faturamento R$ ' + Math.round(rev[body.date]) }; }
   const sh = getZigItemSalesSheet_();
   // Reenviar o mesmo dia substitui (apaga as linhas antigas dessa data antes de
   // gravar) em vez de duplicar — o robô sempre manda o dia inteiro de uma vez.

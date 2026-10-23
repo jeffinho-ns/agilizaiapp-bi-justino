@@ -771,6 +771,12 @@ function Submit-CmvTeoricoParcial($token, $date, $agg) {
   $payload = @{ action = 'submitCmvTeoricoParcial'; token = $token; date = $date; source = 'robo-zigpay' }
   foreach ($k in $agg.Keys) { $payload[$k] = $agg[$k] }
   $res = Invoke-AppsScript $payload
+  if (-not $res.ok -and "$($res.error)" -like 'inconsistente_com_faturamento*') {
+    # 23/10: em vez de perder o dia, grava marcado "para conferir" (o BI mostra como dado suspeito, fora dos calculos)
+    $payload['conferir'] = $true
+    $res = Invoke-AppsScript $payload
+    if ($res.ok) { Log ("ATENCAO: CMV de $date registrado PARA CONFERIR (venda por item nao bate com o faturamento): $($res.error)"); return }
+  }
   if (-not $res.ok) { throw "BI recusou o envio do CMV teorico parcial: $($res.error)" }
 }
 
@@ -797,6 +803,11 @@ function ConvertTo-ItemSalesPayload($vendas, $catalogo) {
 function Submit-ItemSales($token, $date, $itens) {
   $payload = @{ action = 'submitZigItemSales'; token = $token; date = $date; items = $itens; source = 'robo-zigpay' }
   $res = Invoke-AppsScript $payload
+  if (-not $res.ok -and "$($res.error)" -like 'inconsistente_com_faturamento*') {
+    $payload['conferir'] = $true
+    $res = Invoke-AppsScript $payload
+    if ($res.ok) { Log ("ATENCAO: venda por item de $date registrada PARA CONFERIR (nao bate com o faturamento)") }
+  }
   if (-not $res.ok) { throw "BI recusou o envio de venda por item: $($res.error)" }
   return $res.count
 }
