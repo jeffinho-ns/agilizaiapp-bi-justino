@@ -432,13 +432,13 @@ function doPost(e) {
     // token de sessão normal — funciona desde que essa conta tenha a área financeiro/
     // master liberada (Renato vai conferir isso na aba de usuários antes de implantar).
     // Dionísio CRM (23/10): o robô (robo-dionisio, 10h/15h/18h) manda as reservas SEM dados pessoais e o funil do relatório; o painel (aba Reservas) lê.
-    if (action === 'submitCrmReservas' || action === 'submitCrmFunil') {
+    if (action === 'submitCrmReservas' || action === 'submitCrmFunil' || action === 'submitCrmConfig') {
       if (!hasAreaAccess_(auth, 'financeiro')) return jsonOut_({ ok: false, code: 'forbidden' });
-      return jsonOut_(action === 'submitCrmReservas' ? submitCrmReservas_(body) : submitCrmFunil_(body));
+      return jsonOut_(action === 'submitCrmReservas' ? submitCrmReservas_(body) : (action === 'submitCrmFunil' ? submitCrmFunil_(body) : submitCrmConfig_(body)));
     }
-    if (action === 'getCrmReservas' || action === 'getCrmFunil') {
+    if (action === 'getCrmReservas' || action === 'getCrmFunil' || action === 'getCrmConfig') {
       if (!(hasAreaAccess_(auth, 'reservas') || hasAreaAccess_(auth, 'marketing') || hasAreaAccess_(auth, 'operacao') || hasAreaAccess_(auth, 'financeiro'))) return jsonOut_({ ok: false, code: 'forbidden' });
-      return jsonOut_(action === 'getCrmReservas' ? getCrmReservas_() : getCrmFunil_());
+      return jsonOut_(action === 'getCrmReservas' ? getCrmReservas_() : (action === 'getCrmFunil' ? getCrmFunil_() : getCrmConfig_()));
     }
     // IA do BI (23/10, pedido do Renato): botão "IA" da aba Marketing. O painel manda a pergunta e um resumo dos dados que já carregou
     // (sem nome/telefone/e-mail de clientes); aqui só repassa à API da Anthropic. Chave na propriedade do script ANTHROPIC_API_KEY.
@@ -5381,6 +5381,29 @@ function getCrmFunil_() {
   const rows = sheetToObjects_(ensureSheet_('CrmFunil', CRMFUNIL_HEADERS));
   rows.sort(function (a, b) { return String(a.capturedAt) < String(b.capturedAt) ? 1 : -1; });
   return { ok: true, rows: rows.slice(0, 90) };
+}
+
+// Saúde da configuração do atendimento (23/10): o robô lê as telas de configuração da IA do Dionísio e o SAC e manda só estados e números (nada de conversa nem dado de cliente).
+// Uma linha por leitura (capturedAt em ms + JSON); guarda as últimas 200.
+function submitCrmConfig_(body) {
+  const sh = ensureSheet_('CrmConfig', ['capturedAt', 'json']);
+  const j = JSON.stringify(body.config || {});
+  if (j.length > 45000) return { ok: false, error: 'grande_demais' };
+  sh.appendRow([Date.now(), j]);
+  const last = sh.getLastRow();
+  if (last > 201) sh.deleteRows(2, last - 201);
+  return { ok: true };
+}
+function getCrmConfig_() {
+  const sh = ensureSheet_('CrmConfig', ['capturedAt', 'json']);
+  const last = sh.getLastRow();
+  if (last < 2) return { ok: true, rows: [] };
+  const n = Math.min(40, last - 1);
+  const vals = sh.getRange(last - n + 1, 1, n, 2).getValues();
+  const rows = [];
+  vals.forEach(function (r) { try { rows.push({ capturedAt: Number(r[0]) || String(r[0]), cfg: JSON.parse(String(r[1])) }); } catch (e) {} });
+  rows.reverse();
+  return { ok: true, rows: rows };
 }
 
 // IA do BI: responde só com o resumo de dados que o painel enviou. Limite de 40 perguntas por hora por usuário (controle de custo).

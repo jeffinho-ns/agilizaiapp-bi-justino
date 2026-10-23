@@ -1896,6 +1896,16 @@ tbody tr:hover{background:#ffffff08}
 </div>
 <div id="crmBody" class="mini">Carregando dados do Dionísio…</div>
 </div></details>
+<details class="full cardCollapse" data-card-id="res-crm-saude" open><summary class="cardCollapseHead"><span class="chev">▸</span> Saúde do atendimento • configuração do Dionísio<span class="chHint">lido pelo robô às 10h, 15h e 18h</span></summary>
+<div class="card full"><div class="roleTitle"><h3>🩺 Saúde do atendimento por IA • Dionísio CRM</h3><span class="badge p" id="crmSaudeBadge">—</span></div>
+<div class="note">O robô lê, todo dia, as telas de configuração da IA do Dionísio (WhatsApp ligado, regras, follow-up, encaminhamento para humano, fila de atendimento humano…) e este quadro mostra o que está certo (🟢), pede atenção (🟡) ou está quebrando reservas (🔴). Passe o mouse em cada item para ver a explicação.</div>
+<div id="crmSaudeBody" class="mini">Carregando…</div>
+</div></details>
+<details class="full cardCollapse" data-card-id="res-crm-plano" open><summary class="cardCollapseHead"><span class="chev">▸</span> Plano de ação • melhorar a conversão<span class="chHint">marca sozinho quando o Dionísio muda</span></summary>
+<div class="card full"><div class="roleTitle"><h3>✅ Plano de ação do atendimento</h3><span class="badge p" id="crmPlanoBadge">—</span></div>
+<div class="note">O que fazer primeiro, em ordem. Cada item é conferido automaticamente na próxima leitura do robô: quando a configuração no Dionísio muda, ele vira ✅ sozinho. Itens com ⚪ são manuais (o robô ainda não consegue conferir).</div>
+<div id="crmPlanoBody" class="mini">Carregando…</div>
+</div></details>
 <details class="full cardCollapse" data-card-id="res-nova-reserva"><summary class="cardCollapseHead"><span class="chev">▸</span> Nova reserva • Seu Justino<span class="chHint">clique para abrir</span></summary>
 <div class="card full"><div class="roleTitle"><h3>Nova reserva • Seu Justino</h3><span class="badge p">ALIMENTA SUGESTÃO DE FREELANCER</span></div>
 <div class="note">Lance cada reserva separadamente — o quadro geral da semana e a sugestão de freelancer (aba Gerente Operador) somam tudo sozinhos.</div>
@@ -8367,15 +8377,16 @@ const CRM_META={cancel:10,noshow:8,comparece:90};
 async function loadCrm(forca){
   if(!$('crmBody'))return;
   if(!hasAreaAccessClient('reservas')&&!hasAreaAccessClient('marketing')&&!hasAreaAccessClient('operacao')&&!hasAreaAccessClient('financeiro')){$('crmBody').textContent='Sem acesso.';return}
-  if(crmCarregado&&!forca){crmRender();return}
+  if(crmCarregado&&!forca){crmRender();crmCfgRender();return}
   try{
     $('crmBody').innerHTML='<div class="mini">Carregando dados do Dionísio…</div>';
     const a=await apiAuth('getCrmReservas',{},false,90000);
     if(a&&a.ok){crmRows=(a.cols&&a.rows&&a.rows.length&&Array.isArray(a.rows[0]))?a.rows.map(function(r){const o={};a.cols.forEach(function(c,i){o[c]=r[i]});return o}):(a.rows||[]);crmAtualizadoEm=a.atualizadoEm||''}
     else{$('crmBody').innerHTML='<div class="alert y">'+(a&&a.error==='unknown_action'?'O servidor ainda não tem o módulo do Dionísio: cole o Code.gs novo no Apps Script e republique.':'O servidor não devolveu as reservas do Dionísio ('+((a&&(a.error||a.code))||'sem resposta')+'). Clique em Atualizar tela.')+'</div>';return}
     const b=await apiAuth('getCrmFunil',{},false,60000);
+    try{const cc=await apiAuth('getCrmConfig',{},false,60000);crmCfgRows=(cc&&cc.ok&&cc.rows)||[]}catch(_){crmCfgRows=[]}
     crmFunil=(b&&b.ok&&b.rows)||[];
-    crmCarregado=true;crmRender();
+    crmCarregado=true;crmRender();crmCfgRender();
   }catch(e){$('crmBody').innerHTML='<div class="alert r">Falha ao carregar os dados do Dionísio ('+escapeHtml(String(e&&e.message||e))+'). Clique em Atualizar tela.</div>'}
 }
 function crmGrupo(st){st=String(st||'').toLowerCase();if(st.indexOf('conclu')>=0)return 'ok';if(st.indexOf('compare')>=0&&st.indexOf('n')===0)return 'noshow';if(st.indexOf('cancel')>=0)return 'cancel';return 'aberta'}
@@ -8455,6 +8466,125 @@ function crmRender(){
 
 // Garante o quadro do Dionísio ao abrir a aba Reservas, mesmo que o carregamento do quadro semanal falhe antes (23/10).
 document.addEventListener('click',function(e){const b=e.target&&e.target.closest&&e.target.closest('#nav button[data-tab="reservas"]');if(b)setTimeout(function(){try{loadCrm()}catch(_){}},700)});
+// ---- Saúde da configuração + Plano de ação (23/10, pedido do Renato) ----
+let crmCfgRows=[];
+function crmCfgAvalia(c,p,cap){
+  const L=[],N=function(x){return x==null||x===''||isNaN(Number(x))?null:Number(x)},sn=function(b){return b===true?'sim':(b===false?'não':'?')};
+  const dm=function(d){return d?String(d).slice(8,10)+'/'+String(d).slice(5,7):''};
+  const add=function(o){L.push(o)};
+  const hora=cap?new Date(cap).getHours():12;
+  // IA do WhatsApp
+  const ev=c.ultimoEventoWhatsapp;
+  const quem=ev?(' • último evento: '+(ev.acao==='ativou a IA'?'ativada':'desativada')+' '+dm(ev.data)+' '+ev.hora+' por '+ev.quem):'';
+  add({id:'ia',t:'IA no WhatsApp',v:c.iaWhatsappLigada==null?'não lido':(c.iaWhatsappLigada?'Ligada':'DESLIGADA')+quem,
+    e:c.iaWhatsappLigada==null?'y':(c.iaWhatsappLigada?'g':((hora>=9&&hora<=21)?'r':'y')),
+    meta:'ligada o dia todo',acao:'Religar a IA no WhatsApp e deixar o "Chamar humano" configurado, em vez de ligar/desligar à mão. Se houver erro de resposta, corrigir a regra e testar em "Testes da IA".',
+    tip:'<b>Se a IA do WhatsApp está desligada, todo cliente cai direto na fila de atendimento humano.</b> No Dionísio isso é um interruptor em Configuração de IA → Canais conectados. Desligada em horário comercial = conversas esperando atendente = reservas perdidas. Instagram: '+(c.iaInstagramLigada==null?'não lido':(c.iaInstagramLigada?'ligada':'desligada'))+'.'});
+  // regras
+  const rc=N(c.regrasChars);
+  add({id:'regras',t:'Regras de comportamento da IA',v:rc==null?(c.regrasExcedem?'acima de 1.500 caracteres':'dentro do limite'):(rc.toLocaleString('pt-BR')+' / 1.500 caracteres'),
+    e:(rc!=null&&rc>1500)||c.regrasExcedem?'r':(rc==null?'y':'g'),meta:'até 1.500 caracteres',acao:'Reescrever em ≤1.500 caracteres (frases curtas, uma ideia por linha), testar em "Testes da IA" e só então salvar.',
+    tip:'As "regras de comportamento" são as instruções permanentes da assistente. <b>O Dionísio só salva se couber em 1.500 caracteres.</b> Acima disso a tela bloqueia o salvamento e a IA continua com a versão antiga (ou com texto cortado), por isso respostas ficam inconsistentes.'});
+  // edições
+  const ed=N(c.edicoes30d),edp=N(c.editores30d);
+  add({id:'edicoes',t:'Mudanças nas regras da IA (30 dias)',v:ed==null?'não lido':(ed+' edições por '+(edp==null?'?':edp)+' pessoa(s)'),e:ed==null?'y':(ed<=8?'g':(ed<=15?'y':'r')),
+    meta:'até 8 por mês, com um responsável',acao:'Definir uma pessoa que aprova as mudanças, guardar a versão anterior e testar antes de salvar.',
+    tip:'Muitas edições por muitas pessoas, sem teste, fazem a IA mudar de comportamento de um dia para o outro. <b>Meta: um responsável e poucas mudanças bem testadas.</b>'});
+  // follow-up
+  const fi=Array.isArray(c.followUpIntervalos)?c.followUpIntervalos:[];
+  add({id:'followup',t:'Follow-up automático (cliente que parou de responder)',v:c.followUpLigado==null?'não lido':(c.followUpLigado?('Ligado • '+(fi.length?('intervalos: '+fi.join(', ')+' min'):'SEM intervalo configurado (0)')):'Desligado'),
+    e:c.followUpLigado==null?'y':(c.followUpLigado?(fi.length>=2?'g':(fi.length===1?'y':'r')):'y'),meta:'ligado com 2 ou mais intervalos (ex.: 15 min, 2 h, fim do dia)',
+    acao:'Em Configuração de IA → Follow-up, informar os intervalos (ex.: 15, 120 e 600 min) e desligar só para Saudações.',
+    tip:'<b>Follow-up é a IA retomando sozinha quem parou de responder</b> ("Ainda tem interesse na reserva?"). Está ligado, mas se o campo de intervalo está em 0 ele nunca dispara — e a equipe só retoma no dia seguinte.'});
+  // humano
+  const hs=[c.humanoGrupoGrande,c.humanoSemMesas,c.humanoForaPrazo],hn=hs.filter(function(x){return x===true}).length;
+  add({id:'humano',t:'Chamar humano quando…',v:hs.every(function(x){return x==null})?'não lido':('grupo grande: '+sn(c.humanoGrupoGrande)+' • sem mesas: '+sn(c.humanoSemMesas)+' • fora do prazo: '+sn(c.humanoForaPrazo)),
+    e:hs.every(function(x){return x==null})?'y':(hn===3?'g':(hn>0?'y':'r')),meta:'os 3 ligados',acao:'Ligar os três em Configuração de IA → Comportamento. Grupos de 20+ pessoas (25% de cancelamento) devem ir direto para uma pessoa.',
+    tip:'Regras que <b>encaminham a conversa para uma pessoa nos casos de risco</b>: grupo acima do limite, dia sem mesas e pedido fora do prazo. Desligadas, a IA tenta resolver sozinha casos que exigem negociação.'});
+  add({id:'foraHorario',t:'Mensagem fora do horário do atendimento humano',v:c.msgForaHorarioHumano==null?'não lido':(c.msgForaHorarioHumano?'Ligada':'Desligada'),e:c.msgForaHorarioHumano==null?'y':(c.msgForaHorarioHumano?'g':'y'),
+    meta:'ligada, informando horário e prazo',acao:'Ligar e escrever "Atendemos de ... às ...; respondemos em até ... minutos".',
+    tip:'Quando o cliente pede uma pessoa fora do horário, <b>ele deve saber quando será atendido</b>. Sem essa mensagem, o cliente espera em silêncio e muitas vezes desiste.'});
+  // inatividade
+  const ih=N(c.inatividadeHoras);
+  add({id:'inatividade',t:'Tempo limite do atendimento humano',v:ih==null?'não lido':(ih+' h sem mensagem encerra o atendimento'),e:ih==null?'y':(ih>=3?'g':(ih>=2?'y':'r')),meta:'3 a 4 horas',
+    acao:'Em Configuração de IA → Comportamento, aumentar o tempo limite de inatividade para 3–4 h.',
+    tip:'Depois desse tempo sem mensagens, o atendimento humano é <b>encerrado automaticamente</b>, mesmo sem a reserva resolvida. Com 1 hora, o cliente que demora a responder volta como conversa nova e sem contexto.'});
+  const sac=c.sac||{};
+  const tr=N(sac.ativosMais24h);
+  add({id:'travados',t:'Atendimentos humanos travados há mais de 24 h',v:tr==null?'não lido':(tr+' travado(s) • '+(N(sac.ativos)==null?'?':sac.ativos)+' ativos no total'),e:tr==null?'y':(tr===0?'g':(tr<=5?'y':'r')),meta:'0',
+    acao:'Abrir a lista de atendimentos ativos antigos, responder ou encerrar cada um. Cliente travado em fila humana não é atendido pela IA.',
+    tip:'Atendimentos que continuam <b>"ativos" há mais de um dia</b>. Enquanto estiver em atendimento humano, a IA não responde — o cliente fica esperando uma pessoa que não vem.'});
+  const lt=N(sac.emLotePct);
+  add({id:'lote',t:'Atendimentos humanos encerrados em lote (na hora cheia)',v:lt==null?'não lido':(lt+'% • mediana '+(N(sac.medianaMin)==null?'?':sac.medianaMin)+' min'),e:lt==null?'y':(lt<30?'g':(lt<60?'y':'r')),meta:'abaixo de 30%',
+    acao:'Aumentar o tempo limite (item acima) e fechar atendimentos por resolução, não por tempo.',
+    tip:'Quando <b>a maioria dos atendimentos termina junta, na hora cheia</b>, quem fecha é o relógio do sistema, não a equipe resolvendo. É sinal de atendimento encerrado sem desfecho.'});
+  const r24=N(sac.reaberturas24h),rb=N(sac.reaberturas);
+  const rp=(r24!=null&&rb>0)?Math.round(r24/rb*100):null;
+  add({id:'reab',t:'Cliente volta em menos de 24 h',v:rp==null?'não lido':(rp+'% das reaberturas ('+r24+' de '+rb+') • '+(N(sac.conversasCom3Mais)||0)+' conversas voltaram 3+ vezes'),e:rp==null?'y':(rp<25?'g':(rp<45?'y':'r')),meta:'abaixo de 25%',
+    acao:'Ler as conversas que mais voltam, achar a pergunta que não foi resolvida e colocar a resposta na base da IA.',
+    tip:'Quando o mesmo cliente abre outro atendimento <b>no mesmo dia</b>, o assunto anterior não foi resolvido. Quanto maior a %, mais retrabalho para a equipe.'});
+  // disparos
+  const au=c.disparosAudiencias||{},aut=Object.keys(au).filter(function(k){return au[k]>0}).map(function(k){return k+' ~'+au[k]}).join(' • ');
+  add({id:'disparos',t:'Disparos Inteligentes (mensagens automáticas)',v:c.disparosPausados==null?'não lido':(c.disparosPausados?'PAUSADOS':'Ativos')+(aut?(' • públicos prontos: '+aut):''),e:c.disparosPausados==null?'y':(c.disparosPausados?'y':'g'),meta:'ativos para cancelados e aniversariantes',
+    acao:'Ativar para "Cancelaram recentemente" e "Aniversariantes da semana" (custo máx. ~R$ '+(c.disparosCustoMes||240)+'/mês) e medir reservas geradas.',
+    tip:'Mensagens automáticas por regra (aniversariantes da semana, cancelaram recentemente, clientes sumidos). <b>Pausados = clientes que poderiam voltar não recebem convite.</b> O número ao lado é o público pronto hoje.'});
+  add({id:'posvenda',t:'Pós-venda (SAC) com perguntas',v:c.posVendaSemPerguntas==null?'não lido':(c.posVendaSemPerguntas?'Nenhuma pergunta configurada':'Perguntas configuradas'),e:c.posVendaSemPerguntas==null?'y':(c.posVendaSemPerguntas?'y':'g'),meta:'ao menos 3 perguntas',
+    acao:'Criar 3 perguntas curtas (atendimento, espera, o que faltou) e ler as respostas toda semana.',
+    tip:'O módulo de Pós-venda pergunta ao cliente <b>como foi o atendimento e a reserva</b>. Sem perguntas, a casa não ouve o cliente que cancelou ou faltou.'});
+  add({id:'linkRes',t:'Link de reservas na IA',v:c.linkReservasIA==null?'não lido':(c.linkReservasIA?'Configurado':'NÃO configurado'),e:c.linkReservasIA==null?'y':(c.linkReservasIA?'g':'r'),meta:'configurado',
+    acao:'Em Configuração de IA → Links externos, cadastrar o link de reservas do portal (r.odionisio.com/seu-justino).',
+    tip:'É o link que a IA manda para o cliente <b>reservar sozinho, sem esperar uma pessoa</b>. Não configurado = toda reserva depende da equipe.'});
+  const tc=N(c.clientesTotal),nc=N(c.clientesComNascimento),np=(tc>0&&nc!=null)?Math.round(nc/tc*1000)/10:null;
+  add({id:'nasc',t:'Clientes com data de nascimento',v:np==null?'não lido':(nc.toLocaleString('pt-BR')+' de '+tc.toLocaleString('pt-BR')+' ('+String(np).replace('.',',')+'%)'),e:np==null?'y':(np>=30?'g':(np>=10?'y':'r')),meta:'30% ou mais',
+    acao:'Pedir a data de nascimento na reserva (campo obrigatório) para alimentar os disparos de aniversário.',
+    tip:'Aniversário é a principal razão de reserva (~43%). <b>Sem a data de nascimento do cliente, o sistema não consegue avisar os aniversariantes da semana.</b>'});
+  return L;
+}
+const CRM_COR={r:'#f76e7c',y:'#f5b942',g:'#34d399'},CRM_ICO={r:'🔴',y:'🟡',g:'🟢'};
+function crmCfgRender(){
+  const sb=$('crmSaudeBody'),pb=$('crmPlanoBody');if(!sb&&!pb)return;
+  const rows=crmCfgRows||[];
+  if(!rows.length){const m='<div class="alert y">Ainda não há leitura da configuração do Dionísio. O robô lê às 10h, 15h e 18h (ou rode robo-zigpay\\robo_dionisio.ps1). Se aparecer erro, cole o Code.gs novo no Apps Script.</div>';if(sb)sb.innerHTML=m;if(pb)pb.innerHTML=m;return}
+  const cur=rows[0],c=cur.cfg||{},p=rows[1]&&rows[1].cfg,cap=Number(cur.capturedAt)||Date.parse(cur.capturedAt);
+  const L=crmCfgAvalia(c,p,cap),por={};L.forEach(function(x){por[x.id]=x});
+  const quando=cap?new Date(cap).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';
+  const n={r:0,y:0,g:0};L.forEach(function(x){n[x.e]++});
+  if($('crmSaudeBadge'))$('crmSaudeBadge').textContent='lido '+quando;
+  if(sb){
+    let h='<div class="miniKpiGrid"><div class="miniKpi"><small>Críticos</small><div class="v" style="color:var(--red)">'+n.r+'</div><span class="mini">atrapalham reservas hoje</span></div><div class="miniKpi"><small>Atenção</small><div class="v" style="color:var(--yellow)">'+n.y+'</div><span class="mini">podem melhorar</span></div><div class="miniKpi"><small>Em ordem</small><div class="v" style="color:var(--green)">'+n.g+'</div><span class="mini">dentro da meta</span></div></div>';
+    const ordem={r:0,y:1,g:2};
+    h+=L.slice().sort(function(a,b){return ordem[a.e]-ordem[b.e]}).map(function(x){
+      return '<div class="alert" style="border-left:4px solid '+CRM_COR[x.e]+';margin:8px 0"><div'+' data-crmtip="'+escapeHtml(x.tip)+'" style="font-weight:800">'+CRM_ICO[x.e]+' '+escapeHtml(x.t)+' ⓘ</div><div style="margin:3px 0">'+escapeHtml(x.v)+'</div><div class="mini">Meta: '+escapeHtml(x.meta)+(x.e==='g'?'':' • <b>O que fazer:</b> '+escapeHtml(x.acao))+'</div></div>'}).join('');
+    sb.innerHTML=h;
+  }
+  if(pb){
+    const T=function(sem,t,ok,parc,porId){return {sem:sem,t:t,ok:ok,parc:parc,porId:porId}};
+    const g=function(id){return por[id]&&por[id].e==='g'},y=function(id){return por[id]&&por[id].e==='y'};
+    const tarefas=[
+      ['Esta semana','Religar a IA do WhatsApp o dia todo e ligar o "Chamar humano quando…"',g('ia')&&g('humano'),(g('ia')||g('humano')||y('humano')),'Hoje: IA '+por.ia.v.split(' • ')[0]+'; chamar humano: '+por.humano.v],
+      ['Esta semana','Reescrever as regras da IA em até 1.500 caracteres e testar em "Testes da IA"',g('regras'),false,'Hoje: '+por.regras.v],
+      ['Esta semana','Configurar o follow-up (ex.: 15 min, 2 h e fim do dia)',g('followup'),y('followup'),'Hoje: '+por.followup.v],
+      ['Esta semana','Cadastrar o link de reservas na IA',g('linkRes'),false,'Hoje: '+por.linkRes.v],
+      ['Esta semana','Aumentar o tempo limite do atendimento humano para 3–4 h e destravar os atendimentos antigos',g('inatividade')&&g('travados'),(g('inatividade')||g('travados')),'Hoje: limite '+por.inatividade.v.split(' sem')[0]+'; '+por.travados.v.split(' • ')[0]],
+      ['Próximos 15 dias','Preencher a base de informações da IA (área coberta, karaokê, ml do chopp, menores, mesa com cadeira, valores por horário)',null,false,'Conferir à mão em Configuração de IA → Informações (o robô ainda não confere o conteúdo).'],
+      ['Próximos 15 dias','Criar quebra-gelos novos: aniversário, programação do fim de semana, valores e entrada, grupos e eventos',null,false,'Conferir à mão em Configuração de IA → Quebra-gelos.'],
+      ['Próximos 15 dias','Ativar os Disparos Inteligentes (cancelaram recentemente e aniversariantes)',g('disparos'),false,'Hoje: '+por.disparos.v.split(' • ')[0]],
+      ['Próximos 15 dias','Configurar as perguntas do Pós-venda e ler o NPS toda semana',g('posvenda'),false,'Hoje: '+por.posvenda.v],
+      ['Próximos 15 dias','Pedir a data de nascimento na reserva (meta: 30% da base)',g('nasc'),y('nasc'),'Hoje: '+por.nasc.v]
+    ];
+    const auto=tarefas.filter(function(t){return t[2]!==null}),feitas=auto.filter(function(t){return t[2]}).length;
+    if($('crmPlanoBadge'))$('crmPlanoBadge').textContent=feitas+' de '+auto.length+' conferidos';
+    let h='<div style="background:#221c17;border-radius:8px;height:12px;margin:4px 0 6px"><div style="width:'+Math.round(feitas/auto.length*100)+'%;background:#34d399;height:12px;border-radius:8px"></div></div><div class="mini">'+feitas+' de '+auto.length+' itens conferidos automaticamente estão concluídos • leitura de '+quando+'</div>';
+    let ult='';
+    tarefas.forEach(function(t,i){
+      if(t[0]!==ult){ult=t[0];h+='<h4 style="margin:14px 0 4px">'+t[0]+'</h4>'}
+      const ico=t[2]===null?'⚪':(t[2]?'✅':(t[3]?'🟡':'⬜')),est=t[2]===null?'manual':(t[2]?'concluído':(t[3]?'em andamento':'a fazer'));
+      h+='<div class="alert" style="margin:6px 0;border-left:4px solid '+(t[2]?'#34d399':(t[2]===null?'#8a8178':(t[3]?'#f5b942':'#f76e7c')))+'"><div style="font-weight:800">'+ico+' '+(i+1)+'. '+escapeHtml(t[1])+' <span class="mini" style="font-weight:400">— '+est+'</span></div><div class="mini" style="margin-top:3px">'+escapeHtml(t[4])+'</div></div>';
+    });
+    pb.innerHTML=h;
+  }
+}
+
 function wgSetPermanencia(v){const n=Number(v);if(!(n>=1&&n<=8))return;try{localStorage.setItem('sjBIperm2',String(n))}catch(e){}wgRender()}
 function wgSelecionarDia(d){wgDiaAtual=d;wgRender()}
 function wgSetAus(sec,v){wgAusentes[wgDiaAtual+'|'+sec]=Math.max(0,Number(v)||0);wgRender()}
