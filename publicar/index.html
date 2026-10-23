@@ -8453,7 +8453,7 @@ async function escalaDiaModelo(date){
       return {nome:String(e.nome||''),tipo:e.contratacao,entrada:d.entrada||'',saida:d.saida||'',pausa:pausa,pausaSug:pausaSug}});
     setores.push(Object.assign({},P,{qtd:qtd,H:H,pessoas:pessoas,fl:fl,fixos:fixos,custo:qtd*(FREELANCER_PAY_TABLE[H]||0)}));
   });
-  return {date:date,fun:fun,wd:wd,exp:exp,pax:pax,pico:picoPresentes(ctx.curva,pax),perm:permanenciaClienteH(),setores:setores,spanH:fun.fecha-fun.abre};
+  return {date:date,fun:fun,wd:wd,exp:exp,pax:pax,curva:ctx.curva,pico:picoPresentes(ctx.curva,pax),perm:permanenciaClienteH(),setores:setores,spanH:fun.fecha-fun.abre};
 }
 function escalaDiaHtml(M){
   if(M.fechado)return '<div class="note">Casa fechada nesse dia (Manual) — sem escala.</div>';
@@ -8466,6 +8466,11 @@ function escalaDiaHtml(M){
   const totNec0=horas.map(function(g){return Math.max.apply(null,g.idx.map(function(i){return S.reduce(function(t,L){return t+L.need[i]},0)}))});
   const pico0=Math.max(1,Math.max.apply(null,totNec0));
   h+='<div class="igTblWrap"><table class="igTbl" style="width:auto"><thead><tr><th>Setor</th>'+horas.map(function(g){return '<th style="text-align:center!important">'+String(g.h%24).padStart(2,'0')+'h</th>'}).join('')+'</tr></thead><tbody>';
+  const arrE=(M.curva&&M.curva.frac)?(M.curva.frac.entradas||M.curva.frac.total||{}):{};
+  h+='<tr><td><b>👥 Público esperado</b><br><span class="mini">presentes ao mesmo tempo • <i>+chegadas na hora</i></span></td>'+horas.map(function(g){
+    const pr=Math.round(Math.max.apply(null,g.idx.map(function(i){return blocos[i].pres||0})));
+    const ch=Math.round(g.idx.reduce(function(t,i){return t+M.pax*(arrE[blocos[i].off]||0)},0));
+    return '<td style="text-align:center;white-space:nowrap" title="'+pr+' clientes presentes ao mesmo tempo; '+ch+' chegando nessa hora"><b>'+pr+'</b><br><span class="mini">+'+ch+'</span></td>'}).join('')+'</tr>';
   h+='<tr><td><b>🔥 Mapa de calor</b><br><span class="mini">movimento esperado (% do pico)</span></td>'+totNec0.map(function(v){const p=Math.round(v/pico0*100);return '<td style="text-align:center;background:rgba(247,110,124,'+(0.12+0.6*p/100).toFixed(2)+');white-space:nowrap" title="'+v+' pessoas necessárias na casa nessa hora"><b>'+p+'%</b></td>'}).join('')+'</tr>';
   S.forEach(function(L){
     h+='<tr><td><b>'+FREELANCER_SECTOR_LABEL[L.sec]+'</b></td>'+horas.map(function(g){
