@@ -5479,3 +5479,61 @@ function zigTeste() {
   Logger.log('Lojas encontradas: ' + lojas.length);
   lojas.forEach(function (l) { Logger.log('id=' + l.id + ' | nome=' + l.name); });
 }
+
+// ---------------- ZigPay API de integração: faturamento diário (23/10) ----------------
+// Valida: soma de /erp/faturamento SEM a forma "BÔNUS" bate com o faturamento que o robô gravava (17, 18, 20, 21 e 22/10 conferidos).
+// Propriedades do script: ZIG_TOKEN, ZIG_LOJA. Só preenche "revenue"; taxa de serviço e público ficam como estão.
+function zigGet_(caminho, params) {
+  const props = PropertiesService.getScriptProperties();
+  const token = (props.getProperty('ZIG_TOKEN') || '').trim();
+  if (!token) throw new Error('ZIG_TOKEN vazio');
+  const q = Object.keys(params).map(function (k) { return k + '=' + encodeURIComponent(params[k]); }).join('&');
+  const resp = UrlFetchApp.fetch('https://api.zigcore.com.br/integration' + caminho + '?' + q, { method: 'get', headers: { Authorization: token }, muteHttpExceptions: true });
+  if (resp.getResponseCode() !== 200) throw new Error('ZigPay HTTP ' + resp.getResponseCode() + ' em ' + caminho);
+  return JSON.parse(resp.getContentText() || '[]');
+}
+
+function zigFaturamentoDia_(iso) {
+  const loja = (PropertiesService.getScriptProperties().getProperty('ZIG_LOJA') || '').trim();
+  if (!loja) throw new Error('ZIG_LOJA vazio');
+  const linhas = zigGet_('/erp/faturamento', { dtinicio: iso, dtfim: iso, loja: loja });
+  let centavos = 0;
+  linhas.forEach(function (l) { if (String(l.paymentName || '').toUpperCase().indexOf('BÔNUS') === -1 && String(l.paymentName || '').toUpperCase().indexOf('BONUS') === -1) centavos += Number(l.value) || 0; });
+  return centavos / 100;
+}
+
+// gravar=false só mostra no registro (teste). Padrão: últimos 3 dias, incluindo hoje.
+function zigSyncFaturamento_(dias, gravar) {
+  const tz = 'America/Sao_Paulo';
+  const sh = getZigRevenueSheet_();
+  const existentes = {};
+  sheetToObjects_(sh).forEach(function (r) { existentes[r.date] = Number(r.revenue) || 0; });
+  const out = [];
+  for (let i = 0; i < dias; i++) {
+    const iso = Utilities.formatDate(new Date(Date.now() - i * 86400000), tz, 'yyyy-MM-dd');
+    const v = zigFaturamentoDia_(iso);
+    const antes = existentes[iso];
+    // não troca um valor real por zero (a ZigPay só consolida o dia depois do fechamento)
+    const grava = gravar && !(v === 0 && antes > 0);
+    if (grava) submitZigRevenue_({ date: iso, revenue: v, source: 'zig-api' });
+    out.push(iso + ': API R$ ' + v.toFixed(2) + ' | BI antes ' + (antes === undefined ? '—' : 'R$ ' + antes.toFixed(2)) + (grava ? ' | GRAVADO' : ' | sem gravar'));
+  }
+  return out;
+}
+
+// Teste: rode no editor (Executar > zigTesteFaturamento). Não grava nada.
+function zigTesteFaturamento() {
+  zigSyncFaturamento_(6, false).forEach(function (l) { Logger.log(l); });
+}
+
+// Rotina automática (gatilho): grava os últimos 3 dias.
+function zigSyncFaturamento() {
+  zigSyncFaturamento_(3, true).forEach(function (l) { Logger.log(l); });
+}
+
+// Rode UMA vez no editor: cria o gatilho de hora em hora.
+function zigInstalarGatilho() {
+  ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'zigSyncFaturamento') ScriptApp.deleteTrigger(t); });
+  ScriptApp.newTrigger('zigSyncFaturamento').timeBased().everyHours(1).create();
+  Logger.log('Gatilho criado: zigSyncFaturamento a cada 1 hora.');
+}
