@@ -836,6 +836,7 @@ tbody tr:hover{background:#ffffff08}
   <button data-mktab="graf" onclick="switchMkSubTab('graf')">Análise de gráficos</button>
   <button data-mktab="ins" onclick="switchMkSubTab('ins')">Insights</button>
   <button data-mktab="insta" onclick="switchMkSubTab('insta')">Instagram</button>
+  <button data-mktab="deli" onclick="switchMkSubTab('deli')">🛵 Delivery</button>
 </div></div>
 
 <div id="mkDailyView" class="grid" style="grid-column:1/-1;display:grid" data-sortable-grid="marketing-daily">
@@ -1060,6 +1061,14 @@ tbody tr:hover{background:#ffffff08}
 <div class="card full note" data-card-id="mk-ins-intro"><div class="roleTitle"><h3>💡 Insights de Marketing • por dia da semana</h3><span><button class="btn" type="button" style="padding:6px 10px;font-size:12px" onclick="atualizarInsights()">🔄 Atualizar</button></span></div><div>Cruza faturamento, público, ticket médio, venda por horário, gasto de marketing e ranking de atrações pra sugerir ativações que melhorem o fluxo de cada dia da semana. <b>Atualiza toda segunda-feira</b>: usa sempre as últimas 8 semanas fechadas (até o domingo), então o conteúdo só muda quando vira a semana. Cada dia traz <b>como o dia funciona</b> (Manual Operacional, ago/2026), <b>o que os dados mostram</b>, o <b>cruzamento dados × manual</b> e as <b>sugestões</b> (opinião a validar com a operação). Ideias de ativação também vêm do Manual de Marketing 2022, cujos valores podem estar desatualizados.</div><div class="mini" id="mkInsEdicao" style="margin-top:6px"></div></div>
 <div class="card full" data-card-id="mk-ins-resumo"><div id="mkInsResumo"><div class="mini">Abra esta página pra gerar os insights…</div></div></div>
 <div class="card full" data-card-id="mk-ins-dias"><div class="nav" id="insDiaNav" style="margin:0 0 12px;display:flex;flex-wrap:wrap;gap:8px"><button type="button" data-insdia="1" onclick="insSelecionaDia(1)" style="flex:1 1 110px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 6px">Segunda<span class="insTag" style="min-height:20px"></span></button><button type="button" data-insdia="2" onclick="insSelecionaDia(2)" style="flex:1 1 110px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 6px">Terça<span class="insTag" style="min-height:20px"></span></button><button type="button" data-insdia="3" onclick="insSelecionaDia(3)" style="flex:1 1 110px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 6px">Quarta<span class="insTag" style="min-height:20px"></span></button><button type="button" data-insdia="4" onclick="insSelecionaDia(4)" style="flex:1 1 110px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 6px">Quinta<span class="insTag" style="min-height:20px"></span></button><button type="button" data-insdia="5" onclick="insSelecionaDia(5)" style="flex:1 1 110px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 6px">Sexta<span class="insTag" style="min-height:20px"></span></button><button type="button" data-insdia="6" onclick="insSelecionaDia(6)" style="flex:1 1 110px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 6px">Sábado<span class="insTag" style="min-height:20px"></span></button><button type="button" data-insdia="0" onclick="insSelecionaDia(0)" style="flex:1 1 110px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 6px">Domingo<span class="insTag" style="min-height:20px"></span></button></div><div id="insDiaPainel"><div class="mini">Abra esta página pra gerar os insights…</div></div></div>
+</div>
+<!-- 23/10, pedido do Renato: acompanhamento de venda de delivery por plataforma. Fonte: forma de pagamento do faturamento da ZigPay (API de integração), uma linha por dia e plataforma. -->
+<div id="mkDeliView" class="grid hidden" style="grid-column:1/-1">
+<div class="card full"><div class="roleTitle"><h3>🛵 Delivery por plataforma</h3><span class="badge p" id="deliBadge">—</span></div>
+<div class="note">Venda de delivery por plataforma (iFood, Rappi, Uber, Delivery Online e App), lida da forma de pagamento do faturamento da ZigPay. Atualiza de hora em hora. Mostra <b>valor vendido</b>; número de pedidos ainda não vem da ZigPay por plataforma.</div>
+<div class="toolbar"><div class="tbItem"><label class="mini">Período</label><select id="deliPeriodo" onchange="deliRender()"><option value="14">14 dias</option><option value="30" selected>30 dias</option><option value="60">60 dias</option><option value="90">90 dias</option><option value="150">150 dias</option></select></div>
+<button class="btn" type="button" onclick="loadDelivery(true)">↻ Atualizar tela</button></div>
+<div id="deliBody" class="mini">Abra esta página para carregar…</div></div>
 </div>
 <div id="mkInstaView" class="grid hidden" style="grid-column:1/-1" data-sortable-grid="marketing-instagram">
 
@@ -2334,6 +2343,8 @@ function switchMkSubTab(tab){
   if(tab==='dem')loadMkReunioes();
   if($('mkInsView'))$('mkInsView').classList.toggle('hidden',tab!=='ins');
   if($('mkInstaView'))$('mkInstaView').classList.toggle('hidden',tab!=='insta');
+  if($('mkDeliView'))$('mkDeliView').classList.toggle('hidden',tab!=='deli');
+  if(tab==='deli')loadDelivery();
   if(tab==='insta')loadInstagramReal();
   if(tab==='graf')carregarGraficosMk();
   if(tab==='ins')renderInsightsMk();
@@ -8374,6 +8385,66 @@ function crmTipAttr(chave,ctx){const t=(ctx&&CRM_TIPS[ctx+'|'+chave])||CRM_TIPS[
 // ---- Conversão e perdas • Dionísio CRM (23/10, pedido do Renato): lê o que o robo-dionisio mandou (CrmReservas/CrmFunil), 3x ao dia ----
 let crmRows=[],crmFunil=[],crmAtualizadoEm='',crmCarregado=false;
 const CRM_META={cancel:10,noshow:8,comparece:90};
+// 23/10: Delivery por plataforma (aba Marketing). Linhas {date,plataforma,valor}; plataforma sem venda aparece zerada.
+let deliRows=[],deliCarregado=false;
+const DELI_NOMES={'IFOOD':'iFood','RAPPI':'Rappi','UBER':'Uber','DELIVERY ONLINE':'Delivery Online','APP':'App ZigPay'};
+async function loadDelivery(forca){
+  const body=$('deliBody');if(!body)return;
+  if(deliCarregado&&!forca){deliRender();return}
+  try{
+    body.innerHTML='<div class="mini">Carregando delivery…</div>';
+    const a=await apiAuth('getZigDelivery',{days:150},false,60000);
+    if(a&&a.ok){deliRows=(a.rows||[]).map(function(r){return {date:r[0],plataforma:r[1],valor:Number(r[2])||0}});deliCarregado=true;deliRender()}
+    else body.innerHTML='<div class="alert y">'+(a&&a.error==='unknown_action'?'O servidor ainda não tem o módulo de delivery: cole o Code.gs novo no Apps Script e publique uma nova versão.':'Sem dados de delivery ('+escapeHtml(String(a&&(a.error||a.code)||'sem resposta'))+').')+'</div>';
+  }catch(e){body.innerHTML='<div class="alert r">Falha ao carregar o delivery ('+escapeHtml(String(e&&e.message||e))+').</div>'}
+}
+function deliRender(){
+  const body=$('deliBody');if(!body)return;
+  if(!deliRows.length){body.innerHTML='<div class="alert y">Ainda não há dias gravados. No Apps Script, rode <b>zigDeliveryHistorico</b> (uma vez) e depois <b>zigInstalarGatilho</b>.</div>';return}
+  const dias=Number(($('deliPeriodo')||{}).value)||30;
+  const datas=[...new Set(deliRows.map(r=>r.date))].sort();
+  const fim=datas[datas.length-1];
+  const ini=new Date(new Date(fim+'T12:00:00').getTime()-(dias-1)*86400000).toISOString().slice(0,10);
+  const iniAnt=new Date(new Date(ini+'T12:00:00').getTime()-dias*86400000).toISOString().slice(0,10);
+  const noPer=deliRows.filter(r=>r.date>=ini&&r.date<=fim),ant=deliRows.filter(r=>r.date>=iniAnt&&r.date<ini);
+  const plat=Object.keys(DELI_NOMES);
+  const soma=(rs,p)=>rs.filter(r=>r.plataforma===p).reduce((s,r)=>s+r.valor,0);
+  const diasPer=[...new Set(noPer.map(r=>r.date))];
+  const fat=diasPer.reduce((s,d)=>s+(zigRevenueByDate[d]||0),0);
+  const totDeli=plat.filter(p=>p!=='APP').reduce((s,p)=>s+soma(noPer,p),0),totApp=soma(noPer,'APP');
+  const totAntDeli=plat.filter(p=>p!=='APP').reduce((s,p)=>s+soma(ant,p),0);
+  const pct=(a,b)=>b>0?(a/b*100).toFixed(1).replace('.',',')+'%':'—';
+  const varTxt=(a,b)=>b>0?((a-b)/b*100>=0?'+':'')+((a-b)/b*100).toFixed(0)+'% vs período anterior':'sem período anterior';
+  const dBR=d=>d.split('-').reverse().join('/');
+  const diasDeli=diasPer.filter(d=>plat.filter(p=>p!=='APP').some(p=>noPer.some(r=>r.date===d&&r.plataforma===p&&r.valor>0))).length;
+  let h='<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-bottom:12px">'
+   +'<div class="card kpi"><small>Delivery (iFood, Rappi, Uber, Delivery Online)</small><div class="v">'+brlPreciso(totDeli)+'</div><div class="mini">'+varTxt(totDeli,totAntDeli)+'</div></div>'
+   +'<div class="card kpi"><small>% do faturamento</small><div class="v">'+pct(totDeli,fat)+'</div><div class="mini">faturamento do período: '+brl(fat)+'</div></div>'
+   +'<div class="card kpi"><small>Venda pelo App ZigPay</small><div class="v">'+brlPreciso(totApp)+'</div><div class="mini">'+pct(totApp,fat)+' do faturamento • '+varTxt(totApp,soma(ant,'APP'))+'</div></div>'
+   +'<div class="card kpi"><small>Dias com venda de delivery</small><div class="v">'+diasDeli+' de '+diasPer.length+'</div><div class="mini">de '+dBR(ini)+' a '+dBR(fim)+'</div></div></div>';
+  h+='<div class="tablewrap"><table><thead><tr><th>Plataforma</th><th>Vendido no período</th><th>% do faturamento</th><th>Período anterior</th><th>Variação</th><th>Melhor dia</th></tr></thead><tbody>';
+  plat.forEach(function(p){
+    const v=soma(noPer,p),a=soma(ant,p);
+    const mel=noPer.filter(r=>r.plataforma===p&&r.valor>0).sort((x,y)=>y.valor-x.valor)[0];
+    h+='<tr><td><b>'+DELI_NOMES[p]+'</b></td><td>'+brlPreciso(v)+'</td><td>'+pct(v,fat)+'</td><td>'+brlPreciso(a)+'</td><td>'+(a>0?(((v-a)/a*100>=0?'+':'')+((v-a)/a*100).toFixed(0)+'%'):'—')+'</td><td>'+(mel?dBR(mel.date)+' • '+brlPreciso(mel.valor):'—')+'</td></tr>';
+  });
+  h+='</tbody></table></div>';
+  const meses=[...new Set(deliRows.map(r=>r.date.slice(0,7)))].sort().reverse();
+  h+='<h4 style="margin:16px 0 6px">Por mês</h4><div class="tablewrap"><table><thead><tr><th>Mês</th>'+plat.map(p=>'<th>'+DELI_NOMES[p]+'</th>').join('')+'<th>Dias lidos</th></tr></thead><tbody>';
+  meses.forEach(function(m){
+    const rs=deliRows.filter(r=>r.date.startsWith(m));
+    h+='<tr><td><b>'+m.split('-').reverse().join('/')+'</b></td>'+plat.map(p=>'<td>'+brlPreciso(soma(rs,p))+'</td>').join('')+'<td>'+[...new Set(rs.map(r=>r.date))].length+'</td></tr>';
+  });
+  h+='</tbody></table></div>';
+  const comVenda=diasPer.filter(d=>plat.some(p=>noPer.some(r=>r.date===d&&r.plataforma===p&&r.valor>0))).sort().reverse();
+  h+='<h4 style="margin:16px 0 6px">Dias com venda no período</h4>';
+  if(!comVenda.length)h+='<div class="mini">Nenhuma venda de delivery ou app nesse período.</div>';
+  else{h+='<div class="tablewrap"><table><thead><tr><th>Dia</th>'+plat.map(p=>'<th>'+DELI_NOMES[p]+'</th>').join('')+'</tr></thead><tbody>';
+    comVenda.forEach(function(d){h+='<tr><td><b>'+dBR(d)+'</b></td>'+plat.map(p=>{const v=noPer.filter(r=>r.date===d&&r.plataforma===p).reduce((s,r)=>s+r.valor,0);return '<td>'+(v>0?brlPreciso(v):'—')+'</td>'}).join('')+'</tr>'});
+    h+='</tbody></table></div>'}
+  if($('deliBadge'))$('deliBadge').textContent='até '+dBR(fim);
+  body.innerHTML=h;
+}
 async function loadCrm(forca){
   if(!$('crmBody'))return;
   if(!hasAreaAccessClient('reservas')&&!hasAreaAccessClient('marketing')&&!hasAreaAccessClient('operacao')&&!hasAreaAccessClient('financeiro')){$('crmBody').textContent='Sem acesso.';return}

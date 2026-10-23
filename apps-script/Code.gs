@@ -436,6 +436,10 @@ function doPost(e) {
       if (!hasAreaAccess_(auth, 'financeiro')) return jsonOut_({ ok: false, code: 'forbidden' });
       return jsonOut_(action === 'submitCrmReservas' ? submitCrmReservas_(body) : (action === 'submitCrmFunil' ? submitCrmFunil_(body) : submitCrmConfig_(body)));
     }
+    if (action === 'getZigDelivery') {
+      if (!(hasAreaAccess_(auth, 'marketing') || hasAreaAccess_(auth, 'financeiro') || hasAreaAccess_(auth, 'operacao'))) return jsonOut_({ ok: false, code: 'forbidden' });
+      return jsonOut_(getZigDelivery_(Math.min(Number(body.days) || 150, 400)));
+    }
     if (action === 'getCrmReservas' || action === 'getCrmFunil' || action === 'getCrmConfig') {
       if (!(hasAreaAccess_(auth, 'reservas') || hasAreaAccess_(auth, 'marketing') || hasAreaAccess_(auth, 'operacao') || hasAreaAccess_(auth, 'financeiro'))) return jsonOut_({ ok: false, code: 'forbidden' });
       return jsonOut_(action === 'getCrmReservas' ? getCrmReservas_() : (action === 'getCrmFunil' ? getCrmFunil_() : getCrmConfig_()));
@@ -5493,10 +5497,14 @@ function zigGet_(caminho, params) {
   return JSON.parse(resp.getContentText() || '[]');
 }
 
-function zigFaturamentoDia_(iso) {
+function zigFaturamentoLinhas_(iso) {
   const loja = (PropertiesService.getScriptProperties().getProperty('ZIG_LOJA') || '').trim();
   if (!loja) throw new Error('ZIG_LOJA vazio');
-  const linhas = zigGet_('/erp/faturamento', { dtinicio: iso, dtfim: iso, loja: loja });
+  return zigGet_('/erp/faturamento', { dtinicio: iso, dtfim: iso, loja: loja });
+}
+
+function zigFaturamentoDia_(iso, linhasProntas) {
+  const linhas = linhasProntas || zigFaturamentoLinhas_(iso);
   let centavos = 0;
   linhas.forEach(function (l) { if (String(l.paymentName || '').toUpperCase().indexOf('BÔNUS') === -1 && String(l.paymentName || '').toUpperCase().indexOf('BONUS') === -1) centavos += Number(l.value) || 0; });
   return centavos / 100;
@@ -5511,7 +5519,9 @@ function zigSyncFaturamento_(dias, gravar) {
   const out = [];
   for (let i = 0; i < dias; i++) {
     const iso = Utilities.formatDate(new Date(Date.now() - i * 86400000), tz, 'yyyy-MM-dd');
-    const v = zigFaturamentoDia_(iso);
+    const linhasDia = zigFaturamentoLinhas_(iso);
+    const v = zigFaturamentoDia_(iso, linhasDia);
+    if (gravar) zigGravarDelivery_(iso, linhasDia);
     const antes = existentes[iso];
     // não troca um valor real por zero (a ZigPay só consolida o dia depois do fechamento)
     const grava = gravar && !(v === 0 && antes > 0);
@@ -5625,4 +5635,55 @@ function propriedadesResumo() {
     const segredo = /SECRET|TOKEN|KEY|SENHA|PASSWORD/i.test(k);
     Logger.log(k + ' = ' + (!v ? '(vazio)' : (segredo ? 'definido, ' + v.length + ' caracteres' : (v.length > 120 ? v.slice(0, 120) + '… (' + v.length + ' caracteres)' : v))));
   });
+}
+
+// ---------------- Delivery por plataforma (23/10, pedido do Renato: aba Marketing > Delivery) ----------------
+// Fonte: forma de pagamento de /erp/faturamento por dia. Uma linha por dia e plataforma (inclusive zero, que marca o dia como lido).
+// "APP" = venda pelo aplicativo da ZigPay (não é, necessariamente, delivery de terceiros).
+const ZIGDELIVERY_HEADERS = ['date', 'plataforma', 'valor', 'capturedAt'];
+const ZIGDELIVERY_PLATAFORMAS = ['IFOOD', 'RAPPI', 'UBER', 'DELIVERY ONLINE', 'APP'];
+function getZigDeliverySheet_() { return ensureSheet_('ZigDelivery', ZIGDELIVERY_HEADERS) }
+
+function zigGravarDelivery_(iso, linhas, anexar) {
+  const por = {};
+  ZIGDELIVERY_PLATAFORMAS.forEach(function (p) { por[p] = 0; });
+  linhas.forEach(function (l) {
+    const nome = String(l.paymentName || '').toUpperCase().trim();
+    if (por[nome] !== undefined) por[nome] += (Number(l.value) || 0) / 100;
+  });
+  const sh = getZigDeliverySheet_();
+  const agora = new Date().toISOString();
+  if (anexar) { // dia ainda não gravado: uma escrita só
+    const novas = ZIGDELIVERY_PLATAFORMAS.map(function (p) { return [iso, p, Math.round(por[p] * 100) / 100, agora]; });
+    sh.getRange(sh.getLastRow() + 1, 1, novas.length, ZIGDELIVERY_HEADERS.length).setValues(novas);
+    return;
+  }
+  ZIGDELIVERY_PLATAFORMAS.forEach(function (p) {
+    upsertByKeys_(sh, ZIGDELIVERY_HEADERS, ['date', 'plataforma'], { date: iso, plataforma: p, valor: Math.round(por[p] * 100) / 100, capturedAt: agora });
+  });
+}
+
+// Histórico: rode no editor (Executar > zigDeliveryHistorico). Lê do mais novo para o mais antigo, pula dias já gravados
+// e para sozinho em ~4 min; basta rodar de novo para continuar. Padrão: 150 dias.
+function zigDeliveryHistorico() {
+  const tz = 'America/Sao_Paulo';
+  const inicio = Date.now();
+  const ja = {};
+  sheetToObjects_(getZigDeliverySheet_()).forEach(function (r) { ja[r.date] = true; });
+  let feitos = 0;
+  for (let i = 3; i < 150; i++) {
+    if (Date.now() - inicio > 240000) { Logger.log('Parou por tempo; rode de novo para continuar. Dias gravados agora: ' + feitos); return; }
+    const iso = Utilities.formatDate(new Date(Date.now() - i * 86400000), tz, 'yyyy-MM-dd');
+    if (ja[iso]) continue;
+    zigGravarDelivery_(iso, zigFaturamentoLinhas_(iso), true);
+    feitos++;
+  }
+  Logger.log('Histórico completo. Dias gravados agora: ' + feitos);
+}
+
+function getZigDelivery_(dias) {
+  const corte = Utilities.formatDate(new Date(Date.now() - dias * 86400000), 'America/Sao_Paulo', 'yyyy-MM-dd');
+  const rows = sheetToObjects_(getZigDeliverySheet_()).filter(function (r) { return String(r.date) >= corte; })
+    .map(function (r) { return [String(r.date), String(r.plataforma), Number(r.valor) || 0]; });
+  return { ok: true, cols: ['date', 'plataforma', 'valor'], rows: rows, plataformas: ZIGDELIVERY_PLATAFORMAS };
 }
