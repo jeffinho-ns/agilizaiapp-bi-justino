@@ -5568,7 +5568,10 @@ function zigItensDia_(iso, custos) {
     const tipo = ZIG_CAT_COMIDA.indexOf(cat) >= 0 ? 'comida' : (ZIG_CAT_BEBIDA.indexOf(cat) >= 0 ? 'bebida' : 'outro');
     if (!porSku[sku]) porSku[sku] = { sku: sku, nome: l.productName || '', categoria: cat, tipo: tipo, quantidade: 0, valorTotal: 0, custoUnit: custos[sku] !== undefined ? custos[sku] : null };
     porSku[sku].quantidade += Number(l.count) || 0;
-    porSku[sku].valorTotal += (Number(l.unitValue) || 0) * (Number(l.count) || 0) / 100;
+    const bruto = (Number(l.unitValue) || 0) * (Number(l.count) || 0) / 100;
+    // comida/bebida: valor bruto (igual ao relatório do robô, mantém o histórico). Outros (ex.: OPEN CHOPP em PROMOÇÕES, vendidos com 100% de desconto
+    // e cobrados na entrada): valor líquido, senão o "outros" de 21/10 mostraria R$ 7 mil que nunca entraram no caixa.
+    porSku[sku].valorTotal += tipo === 'outro' ? Math.max(bruto - (Number(l.discountValue) || 0) / 100, 0) : bruto;
   });
   return Object.keys(porSku).map(function (k) { return porSku[k]; });
 }
