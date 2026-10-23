@@ -278,6 +278,11 @@ input[readonly]{opacity:.78;background:#1d1711}
 .iaMsg.err{background:#3a1620;border:1px solid #5c2530}
 .iaChip{background:#221c17;border:1px solid #3a2f26;color:#ddd;border-radius:999px;padding:6px 12px;font-size:12px;cursor:pointer}
 .iaChip:hover{border-color:var(--accent)}
+[data-crmtip]{cursor:help}
+th[data-crmtip]::after,h4[data-crmtip]::after,.miniKpi[data-crmtip] small::after{content:" ⓘ";color:var(--accent);font-size:11px;font-weight:700}
+#crmTipBox{position:fixed;z-index:400;max-width:340px;background:#0e0b08;border:1px solid var(--accent);color:#f1ece6;padding:11px 13px;border-radius:12px;font-size:12.5px;line-height:1.55;font-weight:400;text-transform:none;letter-spacing:0;box-shadow:0 12px 34px #000b;pointer-events:none;opacity:0;transition:opacity .12s}
+#crmTipBox.on{opacity:1}
+#crmTipBox b{color:#fff}
 .dicaCard{width:100%;max-width:640px;max-height:85vh;overflow:auto;background:var(--panel2);border:1px solid var(--line);border-radius:16px;padding:22px;box-shadow:0 20px 60px #000a}
 .dicaCard h3{margin-bottom:6px}
 .dicaLinha{border-top:1px solid var(--line);padding:10px 0}
@@ -8305,6 +8310,57 @@ async function iaPerguntar(texto){
 }
 
 
+
+// ---- legendas didáticas do quadro Dionísio (aparecem ao passar o mouse; 23/10) ----
+const CRM_TIPS={
+ 'Reservas no período':'<b>Quantas reservas foram criadas</b> nos últimos dias escolhidos no filtro acima. Conta o dia em que o cliente <b>reservou</b>, não o dia em que vai visitar. Inclui todos os canais (WhatsApp, Instagram, anúncio, portal e equipe). É a base de cálculo dos outros números.',
+ 'Compareceram':'De cada 100 reservas que chegaram ao dia da visita, <b>quantas o cliente realmente veio</b>. Conta: concluídas ÷ (concluídas + no-show). Cancelamentos não entram, porque o cliente avisou antes. <b>Meta: 90% ou mais.</b> Verde = bom, amarelo = perto do limite, vermelho = abaixo da meta.',
+ 'Cancelamento':'% de reservas <b>canceladas</b> (pelo cliente ou pela casa) sobre todas as reservas do período. Cancelar avisando é menos grave que faltar, mas mesa cancelada em cima da hora quase sempre fica vazia. <b>Meta: até 10%.</b>',
+ 'No-show':'<b>No-show</b> é quando o cliente reservou, não veio e não avisou. É a perda mais cara: a mesa fica vazia e não dá tempo de vender de novo. Mostra a % de reservas marcadas como "Não compareceu". <b>Meta: até 8%.</b> Como reduzir: confirmar a reserva 48 h antes.',
+ 'Criadas pela IA':'% das reservas que a <b>assistente de IA (Dona Juju)</b> criou sozinha, sem uma pessoa. "Atendidas por IA" inclui as que a IA começou e a equipe terminou. Se esse número despenca, a IA pode estar desligada ou encaminhando demais para a equipe.',
+ 'Antecedência (mediana)':'<b>Quantos dias antes da visita</b> o cliente costuma reservar. Mediana = o valor do meio (metade reserva com mais dias, metade com menos). Serve para decidir <b>quando disparar mensagens de captação</b>: envie mais ou menos esse tempo antes do dia que quer encher.',
+ 'Alertas automáticos':'O BI compara os números com as metas e <b>avisa o que está fora do esperado</b>. Vermelho = crítico (ex.: dados desatualizados), amarelo = atenção, verde = tudo dentro da meta. Use como a lista de tarefas do dia da coordenadora.',
+ 'Funil da IA':'O <b>caminho de quem fala com a casa</b>. Cada barra mostra quantas pessoas chegaram até aquela etapa e a % em relação ao total de conversas iniciadas. Os números vêm do relatório do Dionísio, para o período indicado ao lado.',
+ 'Conversas iniciadas':'Todas as conversas abertas no período, de qualquer origem. Inclui quem só queria uma informação e mensagens em massa respondidas. Por isso a conversão final parece baixa: <b>nem toda conversa é uma pessoa pronta para reservar</b>.',
+ 'Tiraram dúvida / pediram informação':'Conversas em que a pessoa perguntou algo (horário, valor de entrada, programação, tipo de mesa…). É o <b>topo do funil</b>: tem interesse, mas ainda não decidiu.',
+ 'Começaram pedido ou reserva':'Quem passou da dúvida para a ação: informou data e número de pessoas ou começou a preencher a reserva. A <b>queda entre a etapa anterior e esta</b> mostra quanto interesse se perde antes de começar.',
+ 'Finalizaram e pagaram':'Quem <b>concluiu</b>: reserva confirmada (e pagamento, quando exigido). É o resultado do atendimento. Dividir este número pela etapa anterior mostra a eficiência do fechamento.',
+ 'Por origem':'<b>De onde veio cada reserva</b> e como ela terminou. Origens: WhatsApp, Instagram, <b>Meta Ads</b> (anúncio pago), Portal e <b>Funcionários</b> (lançada pela equipe). Serve para saber qual canal traz cliente que realmente vem e qual traz cancelamento ou falta.',
+ 'Por dia da semana':'Em quais dias da semana as pessoas <b>visitam</b> (coluna Visitas) e em quais dias elas <b>fazem a reserva</b> (coluna Criadas). Mostra, por exemplo, que o sábado enche mas a maioria reserva durante a semana — por isso as campanhas precisam sair antes.',
+ 'Antecedência × perda':'<b>Quem reserva com muita antecedência cancela mais?</b> Cada linha agrupa as reservas pelo tempo entre reservar e visitar e mostra a % que cancelou ou faltou. Se as reservas antigas cancelam mais, vale <b>reconfirmar 48 h antes</b>.',
+ 'Mês de criação':'<b>Evolução mês a mês</b>: quantas reservas foram criadas, quantas pela IA e as taxas de cancelamento e no-show. Serve para ver se a situação melhora ou piora e se a IA parou de criar reservas em algum mês.',
+ 'Horário em que a reserva é criada':'<b>Em quais horas do dia</b> os clientes fazem reservas. Mostra quando a equipe e a IA precisam estar mais atentas para responder rápido e quando é melhor enviar mensagens de captação.',
+ 'Por origem|Origem':'Canal pelo qual a reserva foi criada.',
+ 'Por origem|Reservas':'Quantas reservas vieram desse canal no período.',
+ 'Por origem|Compareceu':'De todas as reservas desse canal, quantas % terminaram com o cliente presente (status Concluída).',
+ 'Por dia da semana|Dia':'Dia da semana.',
+ 'Por dia da semana|Visitas':'Quantas reservas são <b>para visitar</b> nesse dia da semana.',
+ 'Por dia da semana|Criadas':'Quantas reservas foram <b>feitas (criadas)</b> nesse dia da semana, independentemente de quando o cliente vem.',
+ 'Antecedência × perda|Antecedência':'Dias entre o dia em que a reserva foi <b>criada</b> e o dia da <b>visita</b>. "0–1 dia" = reservou para hoje ou amanhã.',
+ 'Mês de criação|Mês':'Mês em que as reservas foram <b>criadas</b> (não o mês da visita).',
+ 'Mês de criação|Pela IA':'% das reservas do mês criadas pela assistente de IA. <b>0% em mês movimentado indica problema na integração.</b>',
+ 'Horário em que a reserva é criada|Faixa':'Faixa de 3 horas em que a reserva foi criada (ex.: 16h–18h59).',
+ '*|Reservas':'Quantidade de reservas.',
+ '*|%':'Participação desse grupo no total de reservas do período.',
+ '*|Cancel.':'% de reservas desse grupo <b>canceladas</b> (pelo cliente ou pela casa). Vermelho: acima de 10%.',
+ '*|No-show':'% de reservas desse grupo em que o cliente <b>faltou sem avisar</b>. Vermelho: acima de 8%.'
+};
+function crmTipAttr(chave,ctx){const t=(ctx&&CRM_TIPS[ctx+'|'+chave])||CRM_TIPS[chave]||CRM_TIPS['*|'+chave];return t?' data-crmtip="'+escapeHtml(t)+'"':''}
+(function(){
+  let box=null;
+  const get=function(){if(!box){box=document.createElement('div');box.id='crmTipBox';document.body.appendChild(box)}return box};
+  document.addEventListener('mouseover',function(e){
+    const el=e.target&&e.target.closest?e.target.closest('[data-crmtip]'):null;
+    if(!el){if(box)box.classList.remove('on');return}
+    const b=get();b.innerHTML=el.getAttribute('data-crmtip');b.classList.add('on');
+    const r=el.getBoundingClientRect(),bw=b.offsetWidth,bh=b.offsetHeight;
+    let x=Math.min(Math.max(8,r.left),window.innerWidth-bw-8),y=r.bottom+8;
+    if(y+bh>window.innerHeight-8)y=Math.max(8,r.top-bh-8);
+    b.style.left=x+'px';b.style.top=y+'px';
+  });
+  document.addEventListener('scroll',function(){if(box)box.classList.remove('on')},true);
+})();
+
 // ---- Conversão e perdas • Dionísio CRM (23/10, pedido do Renato): lê o que o robo-dionisio mandou (CrmReservas/CrmFunil), 3x ao dia ----
 let crmRows=[],crmFunil=[],crmAtualizadoEm='',crmCarregado=false;
 const CRM_META={cancel:10,noshow:8,comparece:90};
@@ -8344,7 +8400,7 @@ function crmRender(){
   const medPes=crmMediana(R.map(function(r){return r.pes}));
   const horasAtras=crmAtualizadoEm?(Date.now()-new Date(crmAtualizadoEm).getTime())/3600000:null;
   if($('crmBadge')){$('crmBadge').textContent=crmAtualizadoEm?('atualizado '+new Date(crmAtualizadoEm).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})):'sem atualização';$('crmBadge').className='badge '+(horasAtras!=null&&horasAtras>9?'r':'p')}
-  const kpi=function(t,v,sub,st){return '<div class="miniKpi"><small>'+t+'</small><div class="v" style="'+(st||'')+'">'+v+'</div><span class="mini">'+sub+'</span></div>'};
+  const kpi=function(t,v,sub,st){return '<div class="miniKpi"'+crmTipAttr(t)+'><small>'+t+'</small><div class="v" style="'+(st||'')+'">'+v+'</div><span class="mini">'+sub+'</span></div>'};
   let h='<div class="miniKpiGrid">'
     +kpi('Reservas no período',n,'últimos '+(dias>=400?'todo o período':dias+' dias')+' • mediana '+(medPes==null?'—':medPes)+' pessoas')
     +kpi('Compareceram',crmFmt(compPct),'meta ≥ '+CRM_META.comparece+'% • '+c.ok+' de '+(c.ok+c.noshow),crmCor(compPct,CRM_META.comparece,false))
@@ -8366,17 +8422,17 @@ function crmRender(){
   if(f&&f.sessoesVar>15&&f.reservasVar<0)al.push(['y','Sessões '+(f.sessoesVar>0?'+':'')+crmFmt(f.sessoesVar,0)+' e reservas '+crmFmt(f.reservasVar,0)+' no período: tráfego novo sem intenção de reservar (anúncios/disparos) — a conversão cai mesmo sem erro da IA.']);
   const mesIA={};R.forEach(function(r){const m=String(r.criadoData).slice(0,7);const x=mesIA[m]||(mesIA[m]={n:0,ia:0});x.n++;if(Number(r.criadoIA)===1)x.ia++});
   Object.keys(mesIA).forEach(function(m){if(mesIA[m].n>=30&&mesIA[m].ia===0)al.push(['y','Em '+m.slice(5)+'/'+m.slice(0,4)+' a IA não criou nenhuma das '+mesIA[m].n+' reservas: conferir a integração.'])});
-  h+='<div style="margin-top:12px">'+(al.length?al.map(function(a){return '<div class="alert '+a[0]+'">'+escapeHtml(a[1])+'</div>'}).join(''):'<div class="alert g">Sem alertas: cancelamento, no-show e origens dentro das metas.</div>')+'</div>';
+  h+='<h4 style="margin:14px 0 4px"'+crmTipAttr('Alertas automáticos')+'>Alertas automáticos</h4><div>'+(al.length?al.map(function(a){return '<div class="alert '+a[0]+'">'+escapeHtml(a[1])+'</div>'}).join(''):'<div class="alert g">Sem alertas: cancelamento, no-show e origens dentro das metas.</div>')+'</div>';
   // funil
   if(f){
-    const base=Number(f.conversas)||0,bar=function(t,v,ref,cor){const p=ref>0?Math.min(100,v/ref*100):0;return '<div style="display:flex;align-items:center;gap:10px;margin:5px 0"><div style="width:230px;font-size:12px">'+t+'</div><div style="flex:1;background:#221c17;border-radius:6px;height:16px"><div style="width:'+p+'%;background:'+cor+';height:16px;border-radius:6px"></div></div><div style="width:150px;font-size:12px;text-align:right"><b>'+Number(v).toLocaleString('pt-BR')+'</b> <span class="mini">'+crmFmt(crmPct(v,base))+'</span></div></div>'};
-    h+='<h4 style="margin:16px 0 4px">Funil da IA • '+escapeHtml(f.periodo||'')+' <span class="mini">(lido '+new Date(f.capturedAt).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+')</span></h4>'
+    const base=Number(f.conversas)||0,bar=function(t,v,ref,cor){const p=ref>0?Math.min(100,v/ref*100):0;return '<div style="display:flex;align-items:center;gap:10px;margin:5px 0"><div style="width:230px;font-size:12px"'+crmTipAttr(t)+'>'+t+'</div><div style="flex:1;background:#221c17;border-radius:6px;height:16px"><div style="width:'+p+'%;background:'+cor+';height:16px;border-radius:6px"></div></div><div style="width:150px;font-size:12px;text-align:right"><b>'+Number(v).toLocaleString('pt-BR')+'</b> <span class="mini">'+crmFmt(crmPct(v,base))+'</span></div></div>'};
+    h+='<h4 style="margin:16px 0 4px"'+crmTipAttr('Funil da IA')+'>Funil da IA • '+escapeHtml(f.periodo||'')+' <span class="mini">(lido '+new Date(f.capturedAt).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+')</span></h4>'
       +bar('Conversas iniciadas',f.conversas,base,'#a78bfa')+bar('Tiraram dúvida / pediram informação',f.duvida,base,'#8b6bd8')+bar('Começaram pedido ou reserva',f.inicio,base,'#c96736')+bar('Finalizaram e pagaram',f.finalizaram,base,'#34d399')
       +'<div class="mini" style="margin-top:6px">Dúvida → início de reserva: <b>'+crmFmt(crmPct(f.inicio,f.duvida))+'</b> • Início → finalizou: <b>'+crmFmt(crmPct(f.finalizaram,f.inicio))+'</b> • Resolução autônoma da IA: <b>'+crmFmt(Number(f.resolucaoPct))+'</b> • Encaminhadas a humano: <b>'+(f.handoff||'—')+'</b> ('+crmFmt(Number(f.handoffPct))+') • Sessões: <b>'+(f.sessoes||'—')+'</b> ('+(Number(f.sessoesVar)>0?'+':'')+crmFmt(Number(f.sessoesVar))+') • Meta Ads '+(f.metaAds||0)+' / WhatsApp '+(f.whatsapp||0)+' / Instagram '+(f.instagram||0)+'</div>'
       +'<div class="mini">Atenção: "conversas iniciadas" inclui disparos em massa e tráfego pago; a conversão real é medida sobre quem respondeu (exige exportação de conversas do Dionísio).</div>';
   }
   // tabelas
-  const tb=function(cab,linhas){return '<div class="igTblWrap"><table class="igTbl" style="width:auto"><thead><tr>'+cab.map(function(x){return '<th>'+x+'</th>'}).join('')+'</tr></thead><tbody>'+linhas.map(function(l){return '<tr>'+l.map(function(x){return '<td>'+x+'</td>'}).join('')+'</tr>'}).join('')+'</tbody></table></div>'};
+  const tb=function(cab,linhas,ctx){return '<div class="igTblWrap"><table class="igTbl" style="width:auto"><thead><tr>'+cab.map(function(x){return '<th'+crmTipAttr(x,ctx)+'>'+x+'</th>'}).join('')+'</tr></thead><tbody>'+linhas.map(function(l){return '<tr>'+l.map(function(x){return '<td>'+x+'</td>'}).join('')+'</tr>'}).join('')+'</tbody></table></div>'};
   const linhaOr=Object.keys(porOrig).sort(function(a,b){return porOrig[b].n-porOrig[a].n}).map(function(o){const x=porOrig[o];return [escapeHtml(o),x.n,crmFmt(crmPct(x.ok,x.n),0),'<span style="'+crmCor(crmPct(x.ca,x.n),CRM_META.cancel,true)+'">'+crmFmt(crmPct(x.ca,x.n),0)+'</span>','<span style="'+crmCor(crmPct(x.ns,x.n),CRM_META.noshow,true)+'">'+crmFmt(crmPct(x.ns,x.n),0)+'</span>']});
   const dn=['dom','seg','ter','qua','qui','sex','sáb'];
   const vis=[0,0,0,0,0,0,0],cri=[0,0,0,0,0,0,0];R.forEach(function(r){if(r.data)vis[crmDow(r.data)]++;cri[crmDow(r.criadoData)]++});
@@ -8388,11 +8444,11 @@ function crmRender(){
   const hr={};R.forEach(function(r){if(r.criadoHora!=null&&r.criadoHora!==''){const b=Math.floor(Number(r.criadoHora)/3)*3;hr[b]=(hr[b]||0)+1}});
   const linhaHr=Object.keys(hr).map(Number).sort(function(a,b){return a-b}).map(function(b){return [String(b).padStart(2,'0')+'h–'+String(b+2).padStart(2,'0')+'h59',hr[b],crmFmt(crmPct(hr[b],n),0)]});
   h+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px;margin-top:14px">'
-    +'<div><h4 style="margin:0 0 4px">Por origem</h4>'+tb(['Origem','Reservas','Compareceu','Cancel.','No-show'],linhaOr)+'</div>'
-    +'<div><h4 style="margin:0 0 4px">Por dia da semana</h4>'+tb(['Dia','Visitas','%','Criadas','%'],linhaDia)+'</div>'
-    +'<div><h4 style="margin:0 0 4px">Antecedência × perda</h4>'+tb(['Antecedência','Reservas','%','Cancel.','No-show'],linhaLead)+'</div>'
-    +'<div><h4 style="margin:0 0 4px">Mês de criação</h4>'+tb(['Mês','Reservas','Pela IA','Cancel.','No-show'],linhaMes)+'</div>'
-    +'<div><h4 style="margin:0 0 4px">Horário em que a reserva é criada</h4>'+tb(['Faixa','Reservas','%'],linhaHr)+'</div>'
+    +'<div><h4 style="margin:0 0 4px"'+crmTipAttr('Por origem')+'>Por origem</h4>'+tb(['Origem','Reservas','Compareceu','Cancel.','No-show'],linhaOr,'Por origem')+'</div>'
+    +'<div><h4 style="margin:0 0 4px"'+crmTipAttr('Por dia da semana')+'>Por dia da semana</h4>'+tb(['Dia','Visitas','%','Criadas','%'],linhaDia,'Por dia da semana')+'</div>'
+    +'<div><h4 style="margin:0 0 4px"'+crmTipAttr('Antecedência × perda')+'>Antecedência × perda</h4>'+tb(['Antecedência','Reservas','%','Cancel.','No-show'],linhaLead,'Antecedência × perda')+'</div>'
+    +'<div><h4 style="margin:0 0 4px"'+crmTipAttr('Mês de criação')+'>Mês de criação</h4>'+tb(['Mês','Reservas','Pela IA','Cancel.','No-show'],linhaMes,'Mês de criação')+'</div>'
+    +'<div><h4 style="margin:0 0 4px"'+crmTipAttr('Horário em que a reserva é criada')+'>Horário em que a reserva é criada</h4>'+tb(['Faixa','Reservas','%'],linhaHr,'Horário em que a reserva é criada')+'</div>'
     +'</div>';
   body.innerHTML=h;
 }
