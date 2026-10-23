@@ -270,6 +270,14 @@ input[readonly]{opacity:.78;background:#1d1711}
    rolável e sem travar a tela (fecha no X, no fundo ou em Esc). */
 .dicaOverlay{position:fixed;inset:0;z-index:250;display:flex;align-items:center;justify-content:center;background:#0a0807cc;padding:16px}
 .dicaOverlay.hidden{display:none}
+.iaFab{position:fixed;right:22px;bottom:22px;z-index:120;background:linear-gradient(135deg,#c96736,#a78bfa);color:#fff;border:0;border-radius:999px;padding:13px 22px;font-weight:900;font-size:15px;letter-spacing:.5px;cursor:pointer;box-shadow:0 8px 26px #0009}
+.iaFab:hover{filter:brightness(1.1)}
+.iaMsg{margin:10px 0;padding:11px 13px;border-radius:12px;line-height:1.55;font-size:14px;white-space:normal}
+.iaMsg.q{background:#2a2119;border:1px solid var(--line);margin-left:36px}
+.iaMsg.a{background:#1c2430;border:1px solid #2f4057;margin-right:12px}
+.iaMsg.err{background:#3a1620;border:1px solid #5c2530}
+.iaChip{background:#221c17;border:1px solid #3a2f26;color:#ddd;border-radius:999px;padding:6px 12px;font-size:12px;cursor:pointer}
+.iaChip:hover{border-color:var(--accent)}
 .dicaCard{width:100%;max-width:640px;max-height:85vh;overflow:auto;background:var(--panel2);border:1px solid var(--line);border-radius:16px;padding:22px;box-shadow:0 20px 60px #000a}
 .dicaCard h3{margin-bottom:6px}
 .dicaLinha{border-top:1px solid var(--line);padding:10px 0}
@@ -332,6 +340,20 @@ tbody tr:hover{background:#ffffff08}
   <div id="cmoFlCorpo" style="margin-top:8px"></div>
 </div>
 </div>
+<div class="dicaOverlay hidden" id="iaOverlay" onclick="if(event.target===this)iaFechar()">
+<div class="dicaCard" style="max-width:760px">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+    <h3>🤖 IA do BI <span class="mini" style="font-weight:400">responde com base nos dados que o BI já carregou</span></h3>
+    <button class="btn" type="button" data-nofeedback style="padding:6px 10px;font-size:12px;background:#3a1620;border-color:#5c2530" onclick="iaFechar()">✕</button>
+  </div>
+  <div id="iaChips" style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0"></div>
+  <div id="iaConversa" style="max-height:48vh;overflow:auto"></div>
+  <form onsubmit="iaPerguntar();return false" style="display:flex;gap:8px;margin-top:10px">
+    <input id="iaPergunta" type="search" maxlength="800" autocomplete="off" placeholder="Pergunte sobre faturamento, público, marketing, reservas, bandas, Instagram…" style="flex:1">
+    <button class="btn" id="iaEnviar" type="submit" data-nofeedback>Perguntar</button>
+  </form>
+  <div class="mini" style="margin-top:8px">A pergunta e um resumo dos dados do BI (sem nomes, telefones nem e-mails de clientes) são enviados à API da Anthropic para gerar a resposta. A IA pode errar: confira números importantes na tela de origem.</div>
+</div></div>
 <div class="dicaOverlay hidden" id="escalaDiaOverlay" onclick="if(event.target===this)fecharEscalaDia()">
 <div class="dicaCard" style="max-width:1240px">
   <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
@@ -784,7 +806,7 @@ tbody tr:hover{background:#ffffff08}
 
 </div></section>
 
-<section id="marketing" class="tab hidden"><div class="grid" data-sortable-grid="marketing">
+<section id="marketing" class="tab hidden"><button class="iaFab" type="button" data-nofeedback onclick="iaAbrir()" title="Pergunte à IA sobre os dados do BI">IA</button><div class="grid" data-sortable-grid="marketing">
 <!-- 10/10, pedido do Renato: os 6 KPIs de destaque voltam a ser os PRIMEIROS cards
      da aba — reverte de propósito a decisão de 03/10 (que tinha posto "Envio do dia"
      primeiro) só pra Marketing; o Renato quer ver o resumo numérico assim que abre a
@@ -2876,7 +2898,7 @@ function sendOverlayHide(){
 // Clique em botão (Atualizar), escrita (submit/save/delete…) e "Atualizar tudo" ignoram o cache e vão direto ao servidor; toda escrita bem-sucedida limpa o cache.
 const SWR_FRESH_MS=15000,SWR_MAX_MS=24*3600*1000,SWR_PREFIX='sjBIc:',SWR_ITEM_MAX=700000;
 let swrMem={},swrInflight={},swrPending=0,swrDirty=false,swrTimer=null,swrForceUntil=0,swrReruns=[];
-function swrCacheable(action){return /^get/.test(action)&&!/Pdf|Chunk|Evidencia|Foto|Image|Doc(s|Chunk)$/i.test(action)}
+function swrCacheable(action){return /^get/.test(action)&&!/Pdf|Chunk|Evidencia|Foto|Image|Doc(s|Chunk)$|^getIaResposta$/i.test(action)}
 function swrStable(v){
   if(Array.isArray(v))return '['+v.map(swrStable).join(',')+']';
   if(v&&typeof v==='object')return '{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+swrStable(v[k])).join(',')+'}';
@@ -8208,6 +8230,68 @@ async function estudoEscalaRender(){
     }
     body.innerHTML=h;
   }catch(e){body.innerHTML='<div class="alert r">Não consegui montar o estudo: '+escapeHtml(String(e&&e.message||e))+'</div>'}
+}
+
+
+// ---- IA do BI (23/10, pedido do Renato): pergunta em texto livre, respondida pela API da Anthropic (via Apps Script) só com os dados já carregados no painel ----
+let iaHistorico=[],iaOcupada=false;
+const IA_SUGESTOES=['Como está o faturamento do mês frente à projeção?','Qual dia da semana tem mais público e mais faturamento?','Quanto gastamos em marketing e qual foi o retorno?','Quais bandas trouxeram mais faturamento e público?','Quantas reservas temos nos próximos dias?'];
+function iaAbrir(){
+  const o=$('iaOverlay');o.classList.remove('hidden');
+  if(!$('iaChips').children.length)$('iaChips').innerHTML=IA_SUGESTOES.map(function(t,i){return '<button type="button" class="iaChip" data-nofeedback onclick="iaPerguntar(IA_SUGESTOES['+i+'])">'+escapeHtml(t)+'</button>'}).join('');
+  setTimeout(function(){try{$('iaPergunta').focus()}catch(e){}},60);
+}
+function iaFechar(){$('iaOverlay').classList.add('hidden')}
+function iaFormatar(t){return escapeHtml(t).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\n/g,'<br>')}
+function iaContexto(){
+  const T=function(f){try{return f()}catch(e){return null}};
+  const ult=function(obj,n){return Object.keys(obj||{}).sort().slice(-n)};
+  const dow=function(d){return ['dom','seg','ter','qua','qui','sex','sáb'][new Date(d+'T12:00:00').getDay()]};
+  const hoje=todayStr();
+  const monta=function(nDias,nMk){
+    const o={hoje:hoje,diaDaSemana:dow(hoje),
+      faturamentoVisaoGeral:T(function(){return revenueOverview}),
+      diasZigPay:T(function(){return ult(zigRevenueByDate,nDias).map(function(d){return {data:d,dia:dow(d),faturamento:zigRevenueByDate[d],publico:(zigPublicoByDate||{})[d]||null}})}),
+      marketingPlanejadoPorDia:T(function(){const r={};ult(mkPlansByDate,nMk).forEach(function(d){r[d]=mkPlansByDate[d]});return r}),
+      marketingRealPorDia:T(function(){const r={};ult(mkActualByDate,nMk).forEach(function(d){r[d]=mkActualByDate[d]});return r}),
+      reservasPorDia:T(function(){const r={};(reservationEntries||[]).forEach(function(e){const x=r[e.date]||(r[e.date]={reservas:0,pessoas:0,porOrigem:{}});x.reservas++;x.pessoas+=Number(e.pax)||0;const og=e.origem||'sem origem';x.porOrigem[og]=(x.porOrigem[og]||0)+(Number(e.pax)||0)});return r}),
+      rankingBandas:T(function(){return bandRankingItems}),
+      cmvTeoricoParcialUltimo:T(function(){return cmvParcialLatest}),
+      instagram:T(function(){return igApiResp&&Object.keys(igApiResp).length?JSON.stringify(igApiResp).slice(0,7000):null}),
+      instagramRetornoReservas:T(function(){return igRetorno&&Object.keys(igRetorno).length?JSON.stringify(igRetorno).slice(0,4000):null}),
+      ativacoesInstagram:T(function(){return (igAtivacoes||[]).slice(0,30)}),
+      eventosPrivados:T(function(){return (eventosList||[]).map(function(e){return {data:e.data,tipo:e.tipoEvento,pessoas:e.pax,status:e.status,valorContrato:e.valorContrato}}).slice(0,120)})
+    };
+    return JSON.stringify(o,function(k,v){return /^(updatedBy|updatedAt|createdBy|createdAt|capturedAt|submittedBy|submittedByName|submittedAt|email|telefone|phone|nomeCliente|documento|cpf|cnpj)$/i.test(k)?undefined:v}).replace(/[w.+-]+@[w-]+(.[w-]+)+/g,'[e-mail]');
+  };
+  let c=monta(60,45);
+  if(c.length>48000)c=monta(30,20);
+  return c.slice(0,56000);
+}
+async function iaPerguntar(texto){
+  if(iaOcupada)return;
+  const inp=$('iaPergunta'),q=String(texto||inp.value||'').trim();
+  if(!q)return;
+  inp.value='';
+  const box=$('iaConversa');
+  box.insertAdjacentHTML('beforeend','<div class="iaMsg q">'+escapeHtml(q)+'</div><div class="iaMsg a" id="iaPensando">Consultando os dados do BI…</div>');
+  box.scrollTop=box.scrollHeight;
+  iaOcupada=true;$('iaEnviar').disabled=true;
+  let r=null,falha='';
+  try{
+    r=await apiAuth('getIaResposta',{pergunta:q,contexto:iaContexto(),historico:iaHistorico.slice(-6)},true,60000);
+  }catch(e){falha='Não consegui falar com o servidor. Tente de novo em instantes.'}
+  iaOcupada=false;$('iaEnviar').disabled=false;
+  const el=$('iaPensando');if(el)el.removeAttribute('id');
+  if(r&&r.ok){
+    iaHistorico.push({role:'user',content:q},{role:'assistant',content:String(r.resposta||'').slice(0,3000)});
+    if(el)el.innerHTML=iaFormatar(r.resposta||'(sem resposta)');
+  }else{
+    const cod=r&&(r.error||r.code);
+    falha=falha||({ia_nao_configurada:'A IA ainda não foi ativada no servidor: falta cadastrar a chave da API (propriedade ANTHROPIC_API_KEY) no Apps Script.',limite_ia:'Limite de perguntas por hora atingido. Tente mais tarde.',forbidden:'Seu usuário não tem acesso à área de Marketing, então não pode usar a IA.',pergunta_vazia:'Escreva uma pergunta.'}[cod])||('A IA não respondeu'+(cod?' ('+cod+')':'')+'. Tente de novo.');
+    if(el){el.classList.add('err');el.textContent=falha}
+  }
+  box.scrollTop=box.scrollHeight;
 }
 
 function wgSetPermanencia(v){const n=Number(v);if(!(n>=1&&n<=8))return;try{localStorage.setItem('sjBIperm2',String(n))}catch(e){}wgRender()}

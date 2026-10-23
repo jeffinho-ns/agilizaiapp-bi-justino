@@ -431,6 +431,12 @@ function doPost(e) {
     // O robô (robo-zigpay/robo_zigpay.ps1) loga com conta de usuário de verdade e usa o
     // token de sessão normal — funciona desde que essa conta tenha a área financeiro/
     // master liberada (Renato vai conferir isso na aba de usuários antes de implantar).
+    // IA do BI (23/10, pedido do Renato): botão "IA" da aba Marketing. O painel manda a pergunta e um resumo dos dados que já carregou
+    // (sem nome/telefone/e-mail de clientes); aqui só repassa à API da Anthropic. Chave na propriedade do script ANTHROPIC_API_KEY.
+    if (action === 'getIaResposta') {
+      if (!hasAreaAccess_(auth, 'marketing')) return jsonOut_({ ok: false, code: 'forbidden' });
+      return jsonOut_(responderIa_(auth, body));
+    }
     // Ranking de bandas (22/10): lê a agenda artística direto da planilha e recalcula; quem vê Marketing (ou Financeiro) lê e atualiza.
     if (action === 'getBandRanking' || action === 'atualizarBandRanking') {
       if (!hasAreaAccess_(auth, 'marketing') && !hasAreaAccess_(auth, 'financeiro')) return jsonOut_({ ok: false, code: 'forbidden' });
@@ -5296,6 +5302,47 @@ function verifyToken_(token) {
   const expiresAt = Number(expiresAtStr);
   if (!expiresAt || Date.now() > expiresAt) return { ok: false };
   return { ok: true, email, role, areas: parseAreasCsv_(areasCsv || '') };
+}
+
+// IA do BI: responde só com o resumo de dados que o painel enviou. Limite de 40 perguntas por hora por usuário (controle de custo).
+const IA_MODELO = 'claude-sonnet-5-5';
+const IA_LIMITE_HORA = 40;
+function responderIa_(auth, body) {
+  const chave = PropertiesService.getScriptProperties().getProperty('ANTHROPIC_API_KEY');
+  if (!chave) return { ok: false, error: 'ia_nao_configurada' };
+  const pergunta = String(body.pergunta || '').trim().slice(0, 800);
+  if (!pergunta) return { ok: false, error: 'pergunta_vazia' };
+  const cache = CacheService.getScriptCache();
+  const k = 'ia:' + String(auth.email || '').toLowerCase() + ':' + Utilities.formatDate(new Date(), 'America/Sao_Paulo', 'yyyyMMddHH');
+  const usadas = Number(cache.get(k)) || 0;
+  if (usadas >= IA_LIMITE_HORA) return { ok: false, error: 'limite_ia' };
+  cache.put(k, String(usadas + 1), 3700);
+  const contexto = String(body.contexto || '').slice(0, 60000);
+  const msgs = [];
+  (Array.isArray(body.historico) ? body.historico : []).slice(-6).forEach(function (m) {
+    if (m && (m.role === 'user' || m.role === 'assistant') && m.content) msgs.push({ role: m.role, content: String(m.content).slice(0, 3000) });
+  });
+  while (msgs.length && msgs[0].role !== 'user') msgs.shift();
+  msgs.push({ role: 'user', content: 'DADOS DO BI (JSON, atualizados agora):\n' + contexto + '\n\nPERGUNTA: ' + pergunta });
+  const sistema = 'Você é o assistente de dados do BI do Seu Justino Vila Madalena (bar/restaurante com música ao vivo, Grupo Ideia). ' +
+    'Responda em português do Brasil, direto: conclusão primeiro, depois os números que sustentam. ' +
+    'Use SOMENTE os dados fornecidos na mensagem. Se a resposta não estiver neles, diga claramente que o BI não tem esse dado e diga onde ele poderia ser lançado; nunca invente número, data ou nome. ' +
+    'Cite datas e valores (R$ com vírgula decimal). Se os dados forem poucos ou parciais, avise. Respostas curtas (até uns 10 linhas), sem enrolação.';
+  let resp;
+  try {
+    resp = UrlFetchApp.fetch('https://api.anthropic.com/v1/messages', {
+      method: 'post', contentType: 'application/json', muteHttpExceptions: true,
+      headers: { 'x-api-key': chave, 'anthropic-version': '2023-06-01' },
+      payload: JSON.stringify({ model: IA_MODELO, max_tokens: 1200, system: sistema, messages: msgs })
+    });
+  } catch (e) { return { ok: false, error: 'ia_indisponivel' }; }
+  const code = resp.getResponseCode();
+  let j = {};
+  try { j = JSON.parse(resp.getContentText()); } catch (e) {}
+  if (code !== 200) return { ok: false, error: code === 401 ? 'ia_chave_invalida' : (code === 429 ? 'limite_ia' : 'ia_indisponivel') };
+  const texto = (j.content || []).map(function (b) { return b && b.type === 'text' ? b.text : ''; }).join('').trim();
+  try { logAudit_(auth, 'ask', 'marketing', 'iaPergunta', '', 'Pergunta à IA: ' + pergunta.slice(0, 120), null, null); } catch (e) {}
+  return { ok: true, resposta: texto || '(sem resposta)' };
 }
 
 function bytesToHex_(bytes) {
