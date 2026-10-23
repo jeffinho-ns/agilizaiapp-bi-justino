@@ -8395,6 +8395,8 @@ function crmRender(){
   body.innerHTML=h;
 }
 
+// Garante o quadro do Dionísio ao abrir a aba Reservas, mesmo que o carregamento do quadro semanal falhe antes (23/10).
+document.addEventListener('click',function(e){const b=e.target&&e.target.closest&&e.target.closest('#nav button[data-tab="reservas"]');if(b)setTimeout(function(){try{loadCrm()}catch(_){}},700)});
 function wgSetPermanencia(v){const n=Number(v);if(!(n>=1&&n<=8))return;try{localStorage.setItem('sjBIperm2',String(n))}catch(e){}wgRender()}
 function wgSelecionarDia(d){wgDiaAtual=d;wgRender()}
 function wgSetAus(sec,v){wgAusentes[wgDiaAtual+'|'+sec]=Math.max(0,Number(v)||0);wgRender()}
