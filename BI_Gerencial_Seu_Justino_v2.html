@@ -8326,7 +8326,7 @@ const CRM_TIPS={
  'Começaram pedido ou reserva':'Quem passou da dúvida para a ação: informou data e número de pessoas ou começou a preencher a reserva. A <b>queda entre a etapa anterior e esta</b> mostra quanto interesse se perde antes de começar.',
  'Finalizaram e pagaram':'Quem <b>concluiu</b>: reserva confirmada (e pagamento, quando exigido). É o resultado do atendimento. Dividir este número pela etapa anterior mostra a eficiência do fechamento.',
  'Por origem':'<b>De onde veio cada reserva</b> e como ela terminou. Origens: WhatsApp, Instagram, <b>Meta Ads</b> (anúncio pago), Portal e <b>Funcionários</b> (lançada pela equipe). Serve para saber qual canal traz cliente que realmente vem e qual traz cancelamento ou falta.',
- 'Por dia da semana':'Em quais dias da semana as pessoas <b>visitam</b> (coluna Visitas) e em quais dias elas <b>fazem a reserva</b> (coluna Criadas). Mostra, por exemplo, que o sábado enche mas a maioria reserva durante a semana — por isso as campanhas precisam sair antes.',
+ 'Por dia da semana':'Em quais dias da semana as reservas estão <b>marcadas</b> (coluna "Marcadas p/ o dia" = dia da visita) e em quais dias da semana elas são <b>feitas</b> (coluna "Feitas no dia"). Mostra, por exemplo, que o sábado enche mas a maioria reserva durante a semana — por isso as campanhas precisam sair antes.',
  'Antecedência × perda':'<b>Quem reserva com muita antecedência cancela mais?</b> Cada linha agrupa as reservas pelo tempo entre reservar e visitar e mostra a % que cancelou ou faltou. Se as reservas antigas cancelam mais, vale <b>reconfirmar 48 h antes</b>.',
  'Mês de criação':'<b>Evolução mês a mês</b>: quantas reservas foram criadas, quantas pela IA e as taxas de cancelamento e no-show. Serve para ver se a situação melhora ou piora e se a IA parou de criar reservas em algum mês.',
  'Horário em que a reserva é criada':'<b>Em quais horas do dia</b> os clientes fazem reservas. Mostra quando a equipe e a IA precisam estar mais atentas para responder rápido e quando é melhor enviar mensagens de captação.',
@@ -8334,8 +8334,8 @@ const CRM_TIPS={
  'Por origem|Reservas':'Quantas reservas vieram desse canal no período.',
  'Por origem|Compareceu':'De todas as reservas desse canal, quantas % terminaram com o cliente presente (status Concluída).',
  'Por dia da semana|Dia':'Dia da semana.',
- 'Por dia da semana|Visitas':'Quantas reservas são <b>para visitar</b> nesse dia da semana.',
- 'Por dia da semana|Criadas':'Quantas reservas foram <b>feitas (criadas)</b> nesse dia da semana, independentemente de quando o cliente vem.',
+ 'Por dia da semana|Marcadas p/ o dia':'Quantas <b>reservas</b> (não pessoas) estão <b>marcadas para esse dia da semana</b>, ou seja, o dia em que o cliente vai à casa. Exemplo: sáb 313 = 313 reservas marcadas para sábados no período. Conta todas as reservas, inclusive as canceladas e as que faltaram.',
+ 'Por dia da semana|Feitas no dia':'Quantas reservas foram <b>feitas (clicadas/combinadas) nesse dia da semana</b>, independentemente de quando o cliente vai. Exemplo: sex 125 = 125 reservas foram criadas em sextas-feiras.',
  'Antecedência × perda|Antecedência':'Dias entre o dia em que a reserva foi <b>criada</b> e o dia da <b>visita</b>. "0–1 dia" = reservou para hoje ou amanhã.',
  'Mês de criação|Mês':'Mês em que as reservas foram <b>criadas</b> (não o mês da visita).',
  'Mês de criação|Pela IA':'% das reservas do mês criadas pela assistente de IA. <b>0% em mês movimentado indica problema na integração.</b>',
@@ -8445,7 +8445,7 @@ function crmRender(){
   const linhaHr=Object.keys(hr).map(Number).sort(function(a,b){return a-b}).map(function(b){return [String(b).padStart(2,'0')+'h–'+String(b+2).padStart(2,'0')+'h59',hr[b],crmFmt(crmPct(hr[b],n),0)]});
   h+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px;margin-top:14px">'
     +'<div><h4 style="margin:0 0 4px"'+crmTipAttr('Por origem')+'>Por origem</h4>'+tb(['Origem','Reservas','Compareceu','Cancel.','No-show'],linhaOr,'Por origem')+'</div>'
-    +'<div><h4 style="margin:0 0 4px"'+crmTipAttr('Por dia da semana')+'>Por dia da semana</h4>'+tb(['Dia','Visitas','%','Criadas','%'],linhaDia,'Por dia da semana')+'</div>'
+    +'<div><h4 style="margin:0 0 4px"'+crmTipAttr('Por dia da semana')+'>Por dia da semana</h4>'+tb(['Dia','Marcadas p/ o dia','%','Feitas no dia','%'],linhaDia,'Por dia da semana')+'</div>'
     +'<div><h4 style="margin:0 0 4px"'+crmTipAttr('Antecedência × perda')+'>Antecedência × perda</h4>'+tb(['Antecedência','Reservas','%','Cancel.','No-show'],linhaLead,'Antecedência × perda')+'</div>'
     +'<div><h4 style="margin:0 0 4px"'+crmTipAttr('Mês de criação')+'>Mês de criação</h4>'+tb(['Mês','Reservas','Pela IA','Cancel.','No-show'],linhaMes,'Mês de criação')+'</div>'
     +'<div><h4 style="margin:0 0 4px"'+crmTipAttr('Horário em que a reserva é criada')+'>Horário em que a reserva é criada</h4>'+tb(['Faixa','Reservas','%'],linhaHr,'Horário em que a reserva é criada')+'</div>'
