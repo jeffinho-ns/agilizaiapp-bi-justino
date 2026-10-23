@@ -1893,18 +1893,18 @@ tbody tr:hover{background:#ffffff08}
 <div class="toolbar">
   <div class="tbItem"><label class="mini">Reservas criadas nos últimos</label><select id="crmPeriodo" onchange="crmRender()"><option value="30">30 dias</option><option value="60">60 dias</option><option value="90" selected>90 dias</option><option value="400">todo o período</option></select></div>
   <button class="btn" type="button" onclick="loadCrm(true)">↻ Atualizar tela</button>
+  <button class="btn" type="button" id="crmBtnSaude" onclick="crmPainel('saude')">🩺 Saúde do atendimento</button>
+  <button class="btn" type="button" id="crmBtnPlano" onclick="crmPainel('plano')">✅ Plano de ação</button>
 </div>
+<div id="crmPainelSaude" class="hidden" style="margin:10px 0;padding:12px;border:1px solid var(--line,#333);border-radius:10px">
+<div class="roleTitle"><h3>🩺 Saúde do atendimento por IA</h3><span class="badge p" id="crmSaudeBadge">—</span></div>
+<div class="note">O robô lê, todo dia, as telas de configuração da IA do Dionísio e este quadro mostra o que está certo (🟢), pede atenção (🟡) ou está quebrando reservas (🔴). Passe o mouse em cada item para ver a explicação.</div>
+<div id="crmSaudeBody" class="mini">Carregando…</div></div>
+<div id="crmPainelPlano" class="hidden" style="margin:10px 0;padding:12px;border:1px solid var(--line,#333);border-radius:10px">
+<div class="roleTitle"><h3>✅ Plano de ação do atendimento</h3><span class="badge p" id="crmPlanoBadge">—</span></div>
+<div class="note">O que fazer primeiro, em ordem. Cada item é conferido na próxima leitura do robô: quando a configuração no Dionísio muda, ele vira ✅ sozinho. Itens com ⚪ são manuais.</div>
+<div id="crmPlanoBody" class="mini">Carregando…</div></div>
 <div id="crmBody" class="mini">Carregando dados do Dionísio…</div>
-</div></details>
-<details class="full cardCollapse" data-card-id="res-crm-saude" open><summary class="cardCollapseHead"><span class="chev">▸</span> Saúde do atendimento • configuração do Dionísio<span class="chHint">lido pelo robô às 10h, 15h e 18h</span></summary>
-<div class="card full"><div class="roleTitle"><h3>🩺 Saúde do atendimento por IA • Dionísio CRM</h3><span class="badge p" id="crmSaudeBadge">—</span></div>
-<div class="note">O robô lê, todo dia, as telas de configuração da IA do Dionísio (WhatsApp ligado, regras, follow-up, encaminhamento para humano, fila de atendimento humano…) e este quadro mostra o que está certo (🟢), pede atenção (🟡) ou está quebrando reservas (🔴). Passe o mouse em cada item para ver a explicação.</div>
-<div id="crmSaudeBody" class="mini">Carregando…</div>
-</div></details>
-<details class="full cardCollapse" data-card-id="res-crm-plano" open><summary class="cardCollapseHead"><span class="chev">▸</span> Plano de ação • melhorar a conversão<span class="chHint">marca sozinho quando o Dionísio muda</span></summary>
-<div class="card full"><div class="roleTitle"><h3>✅ Plano de ação do atendimento</h3><span class="badge p" id="crmPlanoBadge">—</span></div>
-<div class="note">O que fazer primeiro, em ordem. Cada item é conferido automaticamente na próxima leitura do robô: quando a configuração no Dionísio muda, ele vira ✅ sozinho. Itens com ⚪ são manuais (o robô ainda não consegue conferir).</div>
-<div id="crmPlanoBody" class="mini">Carregando…</div>
 </div></details>
 <details class="full cardCollapse" data-card-id="res-nova-reserva"><summary class="cardCollapseHead"><span class="chev">▸</span> Nova reserva • Seu Justino<span class="chHint">clique para abrir</span></summary>
 <div class="card full"><div class="roleTitle"><h3>Nova reserva • Seu Justino</h3><span class="badge p">ALIMENTA SUGESTÃO DE FREELANCER</span></div>
@@ -8541,6 +8541,7 @@ function crmCfgAvalia(c,p,cap){
   return L;
 }
 const CRM_COR={r:'#f76e7c',y:'#f5b942',g:'#34d399'},CRM_ICO={r:'🔴',y:'🟡',g:'🟢'};
+function crmPainel(qual){['saude','plano'].forEach(function(k){var p=$('crmPainel'+(k==='saude'?'Saude':'Plano')),b=$('crmBtn'+(k==='saude'?'Saude':'Plano'));if(!p)return;var abre=(k===qual)&&p.classList.contains('hidden');p.classList.toggle('hidden',!abre);if(b)b.style.outline=abre?'2px solid var(--accent,#c9a227)':''})}
 function crmCfgRender(){
   const sb=$('crmSaudeBody'),pb=$('crmPlanoBody');if(!sb&&!pb)return;
   const rows=crmCfgRows||[];
