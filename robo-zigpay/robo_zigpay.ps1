@@ -341,6 +341,25 @@ return JSON.stringify({mes: m.textContent.trim(), ano: y.textContent.trim()});
   throw "Nao consegui navegar o calendario ate $($alvo.ToString('yyyy-MM')) - travou apos $tentativa cliques."
 }
 
+# 23/10: faturamento/publico lidos como 0 logo depois do fechamento (a ZigPay ainda nao consolidou o dia)
+# eram gravados no BI como R$ 0 e o BI recusava a venda por item do mesmo dia. Zero no fallback nao e dado: nao grava.
+function Test-ValorConsolidado($valor, [string]$nome, [string]$iso) {
+  if ([double]$valor -gt 0) { return $true }
+  Log ("AVISO: $nome de $iso veio 0 pelo navegador - a ZigPay provavelmente ainda nao consolidou o dia (ou a casa fechou). NAO gravei zero; a proxima rodada tenta de novo.")
+  return $false
+}
+
+# Aviso visivel quando a sessao do perfil vence: arquivo na Area de Trabalho (some sozinho quando o login volta).
+$AvisoLoginPath = Join-Path ([Environment]::GetFolderPath('Desktop')) 'ZIGPAY - ROBO PRECISA DE LOGIN.txt'
+function Set-AvisoLogin([bool]$precisa) {
+  try {
+    if ($precisa) {
+      $msg = "O robo da ZigPay nao conseguiu entrar em " + (Get-Date -Format 'dd/MM/yyyy HH:mm') + ".`r`nA ZigPay pede o teste 'Confirme que e humano'. Faltam dados no BI ate resolver.`r`n`r`nComo resolver: abra a pasta robo-zigpay, rode login_manual_zigpay.ps1 (botao direito > Executar com PowerShell), entre na ZigPay marcando o teste, espere o painel abrir e FECHE o Chrome.`r`nEste arquivo some sozinho quando o robo voltar a entrar."
+      Set-Content -Path $AvisoLoginPath -Value $msg -Encoding UTF8
+    } elseif (Test-Path $AvisoLoginPath) { Remove-Item $AvisoLoginPath -Force }
+  } catch {}
+}
+
 function Connect-ZigPay($driver, $cred) {
   # 23/10: a ZigPay passou a exigir o teste "Confirme que e humano" (Cloudflare) no login, que o robo nao
   # passa. O robo agora usa um perfil proprio do Chrome ($ChromeProfileDir): o Renato entra UMA vez a mao
@@ -348,7 +367,7 @@ function Connect-ZigPay($driver, $cred) {
   # sessao nao estiver valida.
   Enter-SeUrl -Driver $driver -Url 'https://dashboard.zigpay.com.br/' | Out-Null
   Start-Sleep -Seconds 4
-  if ($driver.Url -notlike '*login*') { Log ("Sessao ZigPay do perfil ainda valida. URL: " + $driver.Url); return }
+  if ($driver.Url -notlike '*login*') { Log ("Sessao ZigPay do perfil ainda valida. URL: " + $driver.Url); Set-AvisoLogin $false; return }
   Enter-SeUrl -Driver $driver -Url $ZigPayLoginUrl | Out-Null
   (Wait-Element $driver "//input[@id='login-organization']").SendKeys($cred.zigpay.organization) | Out-Null
   (Wait-Element $driver "//input[@id='login-username']").SendKeys($cred.zigpay.username) | Out-Null
@@ -358,9 +377,11 @@ function Connect-ZigPay($driver, $cred) {
   $limite = (Get-Date).AddSeconds(20)
   while ($driver.Url -like '*login*' -and (Get-Date) -lt $limite) { Start-Sleep -Milliseconds 500 }
   if ($driver.Url -like '*login*') {
+    Set-AvisoLogin $true
     throw "Login na ZigPay (navegador) nao saiu da tela de login - a sessao do perfil expirou ou ha teste 'Confirme que e humano'. Rode login_manual_zigpay.ps1 e entre a mao uma vez (ou confira usuario/senha/organizacao em $CredPath)."
   }
   Log ("Login ZigPay (navegador) ok. URL pos-login: " + $driver.Url)
+  Set-AvisoLogin $false
 }
 
 function New-ZigPaySession($cred, $driverDir, $pidsAntes) {
@@ -994,13 +1015,13 @@ try {
               if ($precisaFallbackRevenue) {
                 $revenueDom = Get-RevenueFromDate -driver $driver -isoDate $iso
                 Log ("Faturamento (navegador, fallback) para {0}: R$ {1:N2}" -f $iso, $revenueDom)
-                if (-not $DryRun) { Submit-RevenueDomFallback -token $token -date $iso -revenue $revenueDom }
+                if (-not $DryRun -and (Test-ValorConsolidado $revenueDom 'faturamento' $iso)) { Submit-RevenueDomFallback -token $token -date $iso -revenue $revenueDom }
               }
               if ($precisaFallbackPublico) {
                 try {
                   $publicoDom = Get-PublicoFromDate -driver $driver -isoDate $iso
                   Log ("Publico (navegador, fallback via Business Intelligence BETA) para {0}: {1} pessoas" -f $iso, $publicoDom)
-                  if (-not $DryRun) { Submit-PublicoDomFallback -token $token -date $iso -publico $publicoDom }
+                  if (-not $DryRun -and (Test-ValorConsolidado $publicoDom 'publico' $iso)) { Submit-PublicoDomFallback -token $token -date $iso -publico $publicoDom }
                 } catch {
                   Log ("AVISO: falha ao ler publico via Business Intelligence BETA pra {0}: {1}" -f $iso, $_.Exception.Message)
                 }
@@ -1059,11 +1080,11 @@ try {
           try {
             $revenueDom = Get-RevenueFromDate -driver $driver -isoDate $ontemIso
             Log ("Faturamento (navegador, fallback) para {0}: R$ {1:N2}" -f $ontemIso, $revenueDom)
-            if (-not $DryRun) { Submit-RevenueDomFallback -token $token -date $ontemIso -revenue $revenueDom }
+            if (-not $DryRun -and (Test-ValorConsolidado $revenueDom 'faturamento' $ontemIso)) { Submit-RevenueDomFallback -token $token -date $ontemIso -revenue $revenueDom }
             try {
               $publicoDom = Get-PublicoFromDate -driver $driver -isoDate $ontemIso
               Log ("Publico (navegador, fallback via Business Intelligence BETA) para {0}: {1} pessoas" -f $ontemIso, $publicoDom)
-              if (-not $DryRun) { Submit-PublicoDomFallback -token $token -date $ontemIso -publico $publicoDom }
+              if (-not $DryRun -and (Test-ValorConsolidado $publicoDom 'publico' $ontemIso)) { Submit-PublicoDomFallback -token $token -date $ontemIso -publico $publicoDom }
             } catch {
               Log ("AVISO: falha ao ler publico via Business Intelligence BETA pra {0}: {1}" -f $ontemIso, $_.Exception.Message)
             }
