@@ -5329,7 +5329,7 @@ function submitCrmReservas_(body) {
   const data = last > 1 ? sh.getRange(2, 1, last - 1, H).getValues() : [];
   const idx = {};
   data.forEach(function (r, i) { idx[String(r[0])] = i; });
-  const now = new Date().toISOString();
+  const now = Date.now();   // número (ms): a planilha não converte em data e o BI calcula "atualizado há X h"
   let novos = 0, atualizados = 0;
   rows.forEach(function (r) {
     if (!r || !r.id) return;
@@ -5338,13 +5338,37 @@ function submitCrmReservas_(body) {
     if (at !== undefined) { data[at] = linha; atualizados++; } else { idx[String(r.id)] = data.length; data.push(linha); novos++; }
   });
   sh.getRange(2, 1, data.length, H).setValues(data);
+  try { CacheService.getScriptCache().remove('crmRes'); } catch (e) {}
   return { ok: true, novos: novos, atualizados: atualizados, total: data.length };
 }
+// Leitura rápida (23/10): sheetToObjects_ formata cada data célula a célula e levava ~37 s com 663 linhas (o Google cortava a resposta).
+// Aqui lê tudo de uma vez, formata cada data distinta UMA vez, devolve linhas compactas (colunas + arrays) e guarda 2 min em cache.
 function getCrmReservas_() {
-  const rows = sheetToObjects_(ensureSheet_('CrmReservas', CRMRES_HEADERS));
-  let ultima = '';
-  rows.forEach(function (r) { if (String(r.capturedAt || '') > ultima) ultima = String(r.capturedAt); });
-  return { ok: true, rows: rows, atualizadoEm: ultima };
+  const cache = CacheService.getScriptCache();
+  try { const c = cache.get('crmRes'); if (c) return JSON.parse(c); } catch (e) {}
+  const sh = ensureSheet_('CrmReservas', CRMRES_HEADERS);
+  const cols = CRMRES_HEADERS.filter(function (h) { return h !== 'capturedAt'; });
+  const last = sh.getLastRow();
+  if (last < 2) return { ok: true, cols: cols, rows: [], atualizadoEm: '' };
+  const tz = Session.getScriptTimeZone() || 'America/Sao_Paulo';
+  const memo = {};
+  const fmt = function (d) { const k = d.getTime(); return memo[k] || (memo[k] = Utilities.formatDate(d, tz, 'yyyy-MM-dd')); };
+  const vals = sh.getRange(2, 1, last - 1, CRMRES_HEADERS.length).getValues();
+  const ic = CRMRES_HEADERS.indexOf('capturedAt');
+  let ultima = 0;
+  const rows = [];
+  vals.forEach(function (r) {
+    if (!r[0]) return;
+    const cap = r[ic];
+    const t = cap instanceof Date ? cap.getTime() : (typeof cap === 'number' ? cap : (Date.parse(String(cap)) || 0));
+    if (t > ultima) ultima = t;
+    const o = [];
+    for (let i = 0; i < r.length; i++) { if (i === ic) continue; const c = r[i]; o.push(c instanceof Date ? fmt(c) : c); }
+    rows.push(o);
+  });
+  const res = { ok: true, cols: cols, rows: rows, atualizadoEm: ultima ? new Date(ultima).toISOString() : '' };
+  try { const j = JSON.stringify(res); if (j.length < 95000) cache.put('crmRes', j, 120); } catch (e) {}
+  return res;
 }
 function submitCrmFunil_(body) {
   const sh = ensureSheet_('CrmFunil', CRMFUNIL_HEADERS);

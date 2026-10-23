@@ -8313,12 +8313,14 @@ async function loadCrm(forca){
   if(!hasAreaAccessClient('reservas')&&!hasAreaAccessClient('marketing')&&!hasAreaAccessClient('operacao')&&!hasAreaAccessClient('financeiro')){$('crmBody').textContent='Sem acesso.';return}
   if(crmCarregado&&!forca){crmRender();return}
   try{
-    const [a,b]=await Promise.all([apiAuth('getCrmReservas',{}),apiAuth('getCrmFunil',{})]);
-    if(a&&a.ok){crmRows=a.rows||[];crmAtualizadoEm=a.atualizadoEm||''}
-    else{$('crmBody').innerHTML='<div class="alert y">'+(a&&a.error==='unknown_action'?'O servidor ainda não tem o módulo do Dionísio: cole o Code.gs novo no Apps Script e republique.':'Não consegui carregar os dados do Dionísio.')+'</div>';return}
+    $('crmBody').innerHTML='<div class="mini">Carregando dados do Dionísio…</div>';
+    const a=await apiAuth('getCrmReservas',{},false,90000);
+    if(a&&a.ok){crmRows=(a.cols&&a.rows&&a.rows.length&&Array.isArray(a.rows[0]))?a.rows.map(function(r){const o={};a.cols.forEach(function(c,i){o[c]=r[i]});return o}):(a.rows||[]);crmAtualizadoEm=a.atualizadoEm||''}
+    else{$('crmBody').innerHTML='<div class="alert y">'+(a&&a.error==='unknown_action'?'O servidor ainda não tem o módulo do Dionísio: cole o Code.gs novo no Apps Script e republique.':'O servidor não devolveu as reservas do Dionísio ('+((a&&(a.error||a.code))||'sem resposta')+'). Clique em Atualizar tela.')+'</div>';return}
+    const b=await apiAuth('getCrmFunil',{},false,60000);
     crmFunil=(b&&b.ok&&b.rows)||[];
     crmCarregado=true;crmRender();
-  }catch(e){$('crmBody').innerHTML='<div class="alert r">Falha ao carregar os dados do Dionísio.</div>'}
+  }catch(e){$('crmBody').innerHTML='<div class="alert r">Falha ao carregar os dados do Dionísio ('+escapeHtml(String(e&&e.message||e))+'). Clique em Atualizar tela.</div>'}
 }
 function crmGrupo(st){st=String(st||'').toLowerCase();if(st.indexOf('conclu')>=0)return 'ok';if(st.indexOf('compare')>=0&&st.indexOf('n')===0)return 'noshow';if(st.indexOf('cancel')>=0)return 'cancel';return 'aberta'}
 function crmPct(a,b){return b>0?a/b*100:null}
