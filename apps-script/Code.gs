@@ -5454,3 +5454,23 @@ function bytesToHex_(bytes) {
 function safeParse_(str, fallback) {
   try { return str ? JSON.parse(str) : fallback } catch (e) { return fallback }
 }
+
+// ZigPay API de integração (23/10): teste de conexão. Rodar manualmente no editor (Executar > zigTeste) e ver o "Registro de execução".
+// Usa as propriedades do script ZIG_TOKEN e ZIG_REDE; mostra só id e nome das lojas, nunca o token.
+function zigTeste() {
+  const props = PropertiesService.getScriptProperties();
+  const token = (props.getProperty('ZIG_TOKEN') || '').trim();
+  const rede = (props.getProperty('ZIG_REDE') || '').trim();
+  if (!token) { Logger.log('FALTA a propriedade ZIG_TOKEN (ou o Valor está vazio).'); return; }
+  if (!rede) { Logger.log('FALTA a propriedade ZIG_REDE (ou o Valor está vazio).'); return; }
+  const url = 'https://api.zigcore.com.br/integration/erp/lojas?rede=' + encodeURIComponent(rede);
+  const resp = UrlFetchApp.fetch(url, { method: 'get', headers: { Authorization: token }, muteHttpExceptions: true });
+  const code = resp.getResponseCode();
+  const txt = resp.getContentText() || '';
+  Logger.log('HTTP ' + code);
+  if (code !== 200) { Logger.log('Resposta (início): ' + txt.slice(0, 300)); return; }
+  let lojas;
+  try { lojas = JSON.parse(txt); } catch (e) { Logger.log('Resposta não é JSON: ' + txt.slice(0, 300)); return; }
+  Logger.log('Lojas encontradas: ' + lojas.length);
+  lojas.forEach(function (l) { Logger.log('id=' + l.id + ' | nome=' + l.name); });
+}
