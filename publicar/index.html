@@ -1069,6 +1069,23 @@ tbody tr:hover{background:#ffffff08}
 <div class="toolbar"><div class="tbItem"><label class="mini">Período</label><select id="deliPeriodo" onchange="deliRender()"><option value="14">14 dias</option><option value="30" selected>30 dias</option><option value="60">60 dias</option><option value="90">90 dias</option><option value="150">150 dias</option></select></div>
 <button class="btn" type="button" onclick="loadDelivery(true)">↻ Atualizar tela</button></div>
 <div id="deliBody" class="mini">Abra esta página para carregar…</div></div>
+<div class="card full" id="deliSugestoes">
+<div class="roleTitle"><h3>💡 99Food • sugestões para vender mais</h3><span class="badge p" id="deliPlanoBadge">—</span></div>
+<div class="note">Leitura do painel da 99Food (loja Seu Justino Madalena) feita em <b>23/10/2026</b>, só leitura. Os números abaixo são desse dia e <b>não se atualizam sozinhos</b>. As fotos e os preços cadastrados <b>ainda não foram vistos</b> (a tela de Cardápios não abriu na leitura); por isso, fotos e preço seguem boas práticas de mercado, e não uma avaliação do seu cardápio. Marque o que for feito: a marcação fica neste navegador.</div>
+<div class="tablewrap"><table><thead><tr><th>O que o painel mostrou (23/10)</th><th>Valor</th><th>O que quer dizer</th></tr></thead><tbody>
+<tr><td>Pedidos (16 a 22/10)</td><td><b>2</b></td><td>A loja quase não vende hoje.</td></tr>
+<tr><td>Horário conectado</td><td><b>1,34 h/dia</b> • 35,5% do pico • 28,5% do predefinido</td><td>Pico da loja é 18:00 a 23:30. Maior alavanca.</td></tr>
+<tr><td>Ticket médio</td><td><b>R$ 78,50</b> (68º de 1.754 lojas em 5 km)</td><td>Quem compra gasta bem; faltam pedidos.</td></tr>
+<tr><td>Itens mais vistos</td><td>Muu Burguer 83 • Veggie Burguer 81 • Pastel Mix 34 • Coxinha 16 • demais ≤ 12 (Ceviche: 0)</td><td>Burgers puxam a visibilidade.</td></tr>
+<tr><td>Conversão em carrinho</td><td>Muu Burguer 2,41% • Veggie Burguer 1,23%</td><td>Foto, descrição e preço decidem aqui.</td></tr>
+<tr><td>Itens que venderam</td><td>Muu Burguer (2) • Coca-Cola Zero lata (2) • Veggie Burguer (1) • Salada Caprese (1)</td><td>Só 4 itens tiveram venda.</td></tr>
+<tr><td>Ofertas criadas</td><td><b>nenhuma</b></td><td>Nunca testou promoção na plataforma.</td></tr>
+<tr><td>Avaliações (25/07 a 22/10)</td><td>nenhuma</td><td>Sem nota, a loja perde posição.</td></tr>
+<tr><td>Preparo</td><td>35,26 min • 50% fora do prazo (amostra de 2 pedidos)</td><td>Amostra pequena; vale ajustar o prazo informado.</td></tr>
+</tbody></table></div>
+<h4 style="margin:14px 0 6px">Horário</h4><label class="deliCk" style="display:flex;gap:8px;align-items:flex-start;padding:5px 0;cursor:pointer"><input type="checkbox" data-deli="h1" onchange="deliPlanoMarca(this)" style="margin-top:3px"><span>Deixar a loja conectada de 18:00 a 23:30 (horário de pico da loja). Hoje fica conectada só 35,5% do pico e 28,5% do horário predefinido.</span></label><label class="deliCk" style="display:flex;gap:8px;align-items:flex-start;padding:5px 0;cursor:pointer"><input type="checkbox" data-deli="h2" onchange="deliPlanoMarca(this)" style="margin-top:3px"><span>Definir quem abre e fecha a loja no app todo dia (e um aviso se ficar offline no pico).</span></label><label class="deliCk" style="display:flex;gap:8px;align-items:flex-start;padding:5px 0;cursor:pointer"><input type="checkbox" data-deli="h3" onchange="deliPlanoMarca(this)" style="margin-top:3px"><span>Revisar o prazo de preparo informado: hoje o tempo médio real é 35,26 min e 50% dos pedidos (1 de 2) saíram fora do prazo.</span></label><h4 style="margin:14px 0 6px">Cardápio</h4><label class="deliCk" style="display:flex;gap:8px;align-items:flex-start;padding:5px 0;cursor:pointer"><input type="checkbox" data-deli="c1" onchange="deliPlanoMarca(this)" style="margin-top:3px"><span>Burgers no topo (Muu Burguer e Veggie Burguer são os que a loja mais mostra: 83 e 81 impressões).</span></label><label class="deliCk" style="display:flex;gap:8px;align-items:flex-start;padding:5px 0;cursor:pointer"><input type="checkbox" data-deli="c2" onchange="deliPlanoMarca(this)" style="margin-top:3px"><span>Criar 2 ou 3 combos com preço fechado (burger + porção + bebida) para subir o ticket e facilitar a escolha.</span></label><label class="deliCk" style="display:flex;gap:8px;align-items:flex-start;padding:5px 0;cursor:pointer"><input type="checkbox" data-deli="c3" onchange="deliPlanoMarca(this)" style="margin-top:3px"><span>Reescrever ou tirar do delivery os itens sem impressão ou sem venda (Ceviche de banana da terra, Pastel Mix de Queijo, Arroz Biro Biro, Vinagrete).</span></label><label class="deliCk" style="display:flex;gap:8px;align-items:flex-start;padding:5px 0;cursor:pointer"><input type="checkbox" data-deli="c4" onchange="deliPlanoMarca(this)" style="margin-top:3px"><span>Descrição de uma linha por item, com o que o diferencia (braseiro, picanha, ponto da carne).</span></label><h4 style="margin:14px 0 6px">Fotos</h4><label class="deliCk" style="display:flex;gap:8px;align-items:flex-start;padding:5px 0;cursor:pointer"><input type="checkbox" data-deli="f1" onchange="deliPlanoMarca(this)" style="margin-top:3px"><span>Foto própria dos itens de maior margem, com luz natural, fundo limpo e o prato inteiro (campeões e combos primeiro).</span></label><label class="deliCk" style="display:flex;gap:8px;align-items:flex-start;padding:5px 0;cursor:pointer"><input type="checkbox" data-deli="f2" onchange="deliPlanoMarca(this)" style="margin-top:3px"><span>Sem texto, logo ou moldura sobre a foto.</span></label><h4 style="margin:14px 0 6px">Precificação</h4><label class="deliCk" style="display:flex;gap:8px;align-items:flex-start;padding:5px 0;cursor:pointer"><input type="checkbox" data-deli="p1" onchange="deliPlanoMarca(this)" style="margin-top:3px"><span>Informar a comissão da 99Food do contrato e o CMV alvo, para calcular o preço mínimo de delivery item a item (o BI já tem o custo da ficha técnica).</span></label><label class="deliCk" style="display:flex;gap:8px;align-items:flex-start;padding:5px 0;cursor:pointer"><input type="checkbox" data-deli="p2" onchange="deliPlanoMarca(this)" style="margin-top:3px"><span>Conferir se o preço do delivery cobre custo + comissão + desconto de oferta.</span></label><h4 style="margin:14px 0 6px">Promoções</h4><label class="deliCk" style="display:flex;gap:8px;align-items:flex-start;padding:5px 0;cursor:pointer"><input type="checkbox" data-deli="o1" onchange="deliPlanoMarca(this)" style="margin-top:3px"><span>Abrir Ofertas de vendas > Central de ofertas e ver o que a 99 oferece. Nas ofertas exclusivas da plataforma a loja não paga a promoção.</span></label><label class="deliCk" style="display:flex;gap:8px;align-items:flex-start;padding:5px 0;cursor:pointer"><input type="checkbox" data-deli="o2" onchange="deliPlanoMarca(this)" style="margin-top:3px"><span>Testar uma oferta de primeiro pedido (todos os 2 clientes até agora compraram uma vez só).</span></label><label class="deliCk" style="display:flex;gap:8px;align-items:flex-start;padding:5px 0;cursor:pointer"><input type="checkbox" data-deli="o3" onchange="deliPlanoMarca(this)" style="margin-top:3px"><span>Só usar Anúncio pago depois de acertar horário e cardápio.</span></label>
+<div class="mini" style="margin-top:12px">Pendente para fechar o diagnóstico: ver a tela de Cardápios (fotos e preços) e a Central de ofertas, e saber a comissão da 99Food e o CMV alvo.</div>
+</div>
 </div>
 <div id="mkInstaView" class="grid hidden" style="grid-column:1/-1" data-sortable-grid="marketing-instagram">
 
@@ -8388,7 +8405,20 @@ const CRM_META={cancel:10,noshow:8,comparece:90};
 // 23/10: Delivery por plataforma (aba Marketing). Linhas {date,plataforma,valor}; plataforma sem venda aparece zerada.
 let deliRows=[],deliCarregado=false;
 const DELI_NOMES={'IFOOD':'iFood','RAPPI':'Rappi','UBER':'Uber','DELIVERY ONLINE':'Delivery Online','APP':'App ZigPay'};
+// marcação do plano da 99Food: fica só neste navegador (localStorage), por viewer
+function deliPlanoLer(){try{return JSON.parse(localStorage.getItem('sjDeliPlano99')||'{}')||{}}catch(e){return {}}}
+function deliPlanoInit(){
+  const st=deliPlanoLer();let n=0,t=0;
+  document.querySelectorAll('#deliSugestoes input[data-deli]').forEach(function(c){t++;c.checked=!!st[c.dataset.deli];if(c.checked)n++});
+  if($('deliPlanoBadge'))$('deliPlanoBadge').textContent=n+' de '+t+' feitos';
+}
+function deliPlanoMarca(c){
+  const st=deliPlanoLer();st[c.dataset.deli]=c.checked?1:0;
+  try{localStorage.setItem('sjDeliPlano99',JSON.stringify(st))}catch(e){}
+  deliPlanoInit();
+}
 async function loadDelivery(forca){
+  deliPlanoInit();
   const body=$('deliBody');if(!body)return;
   if(deliCarregado&&!forca){deliRender();return}
   try{
