@@ -436,6 +436,10 @@ function doPost(e) {
       if (!hasAreaAccess_(auth, 'financeiro')) return jsonOut_({ ok: false, code: 'forbidden' });
       return jsonOut_(action === 'submitCrmReservas' ? submitCrmReservas_(body) : (action === 'submitCrmFunil' ? submitCrmFunil_(body) : submitCrmConfig_(body)));
     }
+    if (action === 'diagEscopos') {
+      if (!hasAreaAccess_(auth, 'financeiro')) return jsonOut_({ ok: false, code: 'forbidden' });
+      return jsonOut_(diagEscopos_());
+    }
     if (action === 'submit99Food') {
       if (!hasAreaAccess_(auth, 'financeiro')) return jsonOut_({ ok: false, code: 'forbidden' });
       return jsonOut_(submit99Food_(body));
@@ -5114,7 +5118,7 @@ function atualizarBandRanking_() {
     sh = ss.getSheetByName(AGENDA_ARTISTICA_ABA);
     if (!sh) return { ok: false, error: 'Não achei a aba "' + AGENDA_ARTISTICA_ABA + '" na planilha da agenda artística.' };
   } catch (e) {
-    return { ok: false, error: 'Não consegui abrir a planilha da agenda artística (a conta que roda o BI precisa ter acesso a ela): ' + igRedigir_(e).slice(0, 160) };
+    return { ok: false, error: 'Não consegui abrir a planilha da agenda artística (a conta que roda o BI precisa ter acesso a ela): ' + igRedigir_(e).slice(0, 500) };
   }
   // receita real por dia (ZigRevenue; último registro de cada data vence; só dias já encerrados)
   const rec = {};
@@ -5727,3 +5731,12 @@ function get99Food_() {
   rows.reverse();
   return { ok: true, rows: rows };
 }
+
+// Diagnóstico de permissões (24/10): mostra com que escopos esta implantação roda, sem expor o token.
+function diagEscopos_() {
+  const r = UrlFetchApp.fetch('https://oauth2.googleapis.com/tokeninfo?access_token=' + encodeURIComponent(ScriptApp.getOAuthToken()), { muteHttpExceptions: true });
+  let j = {};
+  try { j = JSON.parse(r.getContentText() || '{}'); } catch (e) {}
+  return { ok: true, conta: j.email || '', escopos: String(j.scope || '').split(' ').filter(String) };
+}
+function diagnosticoEscopos() { Logger.log(JSON.stringify(diagEscopos_())); }
