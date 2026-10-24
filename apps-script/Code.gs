@@ -5595,9 +5595,13 @@ function zigCustosConhecidos_() {
   return custos;
 }
 
-function zigItensDia_(iso, custos) {
+function zigSaidaLinhas_(iso) {
   const loja = (PropertiesService.getScriptProperties().getProperty('ZIG_LOJA') || '').trim();
-  const linhas = zigGet_('/erp/saida-produtos', { dtinicio: iso, dtfim: iso, loja: loja });
+  return zigGet_('/erp/saida-produtos', { dtinicio: iso, dtfim: iso, loja: loja });
+}
+
+function zigItensDia_(iso, custos, linhasProntas) {
+  const linhas = linhasProntas || zigSaidaLinhas_(iso);
   const porSku = {};
   linhas.forEach(function (l) {
     if (l.type !== 'Normal' || l.isRefunded) return;
@@ -5633,7 +5637,8 @@ function zigSyncItens_(dias, gravar) {
   const out = [];
   for (let i = 0; i < dias; i++) {
     const iso = Utilities.formatDate(new Date(Date.now() - i * 86400000), tz, 'yyyy-MM-dd');
-    const itens = zigItensDia_(iso, custos);
+    const linhasSaida = zigSaidaLinhas_(iso);
+    const itens = zigItensDia_(iso, custos, linhasSaida);
     const agg = zigAgregarCmv_(itens);
     let msg = iso + ': ' + itens.length + ' itens | comida R$ ' + agg.valorTotalFood.toFixed(2) + ' | bebida R$ ' + agg.valorTotalBev.toFixed(2) + ' | outros R$ ' + agg.valorTotalMisto.toFixed(2) + ' | com ficha ' + agg.itensComFicha + ', sem ' + agg.itensSemFicha;
     if (gravar && itens.length) {
@@ -5644,6 +5649,7 @@ function zigSyncItens_(dias, gravar) {
       if (!c.ok && String(c.error).indexOf('inconsistente_com_faturamento') === 0) { corpo.conferir = true; c = submitCmvTeoricoParcial_(corpo); }
       msg += ' | itens ' + (r.ok ? 'GRAVADO' : 'recusado: ' + r.error) + ' | CMV ' + (c.ok ? 'GRAVADO' : 'recusado: ' + c.error);
     }
+    if (gravar) { try { msg += ' | ' + zigGravarHorarioEntradas_(iso, linhasSaida); } catch (e) { msg += ' | horário: ' + String(e.message || e).slice(0, 60); } }
     out.push(msg);
   }
   return out;
@@ -5761,3 +5767,148 @@ function diagEscopos_() {
   return { ok: true, conta: j.email || '', escopos: String(j.scope || '').split(' ').filter(String) };
 }
 function diagnosticoEscopos() { Logger.log(JSON.stringify(diagEscopos_())); }
+
+
+// ---------------- Horário (30 min), detalhe por horário e bilheteria pela API (24/10) ----------------
+// Conferido contra o que o robô gravava em 03/10: soma do horário igual (R$ 71.309,32 x 71.309,39); alimentos igual ao centavo
+// (R$ 12.098 e 239 itens); bebidas dentro de R$ 1,30; entradas 507 x 504. Bilheteria de setembro: R$ 47.025,00 x 46.972,72.
+// O horário da ZigPay vem em UTC (mesma convenção do que já está gravado): a chave é a própria data/hora da transação, arredondada a 30 min.
+const ZIG_CAT_BEBIDA_DET = ZIG_CAT_BEBIDA.concat(['COMBOS', 'VINHOS BRANCOS']);
+const ZIGENTRADAS_HEADERS = ['date', 'valor', 'qtd', 'capturedAt'];
+function getZigEntradasSheet_() { return ensureSheet_('ZigEntradas', ZIGENTRADAS_HEADERS) }
+
+function zigBucketChave_(transactionDate) {
+  const s = String(transactionDate || '');
+  if (s.length < 16) return '';
+  return s.slice(0, 14) + (Number(s.slice(14, 16)) < 30 ? '00' : '30') + ':00.000';
+}
+
+function zigHorarioDeLinhas_(linhas) {
+  const base = {}, det = {};
+  let baseTotal = 0, tipTotal = 0, entValor = 0, entQtd = 0;
+  const cent = function (l) { return (Number(l.unitValue) || 0) * (Number(l.count) || 0) - (Number(l.discountValue) || 0); };
+  const dd = function (k) { return det[k] || (det[k] = { start: k, foodValue: 0, foodCount: 0, bevValue: 0, bevCount: 0, otherValue: 0, otherCount: 0, entries: 0 }); };
+  linhas.forEach(function (l) {
+    if (l.isRefunded) return;
+    const k = zigBucketChave_(l.transactionDate);
+    if (!k) return;
+    if (l.type === 'Tip') { tipTotal += cent(l); return; }
+    if (l.type !== 'Normal' && l.type !== 'Entrance') return;
+    base[k] = (base[k] || 0) + cent(l);
+    baseTotal += cent(l);
+    if (l.type === 'Entrance') { dd(k).entries += Number(l.count) || 0; entValor += cent(l); entQtd += Number(l.count) || 0; return; }
+    const cat = String(l.productCategory || '');
+    const d = dd(k);
+    if (ZIG_CAT_COMIDA.indexOf(cat) >= 0) { d.foodValue += cent(l); d.foodCount += Number(l.count) || 0; }
+    else if (ZIG_CAT_BEBIDA_DET.indexOf(cat) >= 0) { d.bevValue += cent(l); d.bevCount += Number(l.count) || 0; }
+    else { d.otherValue += cent(l); d.otherCount += Number(l.count) || 0; }
+  });
+  // a gorjeta é lançada em bloco no fechamento; o robô a diluía proporcionalmente nos blocos, e aqui é igual
+  const fator = baseTotal > 0 ? (baseTotal + tipTotal) / baseTotal : 1;
+  const hourly = Object.keys(base).sort().map(function (k) { return { start: k, intervalInMinutes: 30, value: Math.round(base[k] * fator) }; }).filter(function (b) { return b.value > 0; });
+  const detail = Object.keys(det).sort().map(function (k) { const d = det[k]; Object.keys(d).forEach(function (x) { if (x !== 'start') d[x] = Math.round(d[x]); }); return d; });
+  return { hourly: hourly, detail: detail, entradaValor: entValor / 100, entradaQtd: entQtd };
+}
+
+function zigAtualizarBilheteriaMes_(mes) {
+  const rows = sheetToObjects_(getZigEntradasSheet_()).filter(function (r) { return String(r.date).slice(0, 7) === mes; });
+  const dias = {}; let rec = 0, qtd = 0;
+  rows.forEach(function (r) { dias[String(r.date)] = true; rec += Number(r.valor) || 0; qtd += Number(r.qtd) || 0; });
+  const hojeIso = Utilities.formatDate(new Date(), 'America/Sao_Paulo', 'yyyy-MM-dd');
+  const ate = hojeIso.slice(0, 7) === mes ? Number(hojeIso.slice(8, 10)) : new Date(Number(mes.slice(0, 4)), Number(mes.slice(5, 7)), 0).getDate();
+  if (Object.keys(dias).length < ate) return 'bilheteria ' + mes + ' incompleta (' + Object.keys(dias).length + '/' + ate + ' dias)';
+  submitZigBilheteria_({ mes: mes, receita: Math.round(rec * 100) / 100, entradasQtd: qtd, source: 'zig-api' });
+  return 'bilheteria ' + mes + ' R$ ' + rec.toFixed(2) + ' / ' + qtd;
+}
+
+// Grava horário, detalhe e entradas de UM dia (linhas já baixadas). Não troca dia com movimento por dia vazio.
+function zigGravarHorarioEntradas_(iso, linhas) {
+  const h = zigHorarioDeLinhas_(linhas);
+  if (!h.hourly.length) return 'horário: dia sem venda (não gravado)';
+  submitZigHourly_({ date: iso, buckets: h.hourly, source: 'zig-api' });
+  submitZigHourlyDetail_({ date: iso, buckets: h.detail, source: 'zig-api' });
+  upsertByKeys_(getZigEntradasSheet_(), ZIGENTRADAS_HEADERS, ['date'], { date: iso, valor: Math.round(h.entradaValor * 100) / 100, qtd: h.entradaQtd, capturedAt: new Date().toISOString() });
+  return 'horário ' + h.hourly.length + ' blocos GRAVADO • ' + zigAtualizarBilheteriaMes_(iso.slice(0, 7));
+}
+
+// Teste (não grava): compara o horário montado pela API com o que o BI tem de um dia. Executar > zigTesteHorario
+function zigTesteHorario() {
+  const iso = Utilities.formatDate(new Date(Date.now() - 86400000), 'America/Sao_Paulo', 'yyyy-MM-dd');
+  const h = zigHorarioDeLinhas_(zigSaidaLinhas_(iso));
+  const tot = h.hourly.reduce(function (s, b) { return s + b.value; }, 0) / 100;
+  Logger.log(iso + ': ' + h.hourly.length + ' blocos | soma R$ ' + tot.toFixed(2) + ' | entradas ' + h.entradaQtd + ' (R$ ' + h.entradaValor.toFixed(2) + ')');
+}
+
+// ---------------- Varredura do histórico (preenche o que falta) ----------------
+// Uma execução = um lote de ~4 min. zigIniciarVarredura cria um gatilho de 5 em 5 min que repete o lote até acabar e depois se apaga.
+// Só preenche DIA SEM DADO: horário, detalhe, itens/CMV, público e entradas; faturamento só quando não existe ou está zerado com movimento.
+const ZIG_VARREDURA_DESDE = '2025-10-01';
+function zigVarreduraPasso() {
+  const t0 = Date.now();
+  const tz = 'America/Sao_Paulo';
+  const desde = PropertiesService.getScriptProperties().getProperty('ZIG_VARREDURA_DESDE') || ZIG_VARREDURA_DESDE;
+  const rev = {};
+  sheetToObjects_(getZigRevenueSheet_()).forEach(function (r) { rev[String(r.date).slice(0, 10)] = { revenue: Number(r.revenue) || 0, publico: r.publico === '' || r.publico === null ? null : Number(r.publico) }; });
+  const set = function (rows) { const m = {}; rows.forEach(function (r) { m[String(r.date).slice(0, 10)] = true; }); return m; };
+  const temHorario = set(sheetToObjects_(getZigHourlySheet_())), temDetalhe = set(sheetToObjects_(getZigHourlyDetailSheet_())),
+    temItens = set(sheetToObjects_(getZigItemSalesSheet_())), temEntrada = set(sheetToObjects_(getZigEntradasSheet_())), temDelivery = set(sheetToObjects_(getZigDeliverySheet_()));
+  const custos = zigCustosConhecidos_();
+  const hoje = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');
+  const dias = [];
+  for (let d = new Date(desde + 'T12:00:00'); Utilities.formatDate(d, tz, 'yyyy-MM-dd') < hoje; d = new Date(d.getTime() + 86400000)) dias.push(Utilities.formatDate(d, tz, 'yyyy-MM-dd'));
+  let feitos = 0, faltam = 0;
+  const msgs = [];
+  for (let i = dias.length - 1; i >= 0; i--) { // do mais novo para o mais antigo
+    const iso = dias[i];
+    const r = rev[iso];
+    const semReceita = !r || r.revenue === 0;
+    if (r && r.revenue === 0) continue; // dia fechado conhecido
+    const falta = semReceita || !temHorario[iso] || !temDetalhe[iso] || !temItens[iso] || !temEntrada[iso] || !temDelivery[iso] || (r && r.publico === null);
+    if (!falta) continue;
+    if (Date.now() - t0 > 240000) { faltam++; continue; }
+    try {
+      const fat = zigFaturamentoLinhas_(iso);
+      const v = zigFaturamentoDia_(iso, fat);
+      if (v > 0 && (!r || r.revenue === 0)) submitZigRevenue_({ date: iso, revenue: v, source: 'zig-api' });
+      if (!temDelivery[iso]) zigGravarDelivery_(iso, fat, true);
+      if (v > 0) {
+        if (!r || r.publico === null) { const pub = zigPublicoDia_(iso); if (pub > 0) submitZigPublico_({ date: iso, publico: pub, source: 'zig-api' }); }
+        const sai = zigSaidaLinhas_(iso);
+        if (!temItens[iso]) {
+          const itens = zigItensDia_(iso, custos, sai), agg = zigAgregarCmv_(itens);
+          if (itens.length) {
+            let a = submitZigItemSales_({ date: iso, items: itens, source: 'zig-api' });
+            if (!a.ok && String(a.error).indexOf('inconsistente_com_faturamento') === 0) a = submitZigItemSales_({ date: iso, items: itens, source: 'zig-api', conferir: true });
+            const corpo = { date: iso, source: 'zig-api' }; Object.keys(agg).forEach(function (k) { corpo[k] = agg[k]; });
+            let b = submitCmvTeoricoParcial_(corpo);
+            if (!b.ok && String(b.error).indexOf('inconsistente_com_faturamento') === 0) { corpo.conferir = true; submitCmvTeoricoParcial_(corpo); }
+          }
+        }
+        if (!temHorario[iso] || !temDetalhe[iso] || !temEntrada[iso]) zigGravarHorarioEntradas_(iso, sai);
+      }
+      feitos++;
+    } catch (e) { msgs.push(iso + ': ' + String(e.message || e).slice(0, 80)); faltam++; }
+  }
+  Logger.log('Varredura: ' + feitos + ' dia(s) preenchido(s) neste lote; faltam ' + faltam + '.' + (msgs.length ? ' Erros: ' + msgs.slice(0, 5).join(' | ') : ''));
+  if (faltam === 0) {
+    ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'zigVarreduraPasso') ScriptApp.deleteTrigger(t); });
+    Logger.log('Varredura CONCLUÍDA: nada mais a preencher desde ' + desde + '. Gatilho temporário removido.');
+  }
+}
+
+// Rode UMA vez: começa a varredura e a repete de 5 em 5 minutos até acabar (depois o próprio gatilho se apaga).
+function zigIniciarVarredura() {
+  ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'zigVarreduraPasso') ScriptApp.deleteTrigger(t); });
+  ScriptApp.newTrigger('zigVarreduraPasso').timeBased().everyMinutes(5).create();
+  Logger.log('Varredura agendada: um lote a cada 5 minutos até concluir. Acompanhe em Execuções.');
+  zigVarreduraPasso();
+}
+
+// Encerra o que ainda tentava ler a ZigPay pelo login antigo (bloqueado): captura diária das 8h e confere de saúde do robô.
+function zigEncerrarGatilhosAntigos() {
+  let n = 0;
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === 'capturarZigPayDiario_') { ScriptApp.deleteTrigger(t); n++; }
+  });
+  Logger.log('Gatilhos antigos da captura diária da ZigPay removidos: ' + n);
+}
