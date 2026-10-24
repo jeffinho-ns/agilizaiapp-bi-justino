@@ -5528,6 +5528,19 @@ function zigFaturamentoDia_(iso, linhasProntas) {
   return centavos / 100;
 }
 
+// Público do dia = número de check-ins de /erp/checkins (só a contagem; nome, documento e telefone não são lidos nem guardados).
+// Conferido em 22/10 (64) e 21/10 (108): igual ao público que o robô gravava.
+function zigPublicoDia_(iso) {
+  const loja = (PropertiesService.getScriptProperties().getProperty('ZIG_LOJA') || '').trim();
+  let total = 0;
+  for (let p = 1; p <= 30; p++) {
+    const lista = zigGet_('/erp/checkins', { desde: iso, dtfim: iso, loja: loja, page: p });
+    if (!Array.isArray(lista) || !lista.length) break;
+    total += lista.length;
+  }
+  return total;
+}
+
 // gravar=false só mostra no registro (teste). Padrão: últimos 3 dias, incluindo hoje.
 function zigSyncFaturamento_(dias, gravar) {
   const tz = 'America/Sao_Paulo';
@@ -5540,11 +5553,19 @@ function zigSyncFaturamento_(dias, gravar) {
     const linhasDia = zigFaturamentoLinhas_(iso);
     const v = zigFaturamentoDia_(iso, linhasDia);
     if (gravar) zigGravarDelivery_(iso, linhasDia);
+    let pubTxt = '';
+    try {
+      const pub = zigPublicoDia_(iso);
+      const pubAntes = (sheetToObjects_(sh).find(function (r) { return r.date === iso; }) || {}).publico;
+      const gravaPub = gravar && !(pub === 0 && Number(pubAntes) > 0);
+      if (gravaPub) submitZigPublico_({ date: iso, publico: pub, source: 'zig-api' });
+      pubTxt = ' | público ' + pub + (gravaPub ? ' GRAVADO' : ' sem gravar');
+    } catch (e) { pubTxt = ' | público: ' + String(e.message || e).slice(0, 60); }
     const antes = existentes[iso];
     // não troca um valor real por zero (a ZigPay só consolida o dia depois do fechamento)
     const grava = gravar && !(v === 0 && antes > 0);
     if (grava) submitZigRevenue_({ date: iso, revenue: v, source: 'zig-api' });
-    out.push(iso + ': API R$ ' + v.toFixed(2) + ' | BI antes ' + (antes === undefined ? '—' : 'R$ ' + antes.toFixed(2)) + (grava ? ' | GRAVADO' : ' | sem gravar'));
+    out.push(iso + ': API R$ ' + v.toFixed(2) + ' | BI antes ' + (antes === undefined ? '—' : 'R$ ' + antes.toFixed(2)) + (grava ? ' | GRAVADO' : ' | sem gravar') + pubTxt);
   }
   return out;
 }
