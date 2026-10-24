@@ -436,6 +436,14 @@ function doPost(e) {
       if (!hasAreaAccess_(auth, 'financeiro')) return jsonOut_({ ok: false, code: 'forbidden' });
       return jsonOut_(action === 'submitCrmReservas' ? submitCrmReservas_(body) : (action === 'submitCrmFunil' ? submitCrmFunil_(body) : submitCrmConfig_(body)));
     }
+    if (action === 'submit99Food') {
+      if (!hasAreaAccess_(auth, 'financeiro')) return jsonOut_({ ok: false, code: 'forbidden' });
+      return jsonOut_(submit99Food_(body));
+    }
+    if (action === 'get99Food') {
+      if (!(hasAreaAccess_(auth, 'marketing') || hasAreaAccess_(auth, 'financeiro') || hasAreaAccess_(auth, 'operacao'))) return jsonOut_({ ok: false, code: 'forbidden' });
+      return jsonOut_(get99Food_());
+    }
     if (action === 'getZigDelivery') {
       if (!(hasAreaAccess_(auth, 'marketing') || hasAreaAccess_(auth, 'financeiro') || hasAreaAccess_(auth, 'operacao'))) return jsonOut_({ ok: false, code: 'forbidden' });
       return jsonOut_(getZigDelivery_(Math.min(Number(body.days) || 150, 400)));
@@ -5689,4 +5697,27 @@ function getZigDelivery_(dias) {
   const rows = sheetToObjects_(getZigDeliverySheet_()).filter(function (r) { return String(r.date) >= corte; })
     .map(function (r) { return [String(r.date), String(r.plataforma), Number(r.valor) || 0]; });
   return { ok: true, cols: ['date', 'plataforma', 'valor'], rows: rows, plataformas: ZIGDELIVERY_PLATAFORMAS };
+}
+
+// ---------------- 99Food: leitura diária do painel do lojista (24/10) ----------------
+// O robô robo_99food.ps1 (11h) manda um resumo SEM dado de cliente da loja Seu Justino Madalena; o BI mostra no quadro de Delivery.
+function submit99Food_(body) {
+  const sh = ensureSheet_('Food99', ['capturedAt', 'json']);
+  const j = JSON.stringify(body.snapshot || {});
+  if (j.length > 45000 || j === '{}') return { ok: false, error: 'snapshot_invalido' };
+  sh.appendRow([Date.now(), j]);
+  const last = sh.getLastRow();
+  if (last > 401) sh.deleteRows(2, last - 401);
+  return { ok: true };
+}
+function get99Food_() {
+  const sh = ensureSheet_('Food99', ['capturedAt', 'json']);
+  const last = sh.getLastRow();
+  if (last < 2) return { ok: true, rows: [] };
+  const n = Math.min(30, last - 1);
+  const vals = sh.getRange(last - n + 1, 1, n, 2).getValues();
+  const rows = [];
+  vals.forEach(function (r) { try { rows.push({ capturedAt: Number(r[0]) || String(r[0]), snap: JSON.parse(String(r[1])) }); } catch (e) {} });
+  rows.reverse();
+  return { ok: true, rows: rows };
 }
