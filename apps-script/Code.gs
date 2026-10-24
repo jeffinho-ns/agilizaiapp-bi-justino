@@ -5155,14 +5155,20 @@ function atualizarBandRanking_() {
   const r = saveBandRanking_(out);
   return { ok: r.ok, count: out.length, apresentacoes: linhas, diasComReceita: Object.keys(rec).length };
 }
+// 24/10, pedido do Renato: o cálculo diário passa das 7h para as 11h. A API de gatilhos não informa a hora, então a hora configurada
+// fica guardada na propriedade BAND_GATILHO_HORA; se for diferente de BAND_GATILHO_HORA_ALVO, o gatilho é recriado.
+const BAND_GATILHO_HORA_ALVO = 11;
 function configurarGatilhoBandRanking_() {
   ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'atualizarBandRankingDiario_') ScriptApp.deleteTrigger(t) });
-  ScriptApp.newTrigger('atualizarBandRankingDiario_').timeBased().everyDays(1).atHour(7).create();
+  ScriptApp.newTrigger('atualizarBandRankingDiario_').timeBased().everyDays(1).atHour(BAND_GATILHO_HORA_ALVO).create();
+  PropertiesService.getScriptProperties().setProperty('BAND_GATILHO_HORA', String(BAND_GATILHO_HORA_ALVO));
 }
 function atualizarBandRankingDiario_() { try { atualizarBandRanking_() } catch (e) { Logger.log('Ranking de bandas: ' + igRedigir_(e)) } }
 function garantirGatilhoBandRanking_() {
   try {
-    if (!ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === 'atualizarBandRankingDiario_' })) configurarGatilhoBandRanking_();
+    const existe = ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === 'atualizarBandRankingDiario_' });
+    const horaOk = PropertiesService.getScriptProperties().getProperty('BAND_GATILHO_HORA') === String(BAND_GATILHO_HORA_ALVO);
+    if (!existe || !horaOk) configurarGatilhoBandRanking_();
   } catch (e) { Logger.log('Gatilho do ranking de bandas não criado: ' + String(e)) }
 }
 function bandRankingAtualizar() { const r = atualizarBandRanking_(); Logger.log(JSON.stringify(r)); return r } // roda à mão, se quiser testar no editor
