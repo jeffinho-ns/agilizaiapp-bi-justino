@@ -5814,6 +5814,8 @@ function zigAtualizarBilheteriaMes_(mes) {
   const rows = sheetToObjects_(getZigEntradasSheet_()).filter(function (r) { return String(r.date).slice(0, 7) === mes; });
   const dias = {}; let rec = 0, qtd = 0;
   rows.forEach(function (r) { dias[String(r.date)] = true; rec += Number(r.valor) || 0; qtd += Number(r.qtd) || 0; });
+  // dia fechado (faturamento zero) não tem entrada e conta como coberto
+  sheetToObjects_(getZigRevenueSheet_()).forEach(function (r) { const d = String(r.date).slice(0, 10); if (d.slice(0, 7) === mes && Number(r.revenue) === 0) dias[d] = true; });
   const hojeIso = Utilities.formatDate(new Date(), 'America/Sao_Paulo', 'yyyy-MM-dd');
   const ate = hojeIso.slice(0, 7) === mes ? Number(hojeIso.slice(8, 10)) : new Date(Number(mes.slice(0, 4)), Number(mes.slice(5, 7)), 0).getDate();
   if (Object.keys(dias).length < ate) return 'bilheteria ' + mes + ' incompleta (' + Object.keys(dias).length + '/' + ate + ' dias)';
