@@ -1,3 +1,5 @@
+<!doctype html>
+<html lang="pt-BR">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Seu Justino BI</title>
@@ -273,6 +275,8 @@ input[readonly]{opacity:.78;background:#1d1711}
    rolável e sem travar a tela (fecha no X, no fundo ou em Esc). */
 .dicaOverlay{position:fixed;inset:0;z-index:250;display:flex;align-items:center;justify-content:center;background:#0a0807cc;padding:16px}
 .dicaOverlay.hidden{display:none}
+/* 25/10: ao sair do modo de compatibilidade (doctype) a tabela deixa de usar 16px por padrão; mantém o tamanho que já se via */
+table{font-size:16px}
 .skipLink{position:absolute;left:-9999px;top:8px}
 .skipLink:focus{left:12px;z-index:500;background:var(--accent);color:#1f140c;padding:9px 14px;border-radius:10px;font-weight:700;font-size:13px;text-decoration:none}
 #conteudoPrincipal:focus{outline:none}
