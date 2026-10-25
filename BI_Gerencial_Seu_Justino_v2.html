@@ -17,6 +17,9 @@
      combinar com a logo em vez de destoar dela. */
   --bg:#0d0b0a;--panel:#1a1613;--panel2:#211c18;--line:#332b24;--txt:#f7f4f1;--muted:#a39686;
   --accent:#c96736;--blue:#c96736;--green:#34d399;--yellow:#f5b942;--red:#f76e7c;--purple:#a78bfa;
+  /* 25/10, auditoria UX/UI: escalas para usar daqui em diante (valores já existentes no BI, sem criar tamanhos novos) */
+  --fs-xs:12px;--fs-sm:13px;--fs-md:14px;--fs-lg:16px;--fs-xl:20px;--fs-2xl:26px;
+  --radius-sm:6px;--radius-md:10px;--radius-lg:14px;--radius-pill:999px;
   --font-display:'Space Grotesk',Arial,sans-serif;--font-body:'Plus Jakarta Sans',Arial,sans-serif;
   color-scheme:dark;
 }
@@ -43,9 +46,9 @@ h1{margin:0;font-size:25px;font-family:var(--font-display);font-weight:700;lette
 .navItem:hover{background:#2a2219;color:var(--txt)}
 .navItem.active{background:var(--accent);color:#1f140c}
 .navGroup{display:flex;flex-direction:column}
-.navGroupHead{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:9px 12px;border-radius:8px;color:var(--txt);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.navGroupHead{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:9px 12px;border-radius:8px;color:var(--txt);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
 .navGroupHead:hover{background:#2a2219}
-.navGroupHead .navChev{font-size:10px;color:var(--muted);transition:transform .15s}
+.navGroupHead .navChev{font-size:12px;color:var(--muted);transition:transform .15s}
 .navGroup.open .navGroupHead .navChev{transform:rotate(90deg)}
 .navGroupBody{display:flex;flex-direction:column;gap:2px;padding-left:10px;max-height:0;overflow:hidden;transition:max-height .2s ease}
 .navGroup.open .navGroupBody{max-height:320px}
@@ -55,7 +58,7 @@ h1{margin:0;font-size:25px;font-family:var(--font-display);font-weight:700;lette
 .btn:disabled{opacity:.5;cursor:not-allowed}
 @keyframes btnPulse{0%,100%{opacity:1}50%{opacity:.55}}
 .btn.btn-loading{background:var(--yellow)!important;border-color:#cf9a2e!important;color:#3a2a05!important;cursor:progress;animation:btnPulse 1s ease-in-out infinite}
-.btn.btn-error-flash{background:var(--red)!important;border-color:#c73a48!important;color:#fff!important;animation:none;opacity:1}
+.btn.btn-error-flash{background:var(--red)!important;border-color:#c73a48!important;color:#2a0a0e!important;animation:none;opacity:1}
 /* dense: sem isso, arrastar um card de 8 colunas pra ficar sozinho numa linha
    (porque o vizinho de 4 colunas foi movido pra outro lugar) deixa um buraco vazio
    no resto daquela linha — o grid não preenche sozinho por padrão. dense faz ele
@@ -95,9 +98,9 @@ h1{margin:0;font-size:25px;font-family:var(--font-display);font-weight:700;lette
 .cardCollapse>summary::-webkit-details-marker{display:none}
 .cardCollapse>summary::marker{content:''}
 .cardCollapse>summary:hover{background:#241e19;border-color:var(--accent)}
-.cardCollapse>summary .chev{display:inline-block;transition:transform .15s;font-size:11px;color:var(--muted)}
+.cardCollapse>summary .chev{display:inline-block;transition:transform .15s;font-size:12px;color:var(--muted)}
 .cardCollapse[open]>summary .chev{transform:rotate(90deg)}
-.cardCollapse>summary .chHint{font-weight:400;font-size:11px;color:var(--muted);margin-left:auto}
+.cardCollapse>summary .chHint{font-weight:400;font-size:12px;color:var(--muted);margin-left:auto}
 .cardCollapse>.card{margin-top:9px}
 /* 03/10 — arrastar pra reordenar quadros (por usuário, ligado ao login). Handle só
    aparece em card com conteúdo clicável dentro (form/botão); .kpi arrasta pelo corpo
@@ -136,7 +139,7 @@ table.igTbl td:nth-child(n+2):not(:last-child){white-space:nowrap!important}
 .hidden{display:none!important}
 .calendarPopover{position:absolute;top:100%;left:0;z-index:50;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:6px;box-shadow:0 12px 32px #0008;width:280px}
 .calNavRow{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-weight:800;font-size:13px}
-.calWeekdaysRow{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;color:var(--muted);font-size:11px;margin-bottom:4px}
+.calWeekdaysRow{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;color:var(--muted);font-size:12px;margin-bottom:4px}
 .calGrid{display:flex;flex-direction:column;gap:2px}
 .calWeekRow{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;border-radius:8px;cursor:pointer;padding:2px 0}
 .calWeekRow:hover{background:#2e2016}
@@ -155,21 +158,21 @@ table.igTbl td:nth-child(n+2):not(:last-child){white-space:nowrap!important}
 .field.taField .help{display:block;margin-top:8px}
 .miniKpiGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
 .miniKpi{background:#16110c;border:1px solid #332b24;border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:5px;min-height:92px}
-.miniKpi small{color:var(--muted);font-size:11px}
+.miniKpi small{color:var(--muted);font-size:12px}
 .miniKpi .v{font-size:18px;font-weight:900;margin:0}
 .miniKpi .mini{color:var(--muted)}
 .field:last-child{border-bottom:0}
 .mkItemRow input{width:100%}
-.help{display:block;color:var(--muted);font-size:11px;line-height:1.4}
+.help{display:block;color:var(--muted);font-size:12px;line-height:1.4}
 .healthy{color:#78e8ad;font-weight:800}
-.source{font-size:10px;border-radius:999px;background:#4a2e18;color:#e8c9a8;padding:3px 6px;margin-left:5px}
+.source{font-size:12px;border-radius:999px;background:#4a2e18;color:#e8c9a8;padding:3px 6px;margin-left:5px}
 input,select,textarea{width:100%;background:#17120e;color:white;border:1px solid #3a2f26;border-radius:9px;padding:9px;font:inherit;transition:border-color .15s,box-shadow .15s}
 input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px #c9673626}
 textarea{resize:vertical}
 input[readonly]{opacity:.78;background:#1d1711}
 .btn:focus-visible,.nav button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .money{text-align:right;font-weight:800;font-variant-numeric:tabular-nums}
-.moneyPreview{display:block;margin-top:2px;color:var(--muted);font-size:11px;min-height:14px}
+.moneyPreview{display:block;margin-top:2px;color:var(--muted);font-size:12px;min-height:14px}
 /* 05/10, pedido do Renato: "Últimos envios" virou navegador de mês + lista de
    dias (referência: app da ZigPay) no lugar da tabela densa, nas 4 áreas de
    envio diário que têm essa tela (Marketing/Financeiro/RH/Operação). */
@@ -187,10 +190,10 @@ input[readonly]{opacity:.78;background:#1d1711}
 .historyDayMain{min-width:130px}
 .historyDayMain b{display:block;font-size:13.5px}
 .historyDayStats{flex:1;display:flex;flex-wrap:wrap;gap:16px;min-width:200px}
-.historyDayStat .mini{color:var(--muted);display:block;font-size:10px}
+.historyDayStat .mini{color:var(--muted);display:block;font-size:12px}
 .historyDayStat b{font-size:12.5px}
 .historyDayActions{display:flex;gap:6px;align-items:center;flex-shrink:0}
-.badge{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:5px 10px;font-size:10px;font-weight:700}
+.badge{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:5px 10px;font-size:12px;font-weight:700}
 .badge::before{content:'';width:6px;height:6px;border-radius:999px;background:currentColor;flex-shrink:0}
 .g{background:#34d3991f;color:#34d399}.y{background:#f5b9421f;color:#f5b942}.r{background:#f76e7c1f;color:#f76e7c}.b{background:#c967361f;color:#c96736}.p{background:#a78bfa1f;color:#a78bfa}
 /* 13/10, pedido do Renato: badge de Prioridade (Auditoria Operacional) precisava de
@@ -199,7 +202,7 @@ input[readonly]{opacity:.78;background:#1d1711}
 .bl{background:#3b82f61f;color:#3b82f6}
 .manualLayout{display:grid;grid-template-columns:280px 1fr;gap:14px}
 .manualToc{max-height:78vh;overflow-y:auto;padding-right:4px;margin-top:8px}
-.manualPart{font-size:11px;font-weight:900;letter-spacing:.03em;color:#b8a890;margin:14px 0 4px;text-transform:uppercase}
+.manualPart{font-size:12px;font-weight:900;letter-spacing:.03em;color:#b8a890;margin:14px 0 4px;text-transform:uppercase}
 .manualPart:first-child{margin-top:0}
 .manualItem{display:block;width:100%;text-align:left;background:none;border:none;color:#ece0d0;padding:6px 8px;border-radius:8px;cursor:pointer;font-size:12.5px;line-height:1.4}
 .manualItem:hover{background:#241e19}
@@ -214,7 +217,7 @@ input[readonly]{opacity:.78;background:#1d1711}
 .manualSearchHit b{color:#ffd271}
 .duvidaRow{padding:8px 0;border-bottom:1px solid var(--line)}
 .duvidaRow:last-child{border-bottom:0}
-.duvidaMeta{font-size:11px;color:var(--muted);margin-bottom:3px}
+.duvidaMeta{font-size:12px;color:var(--muted);margin-bottom:3px}
 @media print{.manualViewer,#manual{display:none!important}}
 .pwWrap{position:relative}
 .pwWrap input{padding-right:36px}
@@ -239,7 +242,7 @@ input[readonly]{opacity:.78;background:#1d1711}
 .alert.hasTip{cursor:help}
 .alertTip{visibility:hidden;opacity:0;position:absolute;left:0;top:100%;margin-top:6px;z-index:40;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:min(360px,88vw);box-shadow:0 12px 32px #0008;font-weight:400;transition:opacity .15s;pointer-events:none}
 .alert.hasTip:hover .alertTip{visibility:visible;opacity:1}
-.alertTip .tipRow{display:flex;gap:12px;font-size:11px;margin-bottom:6px;flex-wrap:wrap;color:var(--txt)}
+.alertTip .tipRow{display:flex;gap:12px;font-size:12px;margin-bottom:6px;flex-wrap:wrap;color:var(--txt)}
 .alertTip .tipRacional{font-size:12px;color:var(--muted)}
 #sendOverlay{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;background:#0a0807cc;padding:16px}
 .sendOverlayCard{width:100%;max-width:320px;background:var(--panel2,#1a1613);border:1px solid var(--line);border-radius:16px;padding:26px 22px;text-align:center;box-shadow:0 20px 60px #000a}
@@ -263,7 +266,7 @@ input[readonly]{opacity:.78;background:#1d1711}
 .card.kpi.hasTip:hover{z-index:45}
 .card.kpi .kpiTip{visibility:hidden;opacity:0;position:absolute;left:50%;transform:translateX(-50%);top:100%;margin-top:6px;z-index:46;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:min(280px,88vw);max-width:92vw;box-shadow:0 12px 32px #0008;font-weight:400;font-size:12px;line-height:1.45;color:var(--txt);transition:opacity .15s;pointer-events:none}
 .card.kpi.hasTip:hover .kpiTip{visibility:visible;opacity:1}
-.kpiTip .tipRow{display:flex;gap:12px;font-size:11px;margin:8px 0 6px;flex-wrap:wrap;color:var(--txt)}
+.kpiTip .tipRow{display:flex;gap:12px;font-size:12px;margin:8px 0 6px;flex-wrap:wrap;color:var(--txt)}
 .kpiTip .tipRacional{font-size:12px;color:var(--muted)}
 .kpiTip .tipStatus{margin-top:8px;padding-top:8px;border-top:1px solid var(--line);font-size:12px}
 /* Popup genérico (achado/dica) — mesmo visual do sendOverlay, mas com conteúdo
@@ -275,7 +278,7 @@ input[readonly]{opacity:.78;background:#1d1711}
 :where(a,button,summary,select,textarea,input,[tabindex],[role=button]):focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .hasTip:focus .alertTip,.hasTip:focus-within .alertTip{visibility:visible;opacity:1}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
-.iaFab{position:fixed;right:22px;bottom:22px;z-index:120;background:linear-gradient(135deg,#c96736,#a78bfa);color:#fff;border:0;border-radius:999px;padding:13px 22px;font-weight:900;font-size:15px;letter-spacing:.5px;cursor:pointer;box-shadow:0 8px 26px #0009}
+.iaFab{position:fixed;right:22px;bottom:22px;z-index:120;background:linear-gradient(135deg,#c96736,#a78bfa);color:#1f140c;border:0;border-radius:999px;padding:13px 22px;font-weight:900;font-size:15px;letter-spacing:.5px;cursor:pointer;box-shadow:0 8px 26px #0009}
 .iaFab:hover{filter:brightness(1.1)}
 .iaMsg{margin:10px 0;padding:11px 13px;border-radius:12px;line-height:1.55;font-size:14px;white-space:normal}
 .iaMsg.q{background:#2a2119;border:1px solid var(--line);margin-left:36px}
@@ -284,7 +287,7 @@ input[readonly]{opacity:.78;background:#1d1711}
 .iaChip{background:#221c17;border:1px solid #3a2f26;color:#ddd;border-radius:999px;padding:6px 12px;font-size:12px;cursor:pointer}
 .iaChip:hover{border-color:var(--accent)}
 [data-crmtip]{cursor:help}
-th[data-crmtip]::after,h4[data-crmtip]::after,.miniKpi[data-crmtip] small::after{content:" ⓘ";color:var(--accent);font-size:11px;font-weight:700}
+th[data-crmtip]::after,h4[data-crmtip]::after,.miniKpi[data-crmtip] small::after{content:" ⓘ";color:var(--accent);font-size:12px;font-weight:700}
 #crmTipBox{position:fixed;z-index:400;max-width:340px;background:#0e0b08;border:1px solid var(--accent);color:#f1ece6;padding:11px 13px;border-radius:12px;font-size:12.5px;line-height:1.55;font-weight:400;text-transform:none;letter-spacing:0;box-shadow:0 12px 34px #000b;pointer-events:none;opacity:0;transition:opacity .12s}
 #crmTipBox.on{opacity:1}
 #crmTipBox b{color:#fff}
@@ -307,7 +310,7 @@ th:first-child,td:first-child{text-align:left;white-space:normal}
    funciona" quando só tava fora da vista) — usa o fundo real do .card por
    trás, senão fica transparente por cima do conteúdo rolado. */
 .stickyCol{position:sticky;right:0;background:var(--panel);box-shadow:-6px 0 8px -6px #000a}
-th{color:var(--muted);font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.03em}
+th{color:var(--muted);font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.03em}
 tbody tr{transition:background .1s}
 tbody tr:hover{background:#ffffff08}
 .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin:8px 0 14px;padding:12px;background:#16110c;border:1px solid #332b24;border-radius:12px}
@@ -320,7 +323,7 @@ tbody tr:hover{background:#ffffff08}
 .toolbar.planGrid .planActions{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
 .note{font-size:12px;line-height:1.55;color:#c4b8a5}
 .sep{border:0;border-top:1px solid #3a2f26;margin:14px 0}
-.mini{font-size:11px;color:var(--muted)}
+.mini{font-size:12px;color:var(--muted)}
 .pos{color:#72e8aa}.neg{color:#ff8d96}
 .roleTitle{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap}
 .lockNote{border:1px dashed #5c4a30;border-radius:12px;padding:14px;color:#d4c7b4;font-size:13px}
@@ -654,7 +657,7 @@ tbody tr:hover{background:#ffffff08}
       <option value="nota">Nota</option><option value="ligacao">Ligação</option><option value="reuniao">Reunião</option><option value="email">E-mail</option><option value="whatsapp">WhatsApp</option>
     </select>
     <textarea id="evNovaInteracaoTexto" placeholder="O que aconteceu?" rows="2" style="flex:1;min-width:180px;resize:vertical"></textarea>
-    <button class="btn" type="button" style="padding:4px 9px;font-size:11px" onclick="adicionarInteracaoUI('ev')">+ Registrar</button>
+    <button class="btn" type="button" style="padding:4px 9px;font-size:12px" onclick="adicionarInteracaoUI('ev')">+ Registrar</button>
   </div>
   <div class="mini" style="font-weight:700;margin:12px 0 6px">Tarefas</div>
   <div id="evTarefasBody" class="mini">Salve o evento primeiro.</div>
@@ -662,7 +665,7 @@ tbody tr:hover{background:#ffffff08}
     <input type="text" id="evNovaTarefaTitulo" placeholder="Título da tarefa" style="flex:1;min-width:150px">
     <input type="date" id="evNovaTarefaData" style="max-width:150px">
     <input type="email" id="evNovaTarefaResponsavel" placeholder="Responsável (e-mail)" style="max-width:180px">
-    <button class="btn" type="button" style="padding:4px 9px;font-size:11px" onclick="adicionarTarefaUI('ev')">+ Nova tarefa</button>
+    <button class="btn" type="button" style="padding:4px 9px;font-size:12px" onclick="adicionarTarefaUI('ev')">+ Nova tarefa</button>
   </div>
 </div></details>
 <div style="margin-top:8px;display:flex;gap:10px;align-items:center">
@@ -713,7 +716,7 @@ tbody tr:hover{background:#ffffff08}
       <option value="nota">Nota</option><option value="ligacao">Ligação</option><option value="reuniao">Reunião</option><option value="email">E-mail</option><option value="whatsapp">WhatsApp</option>
     </select>
     <textarea id="cotNovaInteracaoTexto" placeholder="O que aconteceu?" rows="2" style="flex:1;min-width:180px;resize:vertical"></textarea>
-    <button class="btn" type="button" style="padding:4px 9px;font-size:11px" onclick="adicionarInteracaoUI('cot')">+ Registrar</button>
+    <button class="btn" type="button" style="padding:4px 9px;font-size:12px" onclick="adicionarInteracaoUI('cot')">+ Registrar</button>
   </div>
   <div class="mini" style="font-weight:700;margin:12px 0 6px">Tarefas</div>
   <div id="cotTarefasBody" class="mini">Salve a cotação primeiro.</div>
@@ -721,7 +724,7 @@ tbody tr:hover{background:#ffffff08}
     <input type="text" id="cotNovaTarefaTitulo" placeholder="Título da tarefa" style="flex:1;min-width:150px">
     <input type="date" id="cotNovaTarefaData" style="max-width:150px">
     <input type="email" id="cotNovaTarefaResponsavel" placeholder="Responsável (e-mail)" style="max-width:180px">
-    <button class="btn" type="button" style="padding:4px 9px;font-size:11px" onclick="adicionarTarefaUI('cot')">+ Nova tarefa</button>
+    <button class="btn" type="button" style="padding:4px 9px;font-size:12px" onclick="adicionarTarefaUI('cot')">+ Nova tarefa</button>
   </div>
 </div></details>
 <div style="margin-top:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
@@ -2574,7 +2577,7 @@ function renderClosurePanel(area){
   const fechados=monthClosures.filter(c=>c.area===area).sort((a,b)=>a.monthKey<b.monthKey?1:-1);
   if(!fechados.length){el.innerHTML='<span class="mini">Nenhum mês fechado ainda.</span>';return}
   el.innerHTML=fechados.map(c=>{
-    const reabrir=isAdmin?` <button class="btn" type="button" style="padding:2px 8px;font-size:11px;background:#8a4423" onclick="reopenMonthUI('${area}','${c.monthKey}')">🔓 Reabrir</button>`:'';
+    const reabrir=isAdmin?` <button class="btn" type="button" style="padding:2px 8px;font-size:12px;background:#8a4423" onclick="reopenMonthUI('${area}','${c.monthKey}')">🔓 Reabrir</button>`:'';
     return `<div class="mini" style="padding:2px 0">🔒 <b>${monthKeyLabel(c.monthKey)}</b> — fechado por ${c.closedByEmail} em ${fmtTime(c.closedAt)}${reabrir}</div>`;
   }).join('');
 }
@@ -2735,7 +2738,7 @@ async function renderHistoryMonthView(area,forceRefetch){
     const stats=cfg.stats(v,e).map(s=>`<div class="historyDayStat"><span class="mini">${s.label}</span><b>${s.val}</b></div>`).join('');
     const locked=!isAdmin&&isMonthClosedFor(area,e.date);
     const checked=entrySelected[area].has(e.date)?'checked':'';
-    return `<div class="historyDayCard" onclick="editEntry('${area}','${e.date}')"><span class="historyDayDot"></span><div class="historyDayMain"><b>${fmtDate(e.date)}</b><span class="mini">${e.submittedByName||'—'} • ${fmtTime(e.submittedAt)}</span></div><div class="historyDayStats">${stats}</div><div class="historyDayActions" onclick="event.stopPropagation()"><input type="checkbox" ${checked} onchange="toggleEntrySelect('${area}','${e.date}',this.checked)">${locked?'<span class="mini">🔒</span>':`<button class="btn" style="padding:4px 9px;font-size:11px;background:#3a1620;border-color:#5c2530" onclick="deleteEntryUI('${area}','${e.date}')">Apagar</button>`}</div></div>`;
+    return `<div class="historyDayCard" onclick="editEntry('${area}','${e.date}')"><span class="historyDayDot"></span><div class="historyDayMain"><b>${fmtDate(e.date)}</b><span class="mini">${e.submittedByName||'—'} • ${fmtTime(e.submittedAt)}</span></div><div class="historyDayStats">${stats}</div><div class="historyDayActions" onclick="event.stopPropagation()"><input type="checkbox" ${checked} onchange="toggleEntrySelect('${area}','${e.date}',this.checked)">${locked?'<span class="mini">🔒</span>':`<button class="btn" style="padding:4px 9px;font-size:12px;background:#3a1620;border-color:#5c2530" onclick="deleteEntryUI('${area}','${e.date}')">Apagar</button>`}</div></div>`;
   }).join(''):'<div class="mini">Sem envios nesse mês.</div>';
   root.innerHTML=nav+kpis+list;
 }
@@ -3458,7 +3461,7 @@ function renderContatosEmergencia(){
     const status=c.ativo?'<span class="badge g">Ativo</span>':'<span class="badge y">Inativo</span>';
     const checked=contatoSelectedIds.has(c.id)?'checked':'';
     return `<tr><td>${escapeHtml(c.nome)}</td><td class="mini">${escapeHtml(c.categoria||'—')}</td><td>${telLink}</td><td class="mini">${escapeHtml(c.observacao||'—')}</td><td>${status}</td>`+
-      `<td style="white-space:nowrap"><button class="btn" style="padding:4px 9px;font-size:11px" onclick="editContatoEmergencia('${c.id}')">Editar</button> <button class="btn" style="padding:4px 9px;font-size:11px;background:#3a1620;border-color:#5c2530" data-busy="Apagando…" onclick="deleteContatoEmergenciaUI('${c.id}')">Apagar</button></td>`+
+      `<td style="white-space:nowrap"><button class="btn" style="padding:4px 9px;font-size:12px" onclick="editContatoEmergencia('${c.id}')">Editar</button> <button class="btn" style="padding:4px 9px;font-size:12px;background:#3a1620;border-color:#5c2530" data-busy="Apagando…" onclick="deleteContatoEmergenciaUI('${c.id}')">Apagar</button></td>`+
       `<td><input type="checkbox" ${checked} onchange="toggleContatoSelect('${c.id}',this.checked)"></td></tr>`;
   }).join('');
 }
@@ -3510,7 +3513,7 @@ function renderContatoSolicitacoes(){
     const d=x.dados||{};
     const det=x.tipo==='apagar'?'':'<br><span class="mini">'+escapeHtml((d.categoria||'')+(d.telefone?' • '+d.telefone:''))+'</span>';
     const acao=(contatoSolicDiretoria&&x.status==='pendente')
-      ?'<button class="btn" style="padding:4px 9px;font-size:11px" data-busy="Aprovando…" onclick="decideContatoSolicitacaoUI(\''+x.id+'\',true)">Aprovar</button> <button class="btn" style="padding:4px 9px;font-size:11px;background:#3a1620;border-color:#5c2530" onclick="decideContatoSolicitacaoUI(\''+x.id+'\',false)">Recusar</button>'
+      ?'<button class="btn" style="padding:4px 9px;font-size:12px" data-busy="Aprovando…" onclick="decideContatoSolicitacaoUI(\''+x.id+'\',true)">Aprovar</button> <button class="btn" style="padding:4px 9px;font-size:12px;background:#3a1620;border-color:#5c2530" onclick="decideContatoSolicitacaoUI(\''+x.id+'\',false)">Recusar</button>'
       :'<span class="mini">'+(x.decididoPorEmail?escapeHtml(x.decididoPorEmail):'—')+'</span>';
     return '<tr><td class="mini">'+escapeHtml(String(x.solicitadoEm||'').slice(0,16).replace('T',' '))+'</td><td>'+(CONTATO_SOLIC_TIPO[x.tipo]||x.tipo)+'</td><td>'+escapeHtml(x.contatoNome||'—')+det+'</td><td class="mini">'+escapeHtml(x.solicitadoPorEmail||'')+'</td><td>'+(badge[x.status]||x.status)+(x.nota?'<br><span class="mini">'+escapeHtml(x.nota)+'</span>':'')+'</td><td style="white-space:nowrap">'+acao+'</td></tr>';
   }).join('');
@@ -3688,16 +3691,16 @@ function renderEventos(){
   body.innerHTML=eventosList.map(ev=>{
     const badge=EVENTO_STATUS_BADGE[ev.status]||'y';
     const contratoBtn=ev.contratoAnexoUrl
-      ?`<a href="${ev.contratoAnexoUrl}" target="_blank" class="btn" style="padding:4px 9px;font-size:11px;text-decoration:none;display:inline-block" title="${escapeHtml(ev.contratoAnexoNome||'')}">📄 Ver</a> <button class="btn" style="padding:4px 9px;font-size:11px" onclick="anexarContratoUI('${ev.id}')" title="Enviar outro arquivo, substitui o atual">🔄 Trocar</button>`
-      :`<button class="btn" style="padding:4px 9px;font-size:11px" onclick="anexarContratoUI('${ev.id}')">📎 Contrato</button>`;
+      ?`<a href="${ev.contratoAnexoUrl}" target="_blank" class="btn" style="padding:4px 9px;font-size:12px;text-decoration:none;display:inline-block" title="${escapeHtml(ev.contratoAnexoNome||'')}">📄 Ver</a> <button class="btn" style="padding:4px 9px;font-size:12px" onclick="anexarContratoUI('${ev.id}')" title="Enviar outro arquivo, substitui o atual">🔄 Trocar</button>`
+      :`<button class="btn" style="padding:4px 9px;font-size:12px" onclick="anexarContratoUI('${ev.id}')">📎 Contrato</button>`;
     const checked=eventosSelected.has(ev.id)?'checked':'';
     return `<tr><td>${fmtDate(ev.data)}</td><td>${escapeHtml(ev.nomeCliente)}</td><td class="mini">${EVENTO_TIPO_LABEL[ev.tipoEvento]||ev.tipoEvento}</td><td>${ev.pax||0}</td>`+
       `<td>${brl(ev.valorContrato)}</td><td>${brl(ev.valorSinal)}</td>${eventoValorSistemaCell(ev)}<td><span class="badge ${badge}">${EVENTO_STATUS_LABEL[ev.status]||ev.status}</span>${ev.pagamentoPendente?' <span class="badge y" title="Só organizacional — não muda o cálculo de faturamento">Pagamento pendente</span>':''}</td>`+
       `<td>${eventoPendenciasBadge(ev)}</td>`+
       `<td class="stickyCol" style="white-space:nowrap"><div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end">`+
-      `<button class="btn" style="padding:4px 9px;font-size:11px" onclick="editEventoUI('${ev.id}')">Editar</button>`+
+      `<button class="btn" style="padding:4px 9px;font-size:12px" onclick="editEventoUI('${ev.id}')">Editar</button>`+
       `${contratoBtn}`+
-      `<button class="btn" style="padding:4px 9px;font-size:11px;background:#3a1620;border-color:#5c2530" data-busy="Apagando…" onclick="deleteEventoUI('${ev.id}')">Apagar</button>`+
+      `<button class="btn" style="padding:4px 9px;font-size:12px;background:#3a1620;border-color:#5c2530" data-busy="Apagando…" onclick="deleteEventoUI('${ev.id}')">Apagar</button>`+
       `</div></td><td><input type="checkbox" ${checked} onchange="toggleEventoSelect('${ev.id}',this.checked)"></td></tr>`;
   }).join('');
 }
@@ -3792,7 +3795,7 @@ function montarLinhaDoTempo(eventoId,marcos){
   return todos.map(m=>
     '<div style="padding:4px 0;border-bottom:1px solid var(--line)"><b>'+escapeHtml(m.label)+'</b> <span class="mini">'+fmtTime(m.at)+' — '+escapeHtml(m.email||'')+'</span>'+
     (m.nota?'<div>'+escapeHtml(m.nota)+'</div>':'')+
-    (m.interacaoId&&isAdmin?' <button class="btn" style="padding:1px 5px;font-size:9px;background:#3a1620;border-color:#5c2530" onclick="apagarInteracaoUI(\''+m.interacaoId+'\')">apagar</button>':'')+
+    (m.interacaoId&&isAdmin?' <button class="btn" style="padding:1px 5px;font-size:12px;background:#3a1620;border-color:#5c2530" onclick="apagarInteracaoUI(\''+m.interacaoId+'\')">apagar</button>':'')+
     '</div>'
   ).join('');
 }
@@ -3804,7 +3807,7 @@ function renderListaTarefas(lista){
     const cor=t.status==='concluida'?'var(--muted)':(atrasada?'var(--red)':(t.dataVencimento===hoje?'var(--yellow)':'inherit'));
     return '<div style="padding:4px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:6px">'+
       '<div><span style="'+(t.status==='concluida'?'text-decoration:line-through;opacity:.6':'')+'">'+escapeHtml(t.titulo)+'</span> <span class="mini" style="color:'+cor+'">'+fmtDate(t.dataVencimento)+'</span>'+(t.responsavelEmail?' <span class="mini">('+escapeHtml(t.responsavelEmail)+')</span>':'')+'</div>'+
-      '<button class="btn" style="padding:1px 7px;font-size:10px" onclick="toggleTarefaUI(\''+t.id+'\','+(t.status!=='concluida')+')">'+(t.status==='concluida'?'↺ Reabrir':'✓ Concluir')+'</button>'+
+      '<button class="btn" style="padding:1px 7px;font-size:12px" onclick="toggleTarefaUI(\''+t.id+'\','+(t.status!=='concluida')+')">'+(t.status==='concluida'?'↺ Reabrir':'✓ Concluir')+'</button>'+
     '</div>';
   }).join('');
 }
@@ -3889,7 +3892,7 @@ async function loadTarefasHojeWidget(){
     const evNome=(eventosList.find(e=>e.id===t.eventoId)||{}).nomeCliente||'(evento)';
     return '<div style="padding:4px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:6px">'+
       '<div><span class="badge '+(atrasada?'r':'y')+'">'+(atrasada?'Atrasada':'Hoje')+'</span> <b>'+escapeHtml(t.titulo)+'</b> <span class="mini">'+escapeHtml(evNome)+' • '+fmtDate(t.dataVencimento)+(t.responsavelEmail?' • '+escapeHtml(t.responsavelEmail):'')+'</span></div>'+
-      '<button class="btn" style="padding:2px 8px;font-size:10px" onclick="toggleTarefaUI(\''+t.id+'\',true)">✓ Concluir</button>'+
+      '<button class="btn" style="padding:2px 8px;font-size:12px" onclick="toggleTarefaUI(\''+t.id+'\',true)">✓ Concluir</button>'+
     '</div>';
   }).join('');
 }
@@ -4310,16 +4313,16 @@ function renderEventoCotacoes(){
   const podeAprovar=hasAreaAccessClient('master');
   body.innerHTML=eventoCotacoesList.map(c=>{
     const badge=COTACAO_STATUS_BADGE[c.status]||'y';
-    let acao=`<button class="btn" style="padding:4px 9px;font-size:11px" onclick="editCotacaoUI('${c.id}')">${COTACAO_EDITAVEL_STATUS_CLIENT.indexOf(c.status)>=0?'Editar':'Ver'}</button>`;
+    let acao=`<button class="btn" style="padding:4px 9px;font-size:12px" onclick="editCotacaoUI('${c.id}')">${COTACAO_EDITAVEL_STATUS_CLIENT.indexOf(c.status)>=0?'Editar':'Ver'}</button>`;
     if(c.status==='aguardando_aprovacao'&&podeAprovar){
-      acao+=` <button class="btn" style="padding:4px 9px;font-size:11px;background:#8a4423" onclick="decideCotacaoUI('${c.id}',true)">✅ Aprovar</button>`+
-        ` <button class="btn" style="padding:4px 9px;font-size:11px;background:#3a1620;border-color:#5c2530" onclick="decideCotacaoUI('${c.id}',false)">❌ Recusar</button>`;
+      acao+=` <button class="btn" style="padding:4px 9px;font-size:12px;background:#8a4423" onclick="decideCotacaoUI('${c.id}',true)">✅ Aprovar</button>`+
+        ` <button class="btn" style="padding:4px 9px;font-size:12px;background:#3a1620;border-color:#5c2530" onclick="decideCotacaoUI('${c.id}',false)">❌ Recusar</button>`;
     }
     if(c.status==='aprovado'){
-      if(c.contratoDocUrl)acao+=` <a href="${c.contratoDocUrl}" target="_blank" class="btn" style="padding:4px 9px;font-size:11px;text-decoration:none;display:inline-block">📄 Ver contrato</a>`;
-      if(podeAprovar)acao+=` <button class="btn" style="padding:4px 9px;font-size:11px;background:#8a4423" onclick="abrirEnvioPanelUI('${c.id}')">📧 Enviar</button>`;
+      if(c.contratoDocUrl)acao+=` <a href="${c.contratoDocUrl}" target="_blank" class="btn" style="padding:4px 9px;font-size:12px;text-decoration:none;display:inline-block">📄 Ver contrato</a>`;
+      if(podeAprovar)acao+=` <button class="btn" style="padding:4px 9px;font-size:12px;background:#8a4423" onclick="abrirEnvioPanelUI('${c.id}')">📧 Enviar</button>`;
     }
-    if(c.status==='enviado'&&c.contratoDocUrl)acao+=` <a href="${c.contratoDocUrl}" target="_blank" class="btn" style="padding:4px 9px;font-size:11px;text-decoration:none;display:inline-block">📄 Ver contrato</a>`;
+    if(c.status==='enviado'&&c.contratoDocUrl)acao+=` <a href="${c.contratoDocUrl}" target="_blank" class="btn" style="padding:4px 9px;font-size:12px;text-decoration:none;display:inline-block">📄 Ver contrato</a>`;
     return `<tr><td>${escapeHtml(c.nomeEmpresaCliente)}</td><td class="mini">${escapeHtml(c.nomeEvento)}</td><td>${fmtDate(c.dataEvento)}</td><td>${brl(c.valorTotal)}</td>`+
       `<td><span class="badge ${badge}">${COTACAO_STATUS_LABEL[c.status]||c.status}</span></td><td style="white-space:nowrap">${acao}</td></tr>`;
   }).join('');
@@ -4562,7 +4565,7 @@ function renderDocumentacoes(){
     const checked=documentacoesSelected.has(d.id)?'checked':'';
     return `<tr><td>${escapeHtml(d.nome)}</td><td class="mini">${escapeHtml(tipoTxt)}</td><td class="mini">${escapeHtml(d.numero||'—')}</td><td class="mini">${escapeHtml(d.orgaoEmissor||'—')}</td>`+
       `<td>${d.dataValidade?fmtDate(d.dataValidade):'—'}</td><td>${situacaoDocumentoHtml(d.dataValidade)}</td><td>${arquivo}</td>`+
-      `<td class="stickyCol" style="white-space:nowrap"><button class="btn" style="padding:4px 9px;font-size:11px" onclick="editDocumentacaoUI('${d.id}')">Editar</button> <button class="btn" style="padding:4px 9px;font-size:11px;background:#3a1620;border-color:#5c2530" data-busy="Apagando…" onclick="deleteDocumentacaoUI('${d.id}')">Apagar</button></td>`+
+      `<td class="stickyCol" style="white-space:nowrap"><button class="btn" style="padding:4px 9px;font-size:12px" onclick="editDocumentacaoUI('${d.id}')">Editar</button> <button class="btn" style="padding:4px 9px;font-size:12px;background:#3a1620;border-color:#5c2530" data-busy="Apagando…" onclick="deleteDocumentacaoUI('${d.id}')">Apagar</button></td>`+
       `<td><input type="checkbox" ${checked} onchange="toggleDocumentacaoSelect('${d.id}',this.checked)"></td></tr>`;
   }).join('');
 }
@@ -4783,15 +4786,15 @@ function renderAuditoriaOpItens(){
     // (aprovarAuditoriaOpItem_ recusa quem não é 'owner') — esconder o botão aqui é
     // só conveniência visual, não é a segurança.
     const podeAprovar=isAdmin&&it.necessitaAprovacao&&it.status==='aguardandoAprovacao';
-    const aprovarBtn=podeAprovar?`<button class="btn" style="padding:4px 9px;font-size:11px;background:#1e5b3e;border-color:#2f7a52" data-busy="Aprovando…" onclick="aprovarAuditoriaOpItemUI('${it.id}')">✓ Aprovar</button> `:'';
+    const aprovarBtn=podeAprovar?`<button class="btn" style="padding:4px 9px;font-size:12px;background:#1e5b3e;border-color:#2f7a52" data-busy="Aprovando…" onclick="aprovarAuditoriaOpItemUI('${it.id}')">✓ Aprovar</button> `:'';
     // 13/10, pedido do Renato: mensagem que a Diretoria deixa ao aprovar/negar (quadro
     // de Aprovações) precisa aparecer aqui, não só ficar guardada sem ninguém ver —
     // mesma célula da descrição, destacada, só quando existe.
     const obsAprovacaoHtml=it.observacaoAprovacao?`<div class="mini" style="margin-top:4px;padding:4px 6px;border-radius:6px;background:${it.status==='negado'?'#f76e7c14':'#34d39914'};color:${it.status==='negado'?'#f76e7c':'#34d399'}">📝 Diretoria: ${escapeHtml(it.observacaoAprovacao)}</div>`:'';
     return `<tr><td class="mini">${fmtDate(it.dataIdentificacao)}</td><td class="mini">${auopSetorLabel(it.setor)}</td><td><span class="badge ${statusBadge}">${statusTxt}</span></td><td class="mini">${AUOP_TIPO_LABEL[it.tipoServico]||it.tipoServico}</td>`+
-      `<td style="white-space:normal;max-width:560px;font-size:11.2px">${escapeHtml(it.descricaoProblema)}${obsAprovacaoHtml}</td><td class="mini">${escapeHtml(it.responsavelInterno||'—')}</td><td class="mini">${escapeHtml(it.empresaExecutora||'—')}</td><td><span class="badge ${AUOP_PRIORIDADE_BADGE[it.prioridade]||'y'}">${AUOP_PRIORIDADE_LABEL[it.prioridade]||it.prioridade}</span></td>`+
+      `<td style="white-space:normal;max-width:560px;font-size:12px">${escapeHtml(it.descricaoProblema)}${obsAprovacaoHtml}</td><td class="mini">${escapeHtml(it.responsavelInterno||'—')}</td><td class="mini">${escapeHtml(it.empresaExecutora||'—')}</td><td><span class="badge ${AUOP_PRIORIDADE_BADGE[it.prioridade]||'y'}">${AUOP_PRIORIDADE_LABEL[it.prioridade]||it.prioridade}</span></td>`+
       `<td class="mini">${it.prazo?fmtDate(it.prazo):'—'}</td><td class="mini">${brl(it.valorEstimado)}</td>`+
-      `<td class="stickyCol" style="white-space:nowrap">${aprovarBtn}<button class="btn" style="padding:4px 9px;font-size:11px" onclick="editAuditoriaOpItemUI('${it.id}')">Editar</button> <button class="btn" style="padding:4px 9px;font-size:11px;background:#3a1620;border-color:#5c2530" data-busy="Apagando…" onclick="deleteAuditoriaOpItemUI('${it.id}')">Apagar</button></td>`+
+      `<td class="stickyCol" style="white-space:nowrap">${aprovarBtn}<button class="btn" style="padding:4px 9px;font-size:12px" onclick="editAuditoriaOpItemUI('${it.id}')">Editar</button> <button class="btn" style="padding:4px 9px;font-size:12px;background:#3a1620;border-color:#5c2530" data-busy="Apagando…" onclick="deleteAuditoriaOpItemUI('${it.id}')">Apagar</button></td>`+
       `<td><input type="checkbox" ${checked} onchange="toggleAuditoriaOpSelect('${it.id}',this.checked)"></td></tr>`;
   }).join('');
 }
@@ -4920,7 +4923,7 @@ function renderAuditoriaOpEvidencias(){
     const tipo=ev.antesDepois==='depois'?'<span class="badge g">Depois</span>':'<span class="badge y">Antes</span>';
     return `<tr><td>${tipo} <a href="${escapeHtml(ev.url)}" target="_blank">${escapeHtml(ev.fileName||'ver')}</a></td><td class="mini">${ev.uploadedAt?new Date(ev.uploadedAt).toLocaleString('pt-BR'):'—'}</td>`+
       `<td class="mini">${escapeHtml(ev.descricao||'—')}</td><td class="mini">${escapeHtml(ev.uploadedByEmail||'—')}</td>`+
-      `<td><button class="btn" style="padding:4px 9px;font-size:11px;background:#3a1620;border-color:#5c2530" onclick="deleteAuditoriaOpEvidenciaUI('${ev.id}')">Apagar</button></td></tr>`;
+      `<td><button class="btn" style="padding:4px 9px;font-size:12px;background:#3a1620;border-color:#5c2530" onclick="deleteAuditoriaOpEvidenciaUI('${ev.id}')">Apagar</button></td></tr>`;
   }).join('');
 }
 async function uploadAuditoriaOpEvidenciaUI(){
@@ -6130,7 +6133,7 @@ function renderTrendChart(containerId,labels,series){
   });
   const svgTag=`<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:auto;display:block;overflow:visible" data-chart-w="${w}" data-pad-l="${padL}" data-pad-r="${padR}">${svg}</svg>`;
   const tickEvery=Math.max(1,Math.ceil(n/10));
-  const ticks=labels.map((l,i)=>`<span style="font-size:10.5px;color:var(--muted)">${i%tickEvery===0?l:''}</span>`).join('');
+  const ticks=labels.map((l,i)=>`<span style="font-size:12px;color:var(--muted)">${i%tickEvery===0?l:''}</span>`).join('');
   const legend=series.length>1?`<div style="display:flex;gap:16px;font-size:12px;color:var(--muted);margin-bottom:6px">${series.map(s=>`<span style="display:flex;align-items:center;gap:6px"><span style="width:9px;height:9px;border-radius:3px;background:${s.color};display:inline-block"></span>${s.name}</span>`).join('')}</div>`:'';
   wrap.innerHTML=`${legend}<div style="position:relative">${svgTag}<div class="chartCrosshair"></div><div class="chartTip"></div></div><div style="display:flex;justify-content:space-between;margin-top:8px;padding:0 2px">${ticks}</div>`;
   wrap.__trendState={labels,series};
@@ -6276,7 +6279,7 @@ function renderFaturamentoChart(){
   });
   const svgTag=`<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:auto;display:block;overflow:visible" data-chart-w="${w}" data-pad-l="${padL}" data-pad-r="${padR}">${svg}</svg>`;
   const tickEvery=Math.max(1,Math.ceil(n/12));
-  const ticks=labels.map((l,i)=>`<span style="font-size:10.5px;color:var(--muted)">${i%tickEvery===0?l:''}</span>`).join('');
+  const ticks=labels.map((l,i)=>`<span style="font-size:12px;color:var(--muted)">${i%tickEvery===0?l:''}</span>`).join('');
   const legend=series.length>1?`<div style="display:flex;gap:16px;font-size:12px;color:var(--muted);margin-bottom:6px">${series.map(s=>`<span style="display:flex;align-items:center;gap:6px"><span style="width:9px;height:9px;border-radius:3px;background:${s.color};display:inline-block"></span>${s.name}</span>`).join('')}</div>`:'';
   // 05/10, pedido do Renato: média de faturamento (ZigPay+Eventos) nos meses COM
   // evento × meses SEM evento no ano — só faz sentido no modo "Ano" (granularidade
@@ -6709,7 +6712,7 @@ function renderMkPlanTable(){
     tot.planRevenue+=planRevenue||0;tot.actRevenue+=actRevenue||0;tot.diffRevenue+=diffRevenue||0;
     tot.planSpend+=planSpend||0;tot.actSpend+=actSpend||0;tot.diffSpend+=diffSpend||0;
     const statusBadge=diffSpend==null?'—':badge(...(diffSpend>=0?['g','DENTRO DO PLANO']:['r','ACIMA DO PLANO']));
-    const acao=plan?`<button class="btn" style="padding:4px 9px;font-size:11px;background:#3a1620;border-color:#5c2530" onclick="deleteMkPlanUI('${date}')">Apagar</button>`:'—';
+    const acao=plan?`<button class="btn" style="padding:4px 9px;font-size:12px;background:#3a1620;border-color:#5c2530" onclick="deleteMkPlanUI('${date}')">Apagar</button>`:'—';
     const checkTd=plan?`<td><input type="checkbox" ${mkPlanSelectedDates.has(date)?'checked':''} onchange="toggleMkPlanSelect('${date}',this.checked)"></td>`:'<td><input type="checkbox" disabled title="Sem projeção lançada — nada a selecionar"></td>';
     return `<tr><td>${fmtDate(date)}</td>`+
       `<td>${planRevenue!=null?brl(planRevenue):'—'}</td><td>${actRevenue!=null?brl(actRevenue):'—'}</td><td class="${diffRevenue==null?'':(diffRevenue>=0?'pos':'neg')}">${diffRevenue!=null?brl(diffRevenue):'—'}</td>`+
@@ -6875,11 +6878,11 @@ function renderReservasHistory(){
   if(!reservationEntries.length){body.innerHTML='<tr><td colspan="11" class="mini">Sem reservas ainda.</td></tr>';return}
   body.innerHTML=reservationEntries.map(e=>{
     const nomes=parseConvidadosList(e.convidados);
-    const listaBtn=nomes.length?`<button class="btn" style="padding:4px 9px;font-size:11px;background:#8a4423" onclick="viewGuestListUI('${e.id}')">👥 Lista (${nomes.length})</button> `:'';
+    const listaBtn=nomes.length?`<button class="btn" style="padding:4px 9px;font-size:12px;background:#8a4423" onclick="viewGuestListUI('${e.id}')">👥 Lista (${nomes.length})</button> `:'';
     // Lista continua liberada (não altera nada); Editar/Apagar somem em mês fechado.
     const acao=(!isAdmin&&isMonthClosedFor('reservas',e.date))
       ?`${listaBtn}<span class="mini">🔒 mês fechado</span>`
-      :`${listaBtn}<button class="btn" style="padding:4px 9px;font-size:11px" onclick="editReservationEntryUI('${e.id}')">Editar</button> <button class="btn" style="padding:4px 9px;font-size:11px;background:#3a1620;border-color:#5c2530" data-busy="Apagando…" onclick="deleteReservationEntryUI('${e.id}')">Apagar</button>`;
+      :`${listaBtn}<button class="btn" style="padding:4px 9px;font-size:12px" onclick="editReservationEntryUI('${e.id}')">Editar</button> <button class="btn" style="padding:4px 9px;font-size:12px;background:#3a1620;border-color:#5c2530" data-busy="Apagando…" onclick="deleteReservationEntryUI('${e.id}')">Apagar</button>`;
     const checked=reservasSelected.has(e.id)?'checked':'';
     // 05/10, bug real achado pelo Renato: checkbox vinha PRIMEIRO aqui mas o <thead>
     // (linha ~1416) tem ele por ÚLTIMO — desalinhava toda coluna em 1 posição, os
@@ -7306,7 +7309,7 @@ function renderEmployeesTable(){
     // mostrar férias de alguém já desligado com data de férias velha no cadastro).
     const statusBadge=e._fonte==='sem'?'<span class="badge y" title="Sem ficha gravada neste mês">sem ficha</span>':((e.ativo&&e._fonte!=='historico'&&feriasAtivas(e,todayStr()))?'<span class="badge y">férias</span>':(e.ativo?'<span class="badge g">ativo</span>':'<span class="badge r">inativo</span>'));
     return cab+`<tr><td>${escapeHtml(e.nome)}${lider}</td><td>${escapeHtml(employeeCargoLabel(e))}</td><td>${NIVEL_LABEL[e.nivel]||'Pleno'}</td><td>${e.contratacao}</td><td>${e._fonte==='sem'?'<span class="mini">—</span>':brl(e.valorTotal)}</td><td>${statusBadge}</td>`+
-      `<td class="stickyCol" style="white-space:nowrap"><button class="btn" style="padding:4px 9px;font-size:11px" onclick="openEmployeeForm(${idx})">Editar</button> <button class="btn" style="padding:4px 9px;font-size:11px;background:#3a1620;border-color:#5c2530" data-busy="Apagando…" onclick="deleteEmployeeRow(${idx})">Apagar</button></td></tr>`;
+      `<td class="stickyCol" style="white-space:nowrap"><button class="btn" style="padding:4px 9px;font-size:12px" onclick="openEmployeeForm(${idx})">Editar</button> <button class="btn" style="padding:4px 9px;font-size:12px;background:#3a1620;border-color:#5c2530" data-busy="Apagando…" onclick="deleteEmployeeRow(${idx})">Apagar</button></td></tr>`;
   }).join('');
   // 19/10, pedido do Renato: a última linha acompanha o filtro de status selecionado
   const exibidos=ordenados.map(o=>o.e);
@@ -7854,7 +7857,7 @@ async function loadEmployeeDocs(employeeId){
 function renderEmployeeDocs(items){
   const body=$('efDocsBody');if(!body)return;
   if(!items.length){body.innerHTML='<tr><td colspan="4" class="mini">Nenhum arquivo ainda.</td></tr>';return}
-  body.innerHTML=items.map(d=>`<tr><td><a href="${d.url}" target="_blank" rel="noopener">${escapeHtml(d.fileName)}</a></td><td class="mini">${escapeHtml(d.uploadedByName||'—')}</td><td class="mini">${fmtTime(d.uploadedAt)}</td><td><button class="btn" style="padding:4px 9px;font-size:11px;background:#3a1620;border-color:#5c2530" onclick="deleteEmployeeDocUI('${d.id}')">Apagar</button></td></tr>`).join('');
+  body.innerHTML=items.map(d=>`<tr><td><a href="${d.url}" target="_blank" rel="noopener">${escapeHtml(d.fileName)}</a></td><td class="mini">${escapeHtml(d.uploadedByName||'—')}</td><td class="mini">${fmtTime(d.uploadedAt)}</td><td><button class="btn" style="padding:4px 9px;font-size:12px;background:#3a1620;border-color:#5c2530" onclick="deleteEmployeeDocUI('${d.id}')">Apagar</button></td></tr>`).join('');
 }
 async function uploadEmployeeDocs(){
   const existing=employeeFormIndex>=0?employees[employeeFormIndex]:null;
@@ -8876,7 +8879,7 @@ function cmoFlAtualizarBotao(){
   b.style.borderColor=c.status==='acima'?'var(--red)':(c.status==='atencao'?'var(--yellow)':(c.status==='ok'?'var(--green)':''));
   b.style.fontWeight=c.status==='acima'?'800':'';
   if(faixa){
-    if(c.status==='acima'){faixa.classList.remove('hidden');faixa.innerHTML='<div class="alert r"><b>⚠ CMO de freelancers acima do teto de '+c.tetoPct+'%:</b> '+brl(c.total)+' ('+pcts+' do faturamento da semana, estimado em '+brl(c.fat)+'). Teto = '+brl(c.teto)+' — reduza <b>'+brl(c.total-c.teto)+'</b> antes de enviar. <button class="btn" type="button" data-nofeedback style="padding:3px 9px;font-size:11px;margin-left:6px" onclick="cmoFlAbrir()">Ver detalhes</button></div>'}
+    if(c.status==='acima'){faixa.classList.remove('hidden');faixa.innerHTML='<div class="alert r"><b>⚠ CMO de freelancers acima do teto de '+c.tetoPct+'%:</b> '+brl(c.total)+' ('+pcts+' do faturamento da semana, estimado em '+brl(c.fat)+'). Teto = '+brl(c.teto)+' — reduza <b>'+brl(c.total-c.teto)+'</b> antes de enviar. <button class="btn" type="button" data-nofeedback style="padding:3px 9px;font-size:12px;margin-left:6px" onclick="cmoFlAbrir()">Ver detalhes</button></div>'}
     else if(c.status==='atencao'){faixa.classList.remove('hidden');faixa.innerHTML='<div class="alert y"><b>Atenção:</b> o CMO de freelancers já está em '+pcts+' do faturamento da semana (teto '+c.tetoPct+'%, sobram '+brl(c.teto-c.total)+').</div>'}
     else{faixa.classList.add('hidden');faixa.innerHTML=''}
   }
@@ -9255,9 +9258,9 @@ function barraTempoTurno(entrada,saida,heatInfo){
     return `<span style="flex:1;height:18px;background:rgb(${rgb.join(',')})${i===picoIdx?';outline:2px solid #fff;outline-offset:-2px':''}" title="${titulo}"></span>`;
   }).join('');
   const marcas=info.map((b,i)=>{
-    if(i===picoIdx)return `<span style="flex:1;text-align:center;font-size:10px;font-weight:900;color:var(--red);white-space:nowrap">▲${b.clock}</span>`;
+    if(i===picoIdx)return `<span style="flex:1;text-align:center;font-size:12px;font-weight:900;color:var(--red);white-space:nowrap">▲${b.clock}</span>`;
     const horaCheia=b.m%60===0;
-    return `<span style="flex:1;text-align:center;font-size:10px;color:var(--muted)">${horaCheia?b.clock.slice(0,2)+'h':''}</span>`;
+    return `<span style="flex:1;text-align:center;font-size:12px;color:var(--muted)">${horaCheia?b.clock.slice(0,2)+'h':''}</span>`;
   }).join('');
   return `<div style="max-width:420px;min-width:260px;margin-top:6px" title="Turno ${entrada}–${saida} — calor de atendimento por horário, ▲ = pico do turno">`+
     `<div style="display:flex;gap:2px;border-radius:4px;overflow:hidden">${cells}</div>`+
@@ -9288,12 +9291,12 @@ function buildObsCell(key,texto,taId,stId,enviarOnclick){
     return `<div style="display:flex;flex-direction:column;gap:3px;min-width:230px">`+
       `<textarea id="${taId}" rows="3" style="width:100%;min-width:230px;font-size:12px;font-family:inherit;resize:vertical" placeholder="observação do dia">${escapeHtml(texto||'')}</textarea>`+
       `<div style="display:flex;gap:4px;align-items:center">`+
-      `<button class="btn" style="padding:3px 8px;font-size:10px" onclick="${enviarOnclick}">Enviar</button>`+
-      `<button class="btn" style="padding:3px 8px;font-size:10px;background:#3a1620;border-color:#5c2530" onclick="cancelEcObsEdit('${key}')">Cancelar</button>`+
+      `<button class="btn" style="padding:3px 8px;font-size:12px" onclick="${enviarOnclick}">Enviar</button>`+
+      `<button class="btn" style="padding:3px 8px;font-size:12px;background:#3a1620;border-color:#5c2530" onclick="cancelEcObsEdit('${key}')">Cancelar</button>`+
       `<span class="mini" id="${stId}"></span></div></div>`;
   }
   const resumo=texto?(texto.length>26?texto.slice(0,26)+'…':texto):'Observação';
-  return `<button class="btn" style="padding:3px 7px;font-size:10px" title="${escapeHtml(texto||'Adicionar observação do dia')}" onclick="toggleEcObsEdit('${key}')">📝 ${escapeHtml(resumo)}</button>`;
+  return `<button class="btn" style="padding:3px 7px;font-size:12px" title="${escapeHtml(texto||'Adicionar observação do dia')}" onclick="toggleEcObsEdit('${key}')">📝 ${escapeHtml(resumo)}</button>`;
 }
 // Freelancer aprovado: nasce em modo edição enquanto não tem nome salvo (o gerente
 // precisa preencher assim que o RH aprova a quantidade) — depois de salvar 1x, vira
@@ -9311,22 +9314,22 @@ function linhaExtraAprovado(it,sugEntrada,sugSaida,sugPausa,aviso,heatInfo){
   if(editando){
     colaboradorHtml=`<input type="text" id="${nomeId}" value="${escapeHtml(it.freelancerNames||'')}" placeholder="ex.: João, Maria" style="width:100%;min-width:150px">`;
     horarioHtml=`<div style="display:flex;gap:3px;align-items:flex-end;flex-wrap:wrap">`+
-      `<div style="display:flex;flex-direction:column;gap:1px"><span class="mini" style="font-size:9px">Entrada</span><input type="time" id="${entId}" value="${entrada}" style="width:92px" title="Entrada"></div>`+
+      `<div style="display:flex;flex-direction:column;gap:1px"><span class="mini" style="font-size:12px">Entrada</span><input type="time" id="${entId}" value="${entrada}" style="width:92px" title="Entrada"></div>`+
       `<span style="padding-bottom:5px">–</span>`+
-      `<div style="display:flex;flex-direction:column;gap:1px"><span class="mini" style="font-size:9px">Saída</span><input type="time" id="${saiId}" value="${saida}" style="width:92px" title="Saída"></div>`+
-      `<div style="display:flex;flex-direction:column;gap:1px"><span class="mini" style="font-size:9px">Pausa (1h)</span><input type="time" id="${pauId}" value="${pausa}" style="width:92px" title="Início da pausa (1h)"></div></div>`+
+      `<div style="display:flex;flex-direction:column;gap:1px"><span class="mini" style="font-size:12px">Saída</span><input type="time" id="${saiId}" value="${saida}" style="width:92px" title="Saída"></div>`+
+      `<div style="display:flex;flex-direction:column;gap:1px"><span class="mini" style="font-size:12px">Pausa (1h)</span><input type="time" id="${pauId}" value="${pausa}" style="width:92px" title="Início da pausa (1h)"></div></div>`+
       (aviso?`<div class="mini">${aviso}</div>`:'')+`<span class="mini" id="${stId}"></span>`;
-    acaoBtns=`<button class="btn" style="padding:3px 7px;font-size:10px" onclick="saveFreelancerScheduleUI('${it.id}','${nomeId}','${entId}','${saiId}','${pauId}','${stId}')">Salvar</button>`+
-      (it.freelancerNames?` <button class="btn" style="padding:3px 7px;font-size:10px;background:#3a1620;border-color:#5c2530" onclick="cancelEcFreelancerEdit('${it.id}')">Cancelar edição</button>`:'');
+    acaoBtns=`<button class="btn" style="padding:3px 7px;font-size:12px" onclick="saveFreelancerScheduleUI('${it.id}','${nomeId}','${entId}','${saiId}','${pauId}','${stId}')">Salvar</button>`+
+      (it.freelancerNames?` <button class="btn" style="padding:3px 7px;font-size:12px;background:#3a1620;border-color:#5c2530" onclick="cancelEcFreelancerEdit('${it.id}')">Cancelar edição</button>`:'');
   }else{
     colaboradorHtml=escapeHtml(it.freelancerNames);
     horarioHtml=(entrada&&saida?`${entrada} – ${saida}`+(pausa?` <span class="mini">pausa ${pausa}</span>`:''):'<span class="mini">horário não confirmado</span>')+barraTempoTurno(entrada,saida,heatInfo);
-    acaoBtns=`<button class="btn" style="padding:3px 7px;font-size:10px" onclick="toggleEcFreelancerEdit('${it.id}')">Editar</button>`;
+    acaoBtns=`<button class="btn" style="padding:3px 7px;font-size:12px" onclick="toggleEcFreelancerEdit('${it.id}')">Editar</button>`;
   }
-  const cancelarBtn=`<button class="btn" style="padding:3px 7px;font-size:10px;background:#3a1620;border-color:#5c2530" onclick="deleteFreelancerRequestUI('${it.id}')">Cancelar solicitação</button>`;
+  const cancelarBtn=`<button class="btn" style="padding:3px 7px;font-size:12px;background:#3a1620;border-color:#5c2530" onclick="deleteFreelancerRequestUI('${it.id}')">Cancelar solicitação</button>`;
   const presencaHtml=it.attendance
     ?(FREELANCER_ATTENDANCE_BADGE[it.attendance]||it.attendance)
-    :`<button class="btn" style="padding:3px 7px;font-size:10px" onclick="markFreelancerAttendanceUI('${it.id}',true)">Compareceu</button> <button class="btn" style="padding:3px 7px;font-size:10px;background:#3a1620;border-color:#5c2530" onclick="markFreelancerAttendanceUI('${it.id}',false)">Faltou</button>`;
+    :`<button class="btn" style="padding:3px 7px;font-size:12px" onclick="markFreelancerAttendanceUI('${it.id}',true)">Compareceu</button> <button class="btn" style="padding:3px 7px;font-size:12px;background:#3a1620;border-color:#5c2530" onclick="markFreelancerAttendanceUI('${it.id}',false)">Faltou</button>`;
   const obsId=idBase+'_obs',obsStId=idBase+'_obsSt';
   const obsHtml=buildObsCell(idBase,it.attendanceNote,obsId,obsStId,`saveFreelancerObservacaoUI('${it.id}','${obsId}','${obsStId}','${idBase}')`);
   const checked=ecFreelancerSelectedIds.has(it.id)?'checked':'';
@@ -9385,7 +9388,7 @@ function linhaCltRow(e,date,situacaoHtml,semPresenca){
   }else{
     const idBase=`ecDa_${e.id}`,obsId=idBase+'_obs',stId=idBase+'_st';
     const badge=rec&&rec.status?(FREELANCER_ATTENDANCE_BADGE[rec.status]||rec.status):'';
-    const btns=badge||`<button class="btn" style="padding:3px 7px;font-size:10px" onclick="markDailyAttendanceUI('${e.id}','compareceu')">Compareceu</button> <button class="btn" style="padding:3px 7px;font-size:10px;background:#3a1620;border-color:#5c2530" onclick="markDailyAttendanceUI('${e.id}','faltou')">Faltou</button>`;
+    const btns=badge||`<button class="btn" style="padding:3px 7px;font-size:12px" onclick="markDailyAttendanceUI('${e.id}','compareceu')">Compareceu</button> <button class="btn" style="padding:3px 7px;font-size:12px;background:#3a1620;border-color:#5c2530" onclick="markDailyAttendanceUI('${e.id}','faltou')">Faltou</button>`;
     presCell=`<div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center">${btns}</div>`+
       `<div style="margin-top:3px">${buildObsCell(idBase,(rec&&rec.observacao)||'',obsId,stId,`saveDailyObservacaoUI('${e.id}','${obsId}','${stId}','${idBase}')`)}</div>`;
   }
@@ -9790,9 +9793,9 @@ function renderFreelancerOperatorList(){
     if(it.status==='aprovado'){
       presenca=it.attendance?
         (FREELANCER_ATTENDANCE_BADGE[it.attendance]||it.attendance):
-        `<button class="btn" style="padding:3px 8px;font-size:11px" onclick="markFreelancerAttendanceUI('${it.id}',true)">Compareceu</button> <button class="btn" style="padding:3px 8px;font-size:11px;background:#3a1620;border-color:#5c2530" onclick="markFreelancerAttendanceUI('${it.id}',false)">Faltou</button>`;
+        `<button class="btn" style="padding:3px 8px;font-size:12px" onclick="markFreelancerAttendanceUI('${it.id}',true)">Compareceu</button> <button class="btn" style="padding:3px 8px;font-size:12px;background:#3a1620;border-color:#5c2530" onclick="markFreelancerAttendanceUI('${it.id}',false)">Faltou</button>`;
     }
-    const acao=`<button class="btn" style="padding:4px 9px;font-size:11px;background:#3a1620;border-color:#5c2530" onclick="deleteFreelancerRequestUI('${it.id}')">Apagar</button>`;
+    const acao=`<button class="btn" style="padding:4px 9px;font-size:12px;background:#3a1620;border-color:#5c2530" onclick="deleteFreelancerRequestUI('${it.id}')">Apagar</button>`;
     const checked=freelancerSelectedIds.has(it.id)?'checked':'';
     return `<tr><td>${fmtDate(it.date)}</td><td>${FREELANCER_SECTOR_LABEL[it.sector]||it.sector}</td><td class="mini">${FREELANCER_REASON_LABEL[it.reason]||it.reason||'—'}</td><td>${it.shiftHours}h</td><td>${it.qty}</td><td>${brl(it.totalCost)}</td><td>${FREELANCER_STATUS_BADGE[it.status]||it.status}</td><td>${presenca}</td><td class="stickyCol">${acao}</td><td><input type="checkbox" ${checked} onchange="toggleFreelancerSelect('${it.id}',this.checked)"></td></tr>`;
   }).join('');
@@ -9869,12 +9872,12 @@ function renderFreelancerApprovalList(){
   const pending=freelancerRequests.filter(it=>it.status==='pendente').length;
   if($('freelancerPendingBadge'))$('freelancerPendingBadge').textContent=pending?(pending+' pendente(s)'):'nenhum pendente';
   const lista=(freelancerApprovalShowHistory?freelancerRequests:freelancerRequests.filter(it=>it.status==='pendente')).slice(0,80);
-  if(!lista.length){body.innerHTML=`<tr><td colspan="12" class="mini">${freelancerApprovalShowHistory?'Nenhuma solicitação ainda.':'Nenhum pedido pendente. <button class="btn" style="padding:2px 8px;font-size:11px" onclick="toggleFreelancerApprovalHistory()">Ver histórico</button>'}</td></tr>`;return}
+  if(!lista.length){body.innerHTML=`<tr><td colspan="12" class="mini">${freelancerApprovalShowHistory?'Nenhuma solicitação ainda.':'Nenhum pedido pendente. <button class="btn" style="padding:2px 8px;font-size:12px" onclick="toggleFreelancerApprovalHistory()">Ver histórico</button>'}</td></tr>`;return}
   const stMemo={};
   body.innerHTML=lista.map(it=>{
     const presenca=it.attendance?(FREELANCER_ATTENDANCE_BADGE[it.attendance]||it.attendance):'<span class="mini">—</span>';
     const acao=it.status==='pendente'?
-      `<button class="btn" style="padding:4px 9px;font-size:11px" onclick="decideFreelancerRequestUI('${it.id}',true)">Aprovar</button> <button class="btn" style="padding:4px 9px;font-size:11px;background:#3a1620;border-color:#5c2530" onclick="decideFreelancerRequestUI('${it.id}',false)">Recusar</button>`:
+      `<button class="btn" style="padding:4px 9px;font-size:12px" onclick="decideFreelancerRequestUI('${it.id}',true)">Aprovar</button> <button class="btn" style="padding:4px 9px;font-size:12px;background:#3a1620;border-color:#5c2530" onclick="decideFreelancerRequestUI('${it.id}',false)">Recusar</button>`:
       '<span class="mini">—</span>';
     const checkTd=`<td><input type="checkbox" ${freelancerApprovalSelectedIds.has(it.id)?'checked':''} onchange="toggleFreelancerApprovalSelect('${it.id}',this.checked)"></td>`;
     const stKey=it.date+'|'+it.sector;
@@ -10097,7 +10100,7 @@ function renderHistory(area,docs){
     // troca os botões por um aviso em vez de deixar clicar e levar erro do backend.
     const editBtn=(!isAdmin&&isMonthClosedFor(area,e.date))
       ?'<td class="mini">🔒 mês fechado</td>'
-      :`<td style="white-space:nowrap"><button class="btn" style="padding:4px 9px;font-size:11px" onclick="editEntry('${area}','${e.date}')">Editar</button> <button class="btn" style="padding:4px 9px;font-size:11px;background:#3a1620;border-color:#5c2530" onclick="deleteEntryUI('${area}','${e.date}')">Apagar</button></td>`;
+      :`<td style="white-space:nowrap"><button class="btn" style="padding:4px 9px;font-size:12px" onclick="editEntry('${area}','${e.date}')">Editar</button> <button class="btn" style="padding:4px 9px;font-size:12px;background:#3a1620;border-color:#5c2530" onclick="deleteEntryUI('${area}','${e.date}')">Apagar</button></td>`;
     if(area==='marketing'){const itemCount=(v.mkOtherItems||[]).length;return `<tr><td>${fmtDate(e.date)}</td><td>${who}</td><td>${hora}</td><td>${brl(v.mkTraffic)}</td><td>${brl(v.mkAttractions)}</td><td>${brl(v.mkOther)}${itemCount?' <span class="mini">('+itemCount+' itens)</span>':''}</td><td>${v.mkReservations??'—'}</td><td>${v.mkShow??'—'}</td><td>${brl(faturamentoGerado(v))}</td>${editBtn}${checkTd}</tr>`}
     if(area==='financeiro')return `<tr><td>${fmtDate(e.date)}</td><td>${who}</td><td>${hora}</td><td>${brl(zigRevenueByDate[e.date])}</td><td>${v.fnTax!=null?pct(v.fnTax):'—'}</td><td>${v.fnCard!=null?pct(v.fnCard):'—'}</td><td>${brl(v.fnRent)}</td>${editBtn}${checkTd}</tr>`;
     if(area==='rh'){const rhExtrasTotal=(v.rhExtras||0)+(v.freelancerApprovedCost||0);return `<tr><td>${fmtDate(e.date)}</td><td>${who}</td><td>${hora}</td><td>${brl(v.rhCore)}</td><td>${brl(rhExtrasTotal)}${v.freelancerApprovedCost?' <span class="mini">(freelancer: '+brl(v.freelancerApprovedCost)+')</span>':''}</td><td>${v.rhHead??'—'}</td>${editBtn}${checkTd}</tr>`}
@@ -11625,7 +11628,7 @@ async function igAtivApagar(id){
 function igAtivRender(){
   const w=$('igAtLista');if(!w)return;
   const l=igAtivacoes.slice(0,30);
-  w.innerHTML=l.length?'<table class="igTbl"><thead><tr><th>Data</th><th>Tipo</th><th>Ação</th><th>Ações</th></tr></thead><tbody>'+l.map(a=>'<tr><td>'+fmtDate(a.data)+'</td><td>'+(IG_ATIV_TIPO_LABEL[a.tipo]||a.tipo)+'</td><td><b>'+escapeHtml(a.titulo)+'</b>'+(a.oferta?'<br><span class="mini">'+escapeHtml(a.oferta)+'</span>':'')+'</td><td style="white-space:nowrap!important"><button class="btn" style="padding:4px 9px;font-size:11px" onclick="igAtivEditar(\''+a.id+'\')">Editar</button> <button class="btn" style="padding:4px 9px;font-size:11px;background:#3a1620;border-color:#5c2530" onclick="igAtivApagar(\''+a.id+'\')">Apagar</button></td></tr>').join('')+'</tbody></table>':'<div class="mini">Nenhuma ação registrada ainda.</div>';
+  w.innerHTML=l.length?'<table class="igTbl"><thead><tr><th>Data</th><th>Tipo</th><th>Ação</th><th>Ações</th></tr></thead><tbody>'+l.map(a=>'<tr><td>'+fmtDate(a.data)+'</td><td>'+(IG_ATIV_TIPO_LABEL[a.tipo]||a.tipo)+'</td><td><b>'+escapeHtml(a.titulo)+'</b>'+(a.oferta?'<br><span class="mini">'+escapeHtml(a.oferta)+'</span>':'')+'</td><td style="white-space:nowrap!important"><button class="btn" style="padding:4px 9px;font-size:12px" onclick="igAtivEditar(\''+a.id+'\')">Editar</button> <button class="btn" style="padding:4px 9px;font-size:12px;background:#3a1620;border-color:#5c2530" onclick="igAtivApagar(\''+a.id+'\')">Apagar</button></td></tr>').join('')+'</tbody></table>':'<div class="mini">Nenhuma ação registrada ainda.</div>';
 }
 async function igIniciarGestao(){
   if($('igAtData')&&!$('igAtData').value)$('igAtData').value=todayStr();
@@ -11946,13 +11949,13 @@ function renderMkReunioes(){
       it.participantes?'<div class="mini" style="margin-top:3px">👥 '+escapeHtml(it.participantes)+'</div>':'',
       origem?'<div class="mini" style="margin-top:3px">↳ de: '+escapeHtml(origem.titulo)+'</div>':''
     ].join('');
-    const concluirBtn=(it.tipo==='demanda'&&mkrPendente(it))?'<button class="btn" style="padding:4px 9px;font-size:11px;background:#1e5b3e;border-color:#2f7a52" data-busy="Concluindo…" onclick="concluirMkReuniaoUI(\''+it.id+'\')">✓ Concluir</button> ':'';
+    const concluirBtn=(it.tipo==='demanda'&&mkrPendente(it))?'<button class="btn" style="padding:4px 9px;font-size:12px;background:#1e5b3e;border-color:#2f7a52" data-busy="Concluindo…" onclick="concluirMkReuniaoUI(\''+it.id+'\')">✓ Concluir</button> ':'';
     return '<tr><td><span class="badge '+(MKR_TIPO_BADGE[it.tipo]||'b')+'">'+MKR_TIPO_LABEL[it.tipo]+'</span></td><td class="mini">'+fmtDate(it.dataReuniao)+'</td>'+
-      '<td style="white-space:normal;max-width:520px;font-size:11.5px"><b>'+escapeHtml(it.titulo)+'</b>'+extra+'</td>'+
+      '<td style="white-space:normal;max-width:520px;font-size:12px"><b>'+escapeHtml(it.titulo)+'</b>'+extra+'</td>'+
       '<td class="mini">'+escapeHtml(it.responsavel||'—')+'</td><td class="mini">'+(it.prazo?fmtDate(it.prazo):'—')+'</td>'+
       '<td><span class="badge '+(MKR_PRIO_BADGE[it.prioridade]||'y')+'">'+(MKR_PRIO_LABEL[it.prioridade]||it.prioridade)+'</span></td><td>'+st+'</td>'+
       '<td class="stickyCol" style="white-space:nowrap">'+concluirBtn+
-      '<button class="btn" style="padding:4px 9px;font-size:11px" onclick="editMkReuniaoUI(\''+it.id+'\')">Editar</button> <button class="btn" style="padding:4px 9px;font-size:11px;background:#3a1620;border-color:#5c2530" data-busy="Apagando…" onclick="deleteMkReuniaoUI(\''+it.id+'\')">Apagar</button></td></tr>';
+      '<button class="btn" style="padding:4px 9px;font-size:12px" onclick="editMkReuniaoUI(\''+it.id+'\')">Editar</button> <button class="btn" style="padding:4px 9px;font-size:12px;background:#3a1620;border-color:#5c2530" data-busy="Apagando…" onclick="deleteMkReuniaoUI(\''+it.id+'\')">Apagar</button></td></tr>';
   }).join('');
 }
 function editMkReuniaoUI(id){
