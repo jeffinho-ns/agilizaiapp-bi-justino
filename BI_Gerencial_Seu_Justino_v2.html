@@ -273,6 +273,9 @@ input[readonly]{opacity:.78;background:#1d1711}
    rolável e sem travar a tela (fecha no X, no fundo ou em Esc). */
 .dicaOverlay{position:fixed;inset:0;z-index:250;display:flex;align-items:center;justify-content:center;background:#0a0807cc;padding:16px}
 .dicaOverlay.hidden{display:none}
+.skipLink{position:absolute;left:-9999px;top:8px}
+.skipLink:focus{left:12px;z-index:500;background:var(--accent);color:#1f140c;padding:9px 14px;border-radius:10px;font-weight:700;font-size:13px;text-decoration:none}
+#conteudoPrincipal:focus{outline:none}
 /* 25/10, auditoria UX/UI (passo 1, sem mudança visual): foco visível global (especificidade 0: não vence as regras já existentes),
    dica de KPI também por foco de teclado e respeito a "reduzir movimento" do sistema. */
 :where(a,button,summary,select,textarea,input,[tabindex],[role=button]):focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -413,6 +416,7 @@ tbody tr:hover{background:#ffffff08}
   </div>
 </div>
 <div class="wrap hidden" id="appRoot">
+<a href="#conteudoPrincipal" class="skipLink" data-nofeedback>Pular para o conteúdo</a>
 <header>
   <div style="display:flex;align-items:center;gap:14px">
     <div class="logoMark"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1f140c" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l6-8 6 8 6-8"></path></svg></div>
@@ -459,7 +463,7 @@ tbody tr:hover{background:#ffffff08}
      de seção — toggleNavGroup() abre/fecha, a troca de aba continua sendo só pelos
      botões [data-tab] (ver init(), seletor '#nav button[data-tab]'). -->
 <div class="appBody">
-<div class="sidebar" id="nav">
+<div class="sidebar" id="nav" role="navigation" aria-label="Menu principal">
   <button data-tab="master" class="navItem active">📊 Diretoria</button>
   <div class="navGroup open">
     <button type="button" class="navGroupHead" onclick="toggleNavGroup(this)">Setores<span class="navChev">▸</span></button>
@@ -489,7 +493,7 @@ tbody tr:hover{background:#ffffff08}
   <button data-tab="manual" class="navItem">📘 Manual Operacional</button>
   <button data-tab="contatos" class="navItem">📞 Contatos de Emergência</button>
 </div>
-<div class="appContent">
+<div class="appContent" id="conteudoPrincipal" role="main" tabindex="-1">
 
 <section id="master" class="tab">
 <div class="grid" data-sortable-grid="master">
@@ -12086,6 +12090,12 @@ init();
         if(!e.hasAttribute('tabindex'))e.setAttribute('tabindex','0');
       });
       raiz.querySelectorAll('thead th:not([scope])').forEach(function(th){th.setAttribute('scope','col')});
+      raiz.querySelectorAll('h3:not([aria-level])').forEach(function(h){h.setAttribute('aria-level','2')});
+      raiz.querySelectorAll('h4:not([aria-level])').forEach(function(h){h.setAttribute('aria-level','3')});
+      raiz.querySelectorAll('section.tab:not([aria-label])').forEach(function(sec){
+        const b=document.querySelector('#nav button[data-tab="'+sec.id+'"]');
+        if(b){sec.setAttribute('role','region');sec.setAttribute('aria-label',(b.textContent||'').replace(/\s+/g,' ').replace(/^[^\p{L}\p{N}]+/u,'').trim())}
+      });
       raiz.querySelectorAll('button:not([aria-label])').forEach(function(b){
         const t=(b.textContent||'').trim();
         if(!t||Array.from(t).length<=2){const r=b.getAttribute('title')||ROT[t];if(r)b.setAttribute('aria-label',r)}
