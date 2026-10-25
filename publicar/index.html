@@ -270,6 +270,11 @@ input[readonly]{opacity:.78;background:#1d1711}
    rolável e sem travar a tela (fecha no X, no fundo ou em Esc). */
 .dicaOverlay{position:fixed;inset:0;z-index:250;display:flex;align-items:center;justify-content:center;background:#0a0807cc;padding:16px}
 .dicaOverlay.hidden{display:none}
+/* 25/10, auditoria UX/UI (passo 1, sem mudança visual): foco visível global (especificidade 0: não vence as regras já existentes),
+   dica de KPI também por foco de teclado e respeito a "reduzir movimento" do sistema. */
+:where(a,button,summary,select,textarea,input,[tabindex],[role=button]):focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.hasTip:focus .alertTip,.hasTip:focus-within .alertTip{visibility:visible;opacity:1}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
 .iaFab{position:fixed;right:22px;bottom:22px;z-index:120;background:linear-gradient(135deg,#c96736,#a78bfa);color:#fff;border:0;border-radius:999px;padding:13px 22px;font-weight:900;font-size:15px;letter-spacing:.5px;cursor:pointer;box-shadow:0 8px 26px #0009}
 .iaFab:hover{filter:brightness(1.1)}
 .iaMsg{margin:10px 0;padding:11px 13px;border-radius:12px;line-height:1.55;font-size:14px;white-space:normal}
@@ -12059,4 +12064,71 @@ function init(){
   bootGate();
 }
 init();
+</script>
+<script>
+// 25/10, auditoria UX/UI (passo 1): camada de acessibilidade por cima da tela existente. Não muda dados nem regras de negócio.
+// - elementos clicáveis que não são botão ganham foco por teclado (Enter/Espaço ativam); botões só com símbolo ganham nome;
+// - popups (.dicaOverlay) viram diálogo (role/aria-modal), fecham com Esc, levam o foco para dentro e devolvem ao fechar;
+// - cabeçalhos de tabela ganham scope="col"; dicas (hover) também aparecem por foco.
+(function(){
+  try{
+    const ROT={'✕':'Fechar','×':'Fechar','‹':'Anterior','›':'Próximo','−':'Diminuir','+':'Aumentar','👁':'Mostrar ou ocultar senha'};
+    const NATIVO='button,a[href],input,select,textarea,summary';
+    function marcar(raiz){
+      raiz.querySelectorAll('div[onclick]:not(.dicaOverlay),span[onclick],li[onclick]').forEach(function(e){
+        if(!e.hasAttribute('tabindex'))e.setAttribute('tabindex','0');
+        if(!e.hasAttribute('role'))e.setAttribute('role','button');
+      });
+      raiz.querySelectorAll('td[onclick],tr[onclick],.hasTip,[data-crmtip]').forEach(function(e){
+        if(!e.hasAttribute('tabindex'))e.setAttribute('tabindex','0');
+      });
+      raiz.querySelectorAll('thead th:not([scope])').forEach(function(th){th.setAttribute('scope','col')});
+      raiz.querySelectorAll('button:not([aria-label])').forEach(function(b){
+        const t=(b.textContent||'').trim();
+        if(!t||Array.from(t).length<=2){const r=b.getAttribute('title')||ROT[t];if(r)b.setAttribute('aria-label',r)}
+      });
+      raiz.querySelectorAll('.dicaOverlay:not([role])').forEach(function(o){
+        o.setAttribute('role','dialog');o.setAttribute('aria-modal','true');
+        const h=o.querySelector('h3,h4');if(h)o.setAttribute('aria-label',(h.textContent||'').replace(/\s+/g,' ').trim().slice(0,80));
+      });
+    }
+    marcar(document);
+    let t=null;
+    new MutationObserver(function(ms){
+      if(!ms.some(function(m){return m.addedNodes&&m.addedNodes.length}))return;
+      clearTimeout(t);t=setTimeout(function(){marcar(document)},250);
+    }).observe(document.body,{childList:true,subtree:true});
+    // Enter/Espaço ativam elementos clicáveis que não são botões nativos
+    document.addEventListener('keydown',function(e){
+      if(e.key==='Escape'){
+        const abertos=Array.from(document.querySelectorAll('.dicaOverlay:not(.hidden)'));
+        const o=abertos[abertos.length-1];
+        if(o){e.preventDefault();o.click();return}
+      }
+      if(e.key!=='Enter'&&e.key!==' ')return;
+      const el=e.target;
+      if(!el||!el.hasAttribute||!el.hasAttribute('onclick')||el.matches(NATIVO))return;
+      e.preventDefault();el.click();
+    });
+    // dicas flutuantes (data-crmtip) também por foco
+    document.addEventListener('focusin',function(e){const el=e.target;if(el&&el.matches&&el.matches('[data-crmtip]'))el.dispatchEvent(new MouseEvent('mouseover',{bubbles:true}))});
+    document.addEventListener('focusout',function(e){const el=e.target;if(el&&el.matches&&el.matches('[data-crmtip]'))document.body.dispatchEvent(new MouseEvent('mouseover',{bubbles:true}))});
+    // foco entra no popup ao abrir e volta ao botão de origem ao fechar (a origem é o último foco fora de popups)
+    let fora=null;
+    document.addEventListener('focusin',function(e){const t=e.target;if(t&&t.closest&&!t.closest('.dicaOverlay'))fora=t});
+    document.querySelectorAll('.dicaOverlay').forEach(function(o){
+      let ant=null,estavaAberto=!o.classList.contains('hidden');
+      new MutationObserver(function(){
+        const aberto=!o.classList.contains('hidden');
+        if(aberto&&!estavaAberto){
+          ant=fora||document.activeElement;
+          setTimeout(function(){const alvo=o.querySelector('input,textarea,select,button');if(alvo&&alvo.focus)alvo.focus({preventScroll:true})},50);
+        }else if(!aberto&&estavaAberto){
+          if(ant&&ant.focus&&document.contains(ant))ant.focus({preventScroll:true});ant=null;
+        }
+        estavaAberto=aberto;
+      }).observe(o,{attributes:true,attributeFilter:['class']});
+    });
+  }catch(err){}
+})();
 </script>
