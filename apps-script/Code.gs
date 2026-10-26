@@ -5649,6 +5649,7 @@ function zigSyncItens_(dias, gravar) {
       if (!c.ok && String(c.error).indexOf('inconsistente_com_faturamento') === 0) { corpo.conferir = true; c = submitCmvTeoricoParcial_(corpo); }
       msg += ' | itens ' + (r.ok ? 'GRAVADO' : 'recusado: ' + r.error) + ' | CMV ' + (c.ok ? 'GRAVADO' : 'recusado: ' + c.error);
     }
+    if (gravar) { try { msg += ' | serviço R$ ' + zigGravarServico_(iso, linhasSaida).toFixed(2); } catch (e) { msg += ' | serviço: ' + String(e.message || e).slice(0, 60); } }
     if (gravar) { try { msg += ' | ' + zigGravarHorarioEntradas_(iso, linhasSaida); } catch (e) { msg += ' | horário: ' + String(e.message || e).slice(0, 60); } }
     out.push(msg);
   }
@@ -5913,4 +5914,39 @@ function zigEncerrarGatilhosAntigos() {
     if (t.getHandlerFunction() === 'capturarZigPayDiario_') { ScriptApp.deleteTrigger(t); n++; }
   });
   Logger.log('Gatilhos antigos da captura diária da ZigPay removidos: ' + n);
+}
+
+
+// ---------------- Taxa de serviço e limpeza da aba de faturamento (26/10) ----------------
+function zigServicoDeLinhas_(linhas) {
+  let cent = 0;
+  linhas.forEach(function (l) { if (l.type === 'Tip' && !l.isRefunded) cent += (Number(l.unitValue) || 0) * (Number(l.count) || 0); });
+  return Math.round(cent) / 100;
+}
+// Grava a taxa de serviço do dia sem mexer em faturamento nem público. Não troca valor existente por zero.
+function zigGravarServico_(iso, linhas) {
+  const serv = zigServicoDeLinhas_(linhas);
+  const sh = getZigRevenueSheet_();
+  const ex = sheetToObjects_(sh).find(function (r) { return String(r.date).slice(0, 10) === iso; });
+  if (!ex) return serv;
+  if (serv === 0 && Number(ex.servico) > 0) return Number(ex.servico);
+  upsertByKeys_(sh, ZIGREVENUE_HEADERS, ['date'], { date: iso, revenue: ex.revenue, publico: ex.publico, source: ex.source || 'zig-api', capturedAt: new Date().toISOString(), servico: serv });
+  return serv;
+}
+
+// Rode UMA vez no editor (Executar > zigLimparFaturamentoCorrompido). Linhas cuja coluna "source" guarda uma data/hora (colunas deslocadas,
+// vindas de uma gravação antiga): se já existe outra linha boa da mesma data, a corrompida é apagada; se for a única, é reparada.
+function zigLimparFaturamentoCorrompido() {
+  const sh = getZigRevenueSheet_();
+  const rows = sheetToObjects_(sh);
+  const ruim = function (r) { return /^\d{4}-\d\d-\d\dT/.test(String(r.source)); };
+  const boas = {};
+  rows.forEach(function (r) { if (!ruim(r)) boas[String(r.date).slice(0, 10)] = true; });
+  let apagadas = 0, reparadas = 0;
+  rows.filter(ruim).sort(function (a, b) { return b.__row - a.__row; }).forEach(function (r) {
+    const d = String(r.date).slice(0, 10);
+    if (boas[d]) { sh.deleteRow(r.__row); apagadas++; }
+    else { sh.getRange(r.__row, 1, 1, ZIGREVENUE_HEADERS.length).setValues([[r.date, r.revenue, r.publico, 'legado-reparado', String(r.source), r.servico]]); boas[d] = true; reparadas++; }
+  });
+  Logger.log('Faturamento: ' + apagadas + ' linha(s) corrompida(s) apagada(s) e ' + reparadas + ' reparada(s).');
 }
