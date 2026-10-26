@@ -541,7 +541,10 @@ try {
       if (-not $res.ok) { throw "BI recusou o funil: $($res.error) $($res.code)" }
       Log "Funil enviado pro BI."
     }
-    if ($cfgSnap) {
+    if ($cfgSnap -and $null -eq $cfgSnap.iaWhatsappLigada -and -not $cfgSnap.regrasChars) {
+      Log "AVISO: configuracao do Dionisio NAO foi lida (sem conexao/sessao na hora) - nada enviado; o BI mantem a ultima leitura completa."
+      $falhou = $true
+    } elseif ($cfgSnap) {
       $res = Invoke-AppsScript @{ action = 'submitCrmConfig'; token = $token; config = $cfgSnap }
       if (-not $res.ok) { Log ("AVISO: BI recusou a configuracao: $($res.error) $($res.code)") } else { Log "Configuracao enviada pro BI." }
     }

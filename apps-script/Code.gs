@@ -5408,6 +5408,8 @@ function getCrmFunil_() {
 // Saúde da configuração do atendimento (23/10): o robô lê as telas de configuração da IA do Dionísio e o SAC e manda só estados e números (nada de conversa nem dado de cliente).
 // Uma linha por leitura (capturedAt em ms + JSON); guarda as últimas 200.
 function submitCrmConfig_(body) {
+  // 26/10: leitura vazia (robô sem conexão com o Dionísio) não é gravada: mantém a última leitura completa
+  if (!body.config || Object.keys(body.config).length < 8) return { ok: false, error: 'config_vazia' };
   const sh = ensureSheet_('CrmConfig', ['capturedAt', 'json']);
   const j = JSON.stringify(body.config || {});
   if (j.length > 45000) return { ok: false, error: 'grande_demais' };

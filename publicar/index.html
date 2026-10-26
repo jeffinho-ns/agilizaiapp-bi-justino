@@ -277,6 +277,7 @@ input[readonly]{opacity:.78;background:#1d1711}
 .dicaOverlay.hidden{display:none}
 /* 25/10: ao sair do modo de compatibilidade (doctype) a tabela deixa de usar 16px por padrão; mantém o tamanho que já se via */
 table{font-size:16px}
+body{overflow-x:clip}
 .skipLink{position:absolute;left:-9999px;top:8px}
 .skipLink:focus{left:12px;z-index:500;background:var(--accent);color:#1f140c;padding:9px 14px;border-radius:10px;font-weight:700;font-size:13px;text-decoration:none}
 #conteudoPrincipal:focus{outline:none}
@@ -8620,6 +8621,33 @@ function crmRender(){
 document.addEventListener('click',function(e){const b=e.target&&e.target.closest&&e.target.closest('#nav button[data-tab="reservas"]');if(b)setTimeout(function(){try{loadCrm()}catch(_){}},700)});
 // ---- Saúde da configuração + Plano de ação (23/10, pedido do Renato) ----
 let crmCfgRows=[];
+// 26/10, pedido do Renato: nota de atendimento geral de 0 a 100%. Cada um dos itens lidos vale: verde = 1 ponto, amarelo = 0,5, vermelho = 0,
+// com peso por impacto nas reservas (IA no WhatsApp pesa 3; regras, follow-up, chamar humano e atendimentos travados pesam 2; os demais, 1).
+// Itens "não lido" ficam fora da conta. Os pesos são um critério do BI (não vêm do Dionísio) e podem ser ajustados aqui.
+const CRM_NOTA_PESOS={ia:3,regras:2,followup:2,humano:2,travados:2};
+function crmNota(L){
+  let ponto=0,max=0,lidos=0;
+  L.forEach(function(x){
+    if(/^não lido/i.test(String(x.v||'')))return;
+    const w=CRM_NOTA_PESOS[x.id]||1;
+    max+=w;lidos++;ponto+=w*(x.e==='g'?1:(x.e==='y'?0.5:0));
+  });
+  return {nota:max?Math.round(ponto/max*100):null,lidos:lidos,total:L.length};
+}
+function crmNotaHtml(L,p){
+  const a=crmNota(L);
+  if(a.nota==null)return '';
+  let ant=null;try{if(p)ant=crmNota(crmCfgAvalia(p,null,null)).nota}catch(e){}
+  const incompleta=a.lidos<10;
+  const cor=incompleta?'var(--muted)':(a.nota>=80?'var(--green)':(a.nota>=50?'var(--yellow)':'var(--red)'));
+  const faixa=incompleta?'Provisória (leitura incompleta)':(a.nota>=80?'Bom':(a.nota>=50?'Atenção':'Crítico'));
+  const dif=ant==null?'':(a.nota===ant?' • igual à leitura anterior ('+ant+'%)':' • '+(a.nota>ant?'+':'')+(a.nota-ant)+' pontos vs leitura anterior ('+ant+'%)');
+  const tip='<b>Nota de atendimento geral.</b> Soma os itens abaixo: 🟢 vale 1 ponto, 🟡 vale 0,5 e 🔴 vale 0. A IA no WhatsApp pesa 3; regras da IA, follow-up, chamar humano e atendimentos travados pesam 2; os outros itens pesam 1. Itens que o robô não conseguiu ler ficam fora da conta. 80% ou mais = Bom • 50% a 79% = Atenção • abaixo de 50% = Crítico. É um critério do BI para acompanhar a evolução, não uma nota do Dionísio.';
+  return '<div class="alert" style="border-left:4px solid '+cor+';margin:0 0 12px;display:flex;flex-wrap:wrap;gap:14px;align-items:center">'
+    +'<div data-crmtip="'+escapeHtml(tip)+'" style="min-width:150px"><div class="mini" style="font-weight:700">Nota de atendimento geral ⓘ</div><div style="font-size:34px;font-weight:900;line-height:1.1;color:'+cor+'">'+a.nota+'%</div><div class="mini"><b style="color:'+cor+'">'+faixa+'</b></div></div>'
+    +'<div style="flex:1;min-width:220px"><div style="background:#221c17;border-radius:8px;height:14px"><div style="width:'+a.nota+'%;background:'+cor+';height:14px;border-radius:8px"></div></div>'
+    +'<div class="mini" style="margin-top:6px">'+a.lidos+' de '+a.total+' itens lidos entram na nota'+(incompleta?' — poucos itens foram lidos, a nota ainda não é confiável':'')+dif+'. Passe o mouse em "Nota de atendimento geral" para ver como é calculada.</div></div></div>';
+}
 function crmCfgAvalia(c,p,cap){
   const L=[],N=function(x){return x==null||x===''||isNaN(Number(x))?null:Number(x)},sn=function(b){return b===true?'sim':(b===false?'não':'?')};
   const dm=function(d){return d?String(d).slice(8,10)+'/'+String(d).slice(5,7):''};
@@ -8696,15 +8724,17 @@ const CRM_COR={r:'#f76e7c',y:'#f5b942',g:'#34d399'},CRM_ICO={r:'🔴',y:'🟡',g
 function crmPainel(qual){['saude','plano'].forEach(function(k){var p=$('crmPainel'+(k==='saude'?'Saude':'Plano')),b=$('crmBtn'+(k==='saude'?'Saude':'Plano'));if(!p)return;var abre=(k===qual)&&p.classList.contains('hidden');p.classList.toggle('hidden',!abre);if(b)b.style.outline=abre?'2px solid var(--accent,#c9a227)':''})}
 function crmCfgRender(){
   const sb=$('crmSaudeBody'),pb=$('crmPlanoBody');if(!sb&&!pb)return;
-  const rows=crmCfgRows||[];
+  // 26/10: leitura vazia (robô sem conexão com o Dionísio na hora) não vale: usa a leitura completa mais recente
+  const rows=(crmCfgRows||[]).filter(function(r){return r&&r.cfg&&Object.keys(r.cfg).length>=8});
   if(!rows.length){const m='<div class="alert y">Ainda não há leitura da configuração do Dionísio. O robô lê às 10h, 15h e 18h (ou rode robo-zigpay\\robo_dionisio.ps1). Se aparecer erro, cole o Code.gs novo no Apps Script.</div>';if(sb)sb.innerHTML=m;if(pb)pb.innerHTML=m;return}
   const cur=rows[0],c=cur.cfg||{},p=rows[1]&&rows[1].cfg,cap=Number(cur.capturedAt)||Date.parse(cur.capturedAt);
   const L=crmCfgAvalia(c,p,cap),por={};L.forEach(function(x){por[x.id]=x});
   const quando=cap?new Date(cap).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';
   const n={r:0,y:0,g:0};L.forEach(function(x){n[x.e]++});
   if($('crmSaudeBadge'))$('crmSaudeBadge').textContent='lido '+quando;
+  try{const nt=crmNota(L);if($('crmBtnSaude')&&nt.nota!=null)$('crmBtnSaude').textContent='🩺 Saúde do atendimento • '+nt.nota+'%'}catch(e){}
   if(sb){
-    let h='<div class="miniKpiGrid"><div class="miniKpi"><small>Críticos</small><div class="v" style="color:var(--red)">'+n.r+'</div><span class="mini">atrapalham reservas hoje</span></div><div class="miniKpi"><small>Atenção</small><div class="v" style="color:var(--yellow)">'+n.y+'</div><span class="mini">podem melhorar</span></div><div class="miniKpi"><small>Em ordem</small><div class="v" style="color:var(--green)">'+n.g+'</div><span class="mini">dentro da meta</span></div></div>';
+    let h=crmNotaHtml(L,p)+'<div class="miniKpiGrid"><div class="miniKpi"><small>Críticos</small><div class="v" style="color:var(--red)">'+n.r+'</div><span class="mini">atrapalham reservas hoje</span></div><div class="miniKpi"><small>Atenção</small><div class="v" style="color:var(--yellow)">'+n.y+'</div><span class="mini">podem melhorar</span></div><div class="miniKpi"><small>Em ordem</small><div class="v" style="color:var(--green)">'+n.g+'</div><span class="mini">dentro da meta</span></div></div>';
     const ordem={r:0,y:1,g:2};
     h+=L.slice().sort(function(a,b){return ordem[a.e]-ordem[b.e]}).map(function(x){
       return '<div class="alert" style="border-left:4px solid '+CRM_COR[x.e]+';margin:8px 0"><div'+' data-crmtip="'+escapeHtml(x.tip)+'" style="font-weight:800">'+CRM_ICO[x.e]+' '+escapeHtml(x.t)+' ⓘ</div><div style="margin:3px 0">'+escapeHtml(x.v)+'</div><div class="mini">Meta: '+escapeHtml(x.meta)+(x.e==='g'?'':' • <b>O que fazer:</b> '+escapeHtml(x.acao))+'</div></div>'}).join('');
