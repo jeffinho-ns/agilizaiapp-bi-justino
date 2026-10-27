@@ -565,7 +565,11 @@ tbody tr:hover{background:#ffffff08}
 <div class="tablewrap"><table><thead><tr><th>Área</th><th>Nome</th><th>Admissão</th><th>Salário-base</th></tr></thead><tbody id="salaryRowsBody"></tbody></table></div>
 <div class="toolbar"><button class="btn" onclick="saveSalaries()">Salvar dados de elegibilidade</button><span class="mini" id="salarySaveStatus"></span></div>
 <div class="note">Estes campos ficam numa planilha separada, visível e editável só pelo seu acesso — não aparecem em nenhuma outra tela nem para os outros acessos.</div>
-<hr class="sep">
+</div>
+</details>
+
+<details class="full cardCollapse hidden" id="usersListDetails"><summary class="cardCollapseHead"><span class="chev">▸</span> Acessos cadastrados<span class="chHint">clique para abrir</span></summary>
+<div class="card full">
 <div class="sectionTitle">Criar ou redefinir acesso ao BI</div>
 <div class="toolbar">
   <div class="tbItem"><label class="mini">E-mail</label><input type="email" id="newAccountEmail"></div>
@@ -578,11 +582,7 @@ tbody tr:hover{background:#ffffff08}
   <span class="mini" id="newAccountStatus"></span>
 </div>
 <div class="note">Quem você cadastra aqui só vê as abas marcadas acima (Diretoria enxerga todas as áreas automaticamente). Salvar um e-mail que já existe redefine a senha dele e as abas marcadas.</div>
-</div>
-</details>
-
-<details class="full cardCollapse hidden" id="usersListDetails"><summary class="cardCollapseHead"><span class="chev">▸</span> Acessos cadastrados<span class="chHint">clique para abrir</span></summary>
-<div class="card full">
+<hr class="sep">
 <div class="sectionTitle" style="display:flex;justify-content:space-between;align-items:center">Acessos cadastrados<button class="btn" type="button" style="padding:6px 10px;font-size:12px" onclick="loadUsersList()">🔄 Atualizar</button></div>
 <div class="tablewrap"><table><thead><tr><th>E-mail</th><th>Nível</th><th>Abas</th><th>Ação</th></tr></thead><tbody id="usersListBody"><tr><td colspan="4" class="mini">Carregando…</td></tr></tbody></table></div>
 </div>

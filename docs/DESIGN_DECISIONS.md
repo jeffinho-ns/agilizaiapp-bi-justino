@@ -4,6 +4,7 @@ Formato: data • decisão • motivo • alternativa considerada • status. Ma
 
 | Data | Decisão | Motivo | Alternativas | Status |
 |---|---|---|---|---|
+| 27/10 | O formulário "Criar ou redefinir acesso ao BI" passa do quadro de elegibilidade do bônus para **dentro do quadro "Acessos cadastrados"** (formulário no topo, lista abaixo) | Pedido do Renato: criar e ver os acessos no mesmo lugar | Manter separado | Implementado; mesmos ids e regras, só muda a posição |
 | 26/10 | **Nota de atendimento geral (0–100%)** no quadro Saúde do atendimento por IA. Verde 1, amarelo 0,5, vermelho 0; pesos: IA no WhatsApp 3; regras, follow-up, chamar humano e atendimentos travados 2; demais 1. Itens "não lido" fora da conta; abaixo de 10 itens lidos a nota é "provisória". Também aparece no botão do quadro | Pedido do Renato; resumir 14 itens em um número acompanhável | Peso igual para todos (esconderia o risco da IA desligada) | **Aprovado e implementado**. Os pesos são critério do BI, ajustáveis em `CRM_NOTA_PESOS` |
 | 26/10 | `body{overflow-x:clip}` | Dica escondida dos KPIs (`.kpiTip`, 280 px) alargava a página em 34 px em Diretoria, Marketing e Financeiro | Reposicionar a dica na borda direita | Implementado; reposicionar dica é melhoria futura |
 | 26/10 | Leitura vazia do Dionísio é ignorada no BI, recusada no servidor e não enviada pelo robô | Uma leitura sem conexão zerava o quadro de saúde | — | Implementado |
