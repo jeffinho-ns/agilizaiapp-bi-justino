@@ -207,7 +207,7 @@ function Read-Avaliacoes($drv, [string]$alvo) {
     return ,@()
   }
   $json = [string]$drv.ExecuteScript($JsCartoes)
-  $cartoes = @($json | ConvertFrom-Json)
+  $cartoes = @((ConvertFrom-Json $json) | ForEach-Object { $_ })   # PS 5.1 devolve o array JSON como 1 objeto: desenrola
   $localAlvo = 'Seu Justino Vila Madalena'
   if (Test-Path $LocalPath) { $l1 = (Get-Content $LocalPath -Raw -Encoding UTF8).Trim(); if ($l1) { $localAlvo = $l1 } }
   $alvoNorm = Norm-Txt $localAlvo
