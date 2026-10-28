@@ -16,7 +16,7 @@
         powershell -File robo_google_avaliacoes.ps1 -DryRun    (le, mostra o que leu e NAO envia ao BI)
         powershell -File robo_google_avaliacoes.ps1 -DryRun -Url "https://..."   (testa outro link)
 #>
-param([switch]$DryRun, [string]$Url = '')
+param([switch]$DryRun, [switch]$Diag, [string]$Url = '')
 $ErrorActionPreference = 'Stop'
 $ScriptDir = $PSScriptRoot
 $CredPath = "$env:USERPROFILE\.seujustino\zigpay_credentials.json"   # so o campo "bi" (login do robo no BI)
@@ -26,6 +26,7 @@ $ProfileDir = "$env:USERPROFILE\.seujustino\chrome-profile-google"
 $AppsScriptUrl = 'https://script.google.com/macros/s/AKfycbzsXAoBmnHvfocbC3JWiVtiHaSwkzrCX3hKdtRsz_YRoatP3qrksSOj3J8776S3bJXVuA/exec'
 $UrlPath = "$env:USERPROFILE\.seujustino\google_avaliacoes_url.txt"   # opcional: 1 linha com o link da pagina de avaliacoes do Perfil da Empresa
 $UrlPadrao = 'https://business.google.com/reviews'
+$LocalPath = "$env:USERPROFILE\.seujustino\google_avaliacoes_local.txt"   # opcional: parte do nome do local no Google (padrao: Seu Justino Vila Madalena)
 $AvisoLoginPath = Join-Path ([Environment]::GetFolderPath('Desktop')) 'GOOGLE AVALIACOES - ROBO PRECISA DE LOGIN.txt'
 
 function Log($msg) {
@@ -131,42 +132,63 @@ function Test-Logado([string]$texto, [string]$urlAtual) {
 }
 # Blocos de avaliacao: acha elementos com aria-label de estrelas ("5 estrelas", "Avaliado com 4 de 5 estrelas") e sobe ate o
 # contentor que tem texto suficiente; devolve o texto cru e a nota. O nome e removido no PowerShell (linhas antes de "quando").
-$JsBlocos = @'
-var out=[],vistos=new Set();
-var ests=[...document.querySelectorAll('[aria-label]')].filter(function(e){return /(\d)(?:[,.]\d)?\s*(?:de\s*5\s*)?(estrela|star)/i.test(e.getAttribute('aria-label')||'')});
-ests.forEach(function(e){
-  var m=(e.getAttribute('aria-label')||'').match(/(\d)(?:[,.]\d)?\s*(?:de\s*5\s*)?(estrela|star)/i);if(!m)return;
-  var c=e;for(var i=0;i<8&&c.parentElement;i++){c=c.parentElement;var t=(c.innerText||'').trim();
-    var outras=c.querySelectorAll('[aria-label*="estrela"],[aria-label*="star"]').length;
-    if(t.length>25&&outras<=2)break}
-  var t2=(c.innerText||'').trim();if(!t2||vistos.has(t2))return;vistos.add(t2);
-  out.push({nota:parseInt(m[1],10),bruto:t2.slice(0,3000)});
+# Cartoes de avaliacao do gerenciador (classes vistas no diagnostico mascarado de 27/10; o Google pode renomear: se parar de ler, rode -Diag):
+#   .DsOcnf cartao | .rRqL5e nome do local | .LH5kS autor (so entra no hash, nunca sai) | .Xl7c2c .DPvwYc estrelas (nota = quantas tem a mesma classe da 1a)
+#   .zWmYWd.NhZJzb data | .oiQd1c texto completo | .Rhj72c resposta do dono (existe = ja respondida)
+$JsCartoes = @'
+var out=[];
+document.querySelectorAll('.DsOcnf').forEach(function(c){
+  function tx(sel){var e=c.querySelector(sel);return e?(e.textContent||'').trim():''}
+  var est=c.querySelectorAll('.Xl7c2c .DPvwYc');var nota=0;
+  if(est.length){var cls=est[0].className;for(var i=0;i<est.length;i++){if(est[i].className===cls)nota++}}
+  var full=c.querySelector('.oiQd1c');var texto=full?(full.textContent||''):'';
+  if(!texto){var q=c.querySelector('blockquote');texto=q?(q.textContent||'').replace(/Mais\s*$/,''):''}
+  out.push({local:tx('.rRqL5e'),autor:tx('.LH5kS'),nota:nota,quando:tx('.zWmYWd.NhZJzb'),texto:texto.replace(/\s+/g,' ').trim().slice(0,1500),respondida:!!c.querySelector('.Rhj72c')});
 });
 return JSON.stringify(out);
 '@
+function Norm-Txt([string]$s) {
+  $d = $s.Normalize([System.Text.NormalizationForm]::FormD)
+  return ((($d.ToCharArray() | Where-Object { [System.Globalization.CharUnicodeInfo]::GetUnicodeCategory($_) -ne 'NonSpacingMark' }) -join '').ToLower() -replace '\s+', ' ').Trim()
+}
+$JsEstrutura = @'
+function mk(t){return (t||'').replace(/[A-Za-z\u00c0-\u00ff]/g,'x')}
+function keep(t){return /^(Responder|Editar|Excluir|Mais|Original|Traduzido)/i.test(t)}
+var out=[];
+function desc(e,d){
+  if(out.length>320||d>16)return;
+  var a=[e.tagName.toLowerCase()];
+  var cl=(e.getAttribute('class')||'').split(' ').filter(String).slice(0,3).join('.');if(cl)a.push('.'+cl);
+  var ro=e.getAttribute('role');if(ro)a.push('role='+ro);
+  var al=e.getAttribute('aria-label');if(al)a.push('aria-label='+((/estrela|star/i.test(al)&&al.length<40)?al:mk(al)));
+  ['fill','aria-hidden','aria-valuenow','data-star-rating','data-rating'].forEach(function(n){var v=e.getAttribute(n);if(v!==null&&v.length<30)a.push(n+'='+v)});
+  var st=e.getAttribute('style');if(st)a.push('style='+st.slice(0,70));
+  if(e.tagName==='IMG'){a.push('alt='+mk(e.getAttribute('alt')))}
+  if(e.children.length===0){var t=(e.textContent||'').trim();if(t)a.push('txt='+(keep(t)?t:mk(t).slice(0,60)))}
+  out.push(new Array(d+1).join('  ')+a.join(' '));
+  for(var i=0;i<e.children.length;i++)desc(e.children[i],d+1);
+}
+function achaCartao(ancora){
+  var els=[...document.querySelectorAll('button,div,span,a')].filter(function(e){return (e.innerText||'').trim()===ancora&&e.children.length<=3});
+  if(!els.length)return null;
+  var c=els[0];
+  for(var i=0;i<16&&c.parentElement;i++){
+    var p=c.parentElement;var n=((p.innerText||'').split(ancora).length-1);
+    if(n>1)break;c=p}
+  return c;
+}
+['Responder','Excluir'].forEach(function(an){
+  out.push('===== CARTAO ancorado em '+an+' =====');
+  var c=achaCartao(an);if(c)desc(c,0);else out.push('(nao achei)');
+});
+return out.join('\n');
+'@
 $RxQuando = '^(h. (\d+|um|uma) .+|.+ atr.s|ontem|hoje|Editad[oa].*|\d{1,2} de [a-z\u00e7]+\.? de \d{4}|\d+ (minutos?|horas?|dias?|semanas?|meses|m.s|anos?)( atr.s)?)$'
 $RxUi = '^([\u2605\u2606 ]+|Responder|Editar resposta|Curtir|Mais|Denunciar|Compartilhar|Ver original|Traduzir.*|Ler mais|Mostrar mais|Util|.til|\d+|Local Guide.*|\d+ avalia..es?.*|\d+ fotos?.*)$'
-function Parse-Bloco($b) {
-  $linhas = @($b.bruto -split "`r?`n" | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' })
-  $iq = -1
-  for ($k = 0; $k -lt $linhas.Count -and $k -lt 8; $k++) { if ($linhas[$k] -match $RxQuando) { $iq = $k; break } }
-  if ($iq -lt 0) { return $null }   # sem "quando" nao da pra separar o nome do cliente com seguranca: descarta
-  $quando = $linhas[$iq]
-  $resto = @(); if ($iq + 1 -lt $linhas.Count) { $resto = @($linhas[($iq + 1)..($linhas.Count - 1)]) }
-  $respondida = $false; $corpo = @()
-  foreach ($l in $resto) {
-    if ($l -match '^(Resposta d[oa] (propriet|dono|empresa)|Sua resposta|Response from the owner|Resposta do estabelecimento)') { $respondida = $true; break }
-    if ($l -match $RxUi) { continue }
-    $corpo += $l
-  }
-  $texto = ($corpo -join ' ').Trim()
-  if ($texto.Length -gt 1500) { $texto = $texto.Substring(0, 1500) }
-  # nome do cliente = tudo antes de "quando" (nunca sai daqui); a chave usa ele so como sal do hash
-  $sal = ($linhas[0..([Math]::Max(0, $iq - 1))] -join '|')
-  $chave = Get-Sha1 ("$sal|$($b.nota)|$texto")
-  return [ordered]@{ chave = $chave; nota = [int]$b.nota; texto = $texto; quando = $quando; respondida = $respondida }
+function Mask-Linha([string]$l) {
+  if ($l -match $RxQuando -or $l -match $RxUi -or $l -match '^(Responder|Resposta|Avalia|Todas|Filtrar|Ordenar|Estrelas|Mais recentes|Reviews|Perfil|Business)') { return $l }
+  return ($l -creplace '[A-Za-z\u00c0-\u00ff]', 'x')
 }
-
 function Read-Avaliacoes($drv, [string]$alvo) {
   Enter-SeUrl -Driver $drv -Url $alvo | Out-Null
   Start-Sleep -Seconds 12
@@ -177,18 +199,30 @@ function Read-Avaliacoes($drv, [string]$alvo) {
     [void]$drv.ExecuteScript("var els=[...document.querySelectorAll('*')].filter(function(e){return e.scrollHeight>e.clientHeight+200&&getComputedStyle(e).overflowY.match(/auto|scroll/)});(els.length?els[els.length-1]:document.scrollingElement).scrollTop+=100000;window.scrollTo(0,document.body.scrollHeight)")
     Start-Sleep -Seconds 3
   }
-  $json = [string]$drv.ExecuteScript($JsBlocos)
-  $blocos = @($json | ConvertFrom-Json)
-  $lista = @(); $descartadas = 0
-  foreach ($b in $blocos) {
-    $p = Parse-Bloco $b
-    if ($p) { $lista += $p } else { $descartadas++ }
+  if ($Diag) {
+    $est = [string]$drv.ExecuteScript($JsEstrutura)
+    $arq = Join-Path ([Environment]::GetFolderPath('Desktop')) 'GOOGLE AVALIACOES - ESTRUTURA MASCARADA.txt'
+    Set-Content -Path $arq -Value $est -Encoding UTF8
+    Log "Estrutura mascarada (sem nomes) salva em: $arq"
+    return ,@()
   }
-  Log ("Blocos achados: {0} | lidos: {1} | descartados (sem 'quando' reconhecivel): {2}" -f $blocos.Count, $lista.Count, $descartadas)
+  $json = [string]$drv.ExecuteScript($JsCartoes)
+  $cartoes = @($json | ConvertFrom-Json)
+  $localAlvo = 'Seu Justino Vila Madalena'
+  if (Test-Path $LocalPath) { $l1 = (Get-Content $LocalPath -Raw -Encoding UTF8).Trim(); if ($l1) { $localAlvo = $l1 } }
+  $alvoNorm = Norm-Txt $localAlvo
+  $locais = @($cartoes | ForEach-Object { $_.local } | Where-Object { $_ } | Sort-Object -Unique)
+  Log ("Cartoes de avaliacao na pagina: {0}. Locais vistos: {1}" -f $cartoes.Count, ($locais -join ' | '))
+  $lista = @(); $outrosLocais = 0; $semNota = 0
+  foreach ($c in $cartoes) {
+    if (-not ((Norm-Txt ([string]$c.local)).Contains($alvoNorm))) { $outrosLocais++; continue }
+    if ([int]$c.nota -lt 1 -or [int]$c.nota -gt 5) { $semNota++; continue }
+    $chave = Get-Sha1 ("$($c.autor)|$($c.nota)|$($c.texto)|$($c.local)")   # autor so serve de sal do hash; nao e enviado
+    $lista += [ordered]@{ chave = $chave; nota = [int]$c.nota; texto = [string]$c.texto; quando = [string]$c.quando; respondida = [bool]$c.respondida }
+  }
+  Log ("Local '{0}': lidas {1} | de outros locais (ignoradas): {2} | sem nota reconhecida: {3}" -f $localAlvo, $lista.Count, $outrosLocais, $semNota)
   if ($lista.Count -eq 0) {
-    $dump = Join-Path ([Environment]::GetFolderPath('Desktop')) 'GOOGLE AVALIACOES - PAGINA LIDA (conferir).txt'
-    Set-Content -Path $dump -Value ("URL: " + $drv.Url + "`r`n`r`n" + $txt.Substring(0, [Math]::Min(6000, $txt.Length))) -Encoding UTF8
-    Log "Nenhuma avaliacao reconhecida. Texto da pagina salvo em: $dump (contem nomes; confira antes de mostrar a alguem)."
+    Log "Nenhuma avaliacao do local '$localAlvo'. Se o nome do local no Google for outro, escreva-o numa linha de $LocalPath (parte do nome basta). Se a pagina mudou, rode com -Diag."
   }
   return ,$lista
 }
@@ -211,6 +245,7 @@ finally {
   try { Stop-SeDriver -Driver $drv } catch {}
   Get-Process chrome, chromedriver -ErrorAction SilentlyContinue | Where-Object { $pidsAntes -notcontains $_.Id } | Stop-Process -Force -ErrorAction SilentlyContinue
 }
+if ($Diag) { if ($null -eq $lista) { Log "Sem login: rode login_manual_google.ps1." } else { Log "Diagnostico de estrutura concluido." }; exit 0 }
 if ($null -eq $lista) { Set-AvisoLogin $true; Log "AVISO: nao entrou nas avaliacoes (sessao vencida ou leitura falhou). Rode login_manual_google.ps1."; exit 2 }
 Set-AvisoLogin $false
 if ($lista.Count -eq 0) { Log "AVISO: pagina abriu, mas nenhuma avaliacao foi reconhecida (veja o arquivo na Area de Trabalho)."; exit 4 }
