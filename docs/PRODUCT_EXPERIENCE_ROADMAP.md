@@ -10,6 +10,8 @@ Estado em 26/10/2026. Prioridade: P0 crítico, P1 alto, P2 médio, P3 baixo.
 - Nota de atendimento geral 0–100% na Saúde do atendimento por IA — 26/10.
 - Delivery por plataforma e sugestões da 99Food em Marketing — 24/10.
 
+- Avaliações do Google em Marketing (leitura por robô, sugestão por IA, aprovação humana) — 27/10; falta validar a leitura real após o login manual.
+
 ## Em aberto
 | Prioridade | Item | Dependência / risco | Medida de sucesso |
 |---|---|---|---|
@@ -18,6 +20,7 @@ Estado em 26/10/2026. Prioridade: P0 crítico, P1 alto, P2 médio, P3 baixo.
 | P2 | Decidir tabelas em 14 px ou 16 px | preferência do Renato; muda a densidade | decisão registrada em `DESIGN_DECISIONS.md` |
 | P2 | Reposicionar a dica dos KPIs da última coluna para dentro da tela | só CSS/JS de posição | dica sempre visível por inteiro |
 | P2 | Observar o uso real (quais abas, quanto tempo, onde erram) | exige coletar dados de uso ou entrevistar 3–5 usuários | lista de tarefas com taxa de sucesso e tempo |
+| P2 | Publicar respostas do Google pela API oficial do Perfil da Empresa (hoje: copiar e colar) | exige solicitar acesso ao Google; aprovação humana mantida | resposta publicada em 1 clique, com registro de quem aprovou |
 | P3 | Tema claro opcional | exige revisar contraste de todas as cores | `prefers-color-scheme` ou botão de tema, com contraste conferido |
 | P3 | Marcação do plano da 99Food compartilhada pela equipe | gravar no servidor | todos veem o mesmo andamento |
 | P3 | Buscar função/quadro em todo o BI | 13 abas e 110 quadros recolhíveis podem dificultar achar algo (hipótese, não medida) | tempo para achar um quadro |

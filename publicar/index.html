@@ -854,6 +854,7 @@ tbody tr:hover{background:#ffffff08}
   <button data-mktab="ins" onclick="switchMkSubTab('ins')">Insights</button>
   <button data-mktab="insta" onclick="switchMkSubTab('insta')">Instagram</button>
   <button data-mktab="deli" onclick="switchMkSubTab('deli')">🛵 Delivery</button>
+  <button data-mktab="aval" onclick="switchMkSubTab('aval')">⭐ Avaliações Google</button>
 </div></div>
 
 <div id="mkDailyView" class="grid" style="grid-column:1/-1;display:grid" data-sortable-grid="marketing-daily">
@@ -1078,6 +1079,15 @@ tbody tr:hover{background:#ffffff08}
 <div class="card full note" data-card-id="mk-ins-intro"><div class="roleTitle"><h3>💡 Insights de Marketing • por dia da semana</h3><span><button class="btn" type="button" style="padding:6px 10px;font-size:12px" onclick="atualizarInsights()">🔄 Atualizar</button></span></div><div>Cruza faturamento, público, ticket médio, venda por horário, gasto de marketing e ranking de atrações pra sugerir ativações que melhorem o fluxo de cada dia da semana. <b>Atualiza toda segunda-feira</b>: usa sempre as últimas 8 semanas fechadas (até o domingo), então o conteúdo só muda quando vira a semana. Cada dia traz <b>como o dia funciona</b> (Manual Operacional, ago/2026), <b>o que os dados mostram</b>, o <b>cruzamento dados × manual</b> e as <b>sugestões</b> (opinião a validar com a operação). Ideias de ativação também vêm do Manual de Marketing 2022, cujos valores podem estar desatualizados.</div><div class="mini" id="mkInsEdicao" style="margin-top:6px"></div></div>
 <div class="card full" data-card-id="mk-ins-resumo"><div id="mkInsResumo"><div class="mini">Abra esta página pra gerar os insights…</div></div></div>
 <div class="card full" data-card-id="mk-ins-dias"><div class="nav" id="insDiaNav" style="margin:0 0 12px;display:flex;flex-wrap:wrap;gap:8px"><button type="button" data-insdia="1" onclick="insSelecionaDia(1)" style="flex:1 1 110px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 6px">Segunda<span class="insTag" style="min-height:20px"></span></button><button type="button" data-insdia="2" onclick="insSelecionaDia(2)" style="flex:1 1 110px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 6px">Terça<span class="insTag" style="min-height:20px"></span></button><button type="button" data-insdia="3" onclick="insSelecionaDia(3)" style="flex:1 1 110px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 6px">Quarta<span class="insTag" style="min-height:20px"></span></button><button type="button" data-insdia="4" onclick="insSelecionaDia(4)" style="flex:1 1 110px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 6px">Quinta<span class="insTag" style="min-height:20px"></span></button><button type="button" data-insdia="5" onclick="insSelecionaDia(5)" style="flex:1 1 110px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 6px">Sexta<span class="insTag" style="min-height:20px"></span></button><button type="button" data-insdia="6" onclick="insSelecionaDia(6)" style="flex:1 1 110px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 6px">Sábado<span class="insTag" style="min-height:20px"></span></button><button type="button" data-insdia="0" onclick="insSelecionaDia(0)" style="flex:1 1 110px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 6px">Domingo<span class="insTag" style="min-height:20px"></span></button></div><div id="insDiaPainel"><div class="mini">Abra esta página pra gerar os insights…</div></div></div>
+</div>
+<!-- 27/10, pedido do Renato: responder avaliações do Google. O robô lê (sem nome de cliente), a IA sugere, a equipe aprova e publica no Google. -->
+<div id="mkAvalView" class="grid hidden" style="grid-column:1/-1">
+<div class="card full"><div class="roleTitle"><h3>⭐ Avaliações do Google</h3><span class="badge p" id="avalBadge">—</span></div>
+<div class="note">O robô lê o Perfil da Empresa do Google 1 vez ao dia (sem nome de cliente). A resposta sugerida segue a skill de respostas do Seu Justino. <b>Nada é publicado sozinho:</b> revise, copie, cole no Google e marque como publicada. Comece pelas negativas.</div>
+<div class="toolbar"><div class="tbItem"><label class="mini" for="avalFiltro">Mostrar</label><select id="avalFiltro" onchange="avalRender()"><option value="pend" selected>Para responder</option><option value="aprovada">Copiadas (falta publicar)</option><option value="publicada">Publicadas</option><option value="descartada">Descartadas</option><option value="respondida_externa">Já respondidas no Google</option><option value="todas">Todas</option></select></div>
+<button class="btn" type="button" onclick="loadAvaliacoes(true)">↻ Atualizar tela</button></div>
+<div id="avalResumo" class="mini" style="margin:8px 0"></div>
+<div id="avalBody" class="mini">Abra esta página para carregar…</div></div>
 </div>
 <!-- 23/10, pedido do Renato: acompanhamento de venda de delivery por plataforma. Fonte: forma de pagamento do faturamento da ZigPay (API de integração), uma linha por dia e plataforma. -->
 <div id="mkDeliView" class="grid hidden" style="grid-column:1/-1">
@@ -2381,6 +2391,8 @@ function switchMkSubTab(tab){
   if($('mkInstaView'))$('mkInstaView').classList.toggle('hidden',tab!=='insta');
   if($('mkDeliView'))$('mkDeliView').classList.toggle('hidden',tab!=='deli');
   if(tab==='deli')loadDelivery();
+  if($('mkAvalView'))$('mkAvalView').classList.toggle('hidden',tab!=='aval');
+  if(tab==='aval')loadAvaliacoes();
   if(tab==='insta')loadInstagramReal();
   if(tab==='graf')carregarGraficosMk();
   if(tab==='ins')renderInsightsMk();
@@ -8467,6 +8479,72 @@ function deliPlanoMarca(c){
   const st=deliPlanoLer();st[c.dataset.deli]=c.checked?1:0;
   try{localStorage.setItem('sjDeliPlano99',JSON.stringify(st))}catch(e){}
   deliPlanoInit();
+}
+// ---- Avaliações do Google (27/10) ----
+let avalRows=[],avalCarregado=false,avalContatos='';
+function avalEstrelas(n){n=Math.max(0,Math.min(5,Number(n)||0));return '<span role="img" aria-label="'+n+' de 5 estrelas" style="color:'+(n<=2?'var(--red)':(n===3?'var(--yellow)':'var(--green)'))+';letter-spacing:2px;font-size:16px">'+'★'.repeat(n)+'<span style="opacity:.3">'+'★'.repeat(5-n)+'</span></span>'}
+async function loadAvaliacoes(forca){
+  const body=$('avalBody');if(!body)return;
+  if(avalCarregado&&!forca){avalRender();return}
+  try{
+    body.innerHTML='<div class="mini">Carregando avaliações…</div>';
+    const a=await apiAuth('getGoogleAvaliacoes',{},false,90000);
+    if(a&&a.ok){avalRows=a.rows||[];avalContatos=a.contatos||'';avalCarregado=true;avalRender()}
+    else body.innerHTML='<div class="alert y">'+(a&&a.error==='unknown_action'?'O servidor ainda não tem o módulo de avaliações: cole o Code.gs novo no Apps Script e publique uma nova versão.':'Sem dados de avaliações ('+escapeHtml(String(a&&(a.error||a.code)||'sem resposta'))+').')+'</div>';
+  }catch(e){body.innerHTML='<div class="alert r">Falha ao carregar as avaliações ('+escapeHtml(String(e&&e.message||e))+').</div>'}
+}
+function avalPendente(r){return r.status==='novo'&&!r.respondida}
+function avalRender(){
+  const body=$('avalBody');if(!body)return;
+  const res=$('avalResumo');
+  const todas=avalRows;
+  const pend=todas.filter(avalPendente);
+  const neg=pend.filter(function(r){return r.nota<=2}).length;
+  const media=todas.length?todas.reduce(function(s,r){return s+r.nota},0)/todas.length:0;
+  const ult=todas.reduce(function(m,r){return Math.max(m,r.capturedAt||0)},0);
+  if($('avalBadge'))$('avalBadge').textContent=pend.length+' para responder';
+  if(res)res.innerHTML=todas.length?('Nota média das avaliações lidas: <b>'+media.toFixed(2).replace('.',',')+'</b> ('+todas.length+' avaliações) • Para responder: <b>'+pend.length+'</b> (negativas: <b style="color:'+(neg?'var(--red)':'inherit')+'">'+neg+'</b>) • Última leitura: '+(ult?escapeHtml(new Date(ult).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})):'—')):'';
+  const fil=($('avalFiltro')||{}).value||'pend';
+  let lista=todas.filter(function(r){return fil==='todas'||(fil==='pend'?avalPendente(r):r.status===fil)});
+  lista.sort(function(a,b){return (a.nota<=2?0:1)-(b.nota<=2?0:1)||a.nota-b.nota||b.capturedAt-a.capturedAt});
+  if(!todas.length){body.innerHTML='<div class="alert y">Nenhuma avaliação lida ainda. Rode o login manual e o robô de avaliações (robo-zigpay/login_manual_google.ps1 e robo_google_avaliacoes.ps1).</div>';return}
+  if(!lista.length){body.innerHTML='<div class="mini">Nenhuma avaliação neste filtro.</div>';return}
+  body.innerHTML=lista.slice(0,60).map(function(r){
+    const id=escapeHtml(r.id);
+    const txt=r.texto?escapeHtml(r.texto):'<i style="color:var(--muted)">(só estrelas, sem texto)</i>';
+    const resp=r.status==='novo'||r.status==='aprovada'?(r.textoFinal||r.sugestao):(r.textoFinal||r.sugestao);
+    const edit=(r.status==='novo'||r.status==='aprovada');
+    const etiqueta={novo:'Para responder',aprovada:'Copiada, falta publicar',publicada:'Publicada',descartada:'Descartada',respondida_externa:'Já respondida no Google'}[r.status]||r.status;
+    return '<div class="card" style="margin:10px 0;border-left:4px solid '+(r.nota<=2?'var(--red)':(r.nota===3?'var(--yellow)':'var(--green)'))+'">'
+      +'<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center">'+avalEstrelas(r.nota)+'<span class="mini">'+escapeHtml(r.quando||'')+' • '+escapeHtml(etiqueta)+(r.origem==='modelo'?' • modelo padrão (sem IA)':'')+'</span></div>'
+      +'<div style="margin:8px 0;white-space:pre-wrap">'+txt+'</div>'
+      +(edit||resp?'<label class="mini" for="avalTx_'+id+'">Resposta sugerida (edite se quiser; a saudação usa "Olá!", acrescente o nome se desejar)</label><textarea id="avalTx_'+id+'" rows="4" style="width:100%;margin:4px 0;background:var(--panel2);color:var(--txt);border:1px solid var(--line);border-radius:var(--radius-md);padding:8px;font:inherit"'+(edit?'':' readonly')+'>'+escapeHtml(resp)+'</textarea>':'')
+      +(edit?'<div class="toolbar" style="gap:8px;flex-wrap:wrap"><button class="btn" type="button" onclick="avalAcao(\'copiar\',\''+id+'\')">📋 Copiar resposta</button><a class="btn" style="text-decoration:none" href="https://business.google.com/reviews" target="_blank" rel="noopener noreferrer">Abrir no Google ↗</a><button class="btn" type="button" onclick="avalAcao(\'publicada\',\''+id+'\')">✅ Já publiquei</button><button class="btn" type="button" onclick="avalAcao(\'sugerir\',\''+id+'\')">↻ Nova sugestão</button><button class="btn" type="button" onclick="avalAcao(\'descartada\',\''+id+'\')">Descartar</button></div>':'<div class="toolbar"><button class="btn" type="button" onclick="avalAcao(\'novo\',\''+id+'\')">↩ Voltar para responder</button></div>')
+      +'</div>';
+  }).join('')+(lista.length>60?'<div class="mini">Mostrando as 60 primeiras de '+lista.length+'.</div>':'');
+}
+async function avalAcao(acao,id){
+  const r=avalRows.find(function(x){return x.id===id});if(!r)return;
+  const tx=$('avalTx_'+id);const texto=tx?tx.value.trim():(r.textoFinal||r.sugestao||'');
+  try{
+    if(acao==='sugerir'){
+      const a=await apiAuth('sugerirGoogleAvaliacao',{id:id},false,60000);
+      if(a&&a.ok){r.sugestao=a.sugestao;r.origem=a.origem;avalRender();showToast('Nova sugestão gerada.')}else showToast('Não consegui gerar: '+String(a&&(a.error||a.code)||'sem resposta'),true);
+      return;
+    }
+    if(acao==='copiar'){
+      let ok=false;try{await navigator.clipboard.writeText(texto);ok=true}catch(e){if(tx){tx.select();try{ok=document.execCommand('copy')}catch(e2){}}}
+      if(!ok){showToast('Não consegui copiar: selecione o texto e use Ctrl+C.',true);return}
+      const a=await apiAuth('decidirGoogleAvaliacao',{id:id,status:'aprovada',textoFinal:texto},false,30000);
+      if(a&&a.ok){r.status='aprovada';r.textoFinal=texto}
+      showToast('Resposta copiada. Cole no Google e depois toque em "Já publiquei".');
+      avalRender();return;
+    }
+    if(acao==='publicada'&&!texto){showToast('Sem texto de resposta.',true);return}
+    const a=await apiAuth('decidirGoogleAvaliacao',{id:id,status:acao,textoFinal:acao==='novo'||acao==='descartada'?'':texto},false,30000);
+    if(a&&a.ok){r.status=acao;r.textoFinal=acao==='novo'?'':texto;if(acao==='publicada')r.respondida=true;if(acao==='novo')r.respondida=false;avalRender();showToast('Marcada como '+({publicada:'publicada',descartada:'descartada',novo:'para responder'}[acao]||acao)+'.')}
+    else showToast('Não consegui gravar: '+String(a&&(a.error||a.code)||'sem resposta'),true);
+  }catch(e){showToast('Falha: '+String(e&&e.message||e),true)}
 }
 async function loadDelivery(forca){
   deliPlanoInit();

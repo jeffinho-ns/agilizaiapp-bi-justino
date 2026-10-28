@@ -448,6 +448,17 @@ function doPost(e) {
       if (!(hasAreaAccess_(auth, 'marketing') || hasAreaAccess_(auth, 'financeiro') || hasAreaAccess_(auth, 'operacao'))) return jsonOut_({ ok: false, code: 'forbidden' });
       return jsonOut_(get99Food_());
     }
+    // Avaliações do Google (27/10, pedido do Renato): o robô lê o Perfil da Empresa (sem nome de cliente), a IA sugere a resposta e a equipe aprova.
+    if (action === 'submitGoogleAvaliacoes') {
+      if (!hasAreaAccess_(auth, 'financeiro')) return jsonOut_({ ok: false, code: 'forbidden' });
+      return jsonOut_(submitGoogleAvaliacoes_(body));
+    }
+    if (action === 'getGoogleAvaliacoes' || action === 'sugerirGoogleAvaliacao' || action === 'decidirGoogleAvaliacao') {
+      if (!hasAreaAccess_(auth, 'marketing')) return jsonOut_({ ok: false, code: 'forbidden' });
+      if (action === 'getGoogleAvaliacoes') return jsonOut_(getGoogleAvaliacoes_());
+      if (action === 'sugerirGoogleAvaliacao') return jsonOut_(sugerirGoogleAvaliacao_(body));
+      return jsonOut_(decidirGoogleAvaliacao_(auth, body));
+    }
     if (action === 'getZigDelivery') {
       if (!(hasAreaAccess_(auth, 'marketing') || hasAreaAccess_(auth, 'financeiro') || hasAreaAccess_(auth, 'operacao'))) return jsonOut_({ ok: false, code: 'forbidden' });
       return jsonOut_(getZigDelivery_(Math.min(Number(body.days) || 150, 400)));
@@ -5760,6 +5771,156 @@ function get99Food_() {
   vals.forEach(function (r) { try { rows.push({ capturedAt: Number(r[0]) || String(r[0]), snap: JSON.parse(String(r[1])) }); } catch (e) {} });
   rows.reverse();
   return { ok: true, rows: rows };
+}
+
+// ---------------- Avaliações do Google (27/10) ----------------
+// Fluxo: robo_google_avaliacoes.ps1 (1x/dia) lê o Perfil da Empresa e manda nota, texto e se já foi respondida. NÃO manda nome do cliente:
+// a chave de cada avaliação é um hash feito no computador do robô. A IA sugere a resposta com as regras da skill responder-avaliacoes-google;
+// a equipe aprova no BI (Marketing > Avaliações Google) e publica no Google. Nada é publicado automaticamente.
+const AVAL_COLS = ['id', 'nota', 'texto', 'quando', 'respondida', 'sugestao', 'origem', 'status', 'textoFinal', 'capturedAt', 'decididoPor', 'decididoEm'];
+const AVAL_STATUS = ['novo', 'aprovada', 'publicada', 'descartada', 'respondida_externa'];
+const AVAL_CONTATOS = 'WhatsApp 1152003650 ou reservas@seujustino.com.br';
+function getAvalSheet_() { return ensureSheet_('AvalGoogle', AVAL_COLS); }
+
+function avalSugestaoModelo_(nota, texto) {
+  const n = Number(nota) || 0;
+  if (n >= 4) return 'Olá! Muito obrigado pela avaliação e pelo carinho. Ficamos felizes que tenha curtido o Seu Justino. Esperamos você de volta em breve!';
+  if (n === 3) return 'Olá! Obrigado por nos trazer seu feedback. Que bom que parte da experiência foi boa, e lamentamos pelo que ficou abaixo do esperado. Se quiser nos contar mais, fale com a gente pelo ' + AVAL_CONTATOS + '.';
+  return 'Olá! Obrigado por nos trazer seu feedback. Lamentamos que sua experiência não tenha atendido às suas expectativas; isso não reflete o padrão que buscamos no dia a dia. Queremos entender melhor para corrigir. Fale direto com a gente pelo ' + AVAL_CONTATOS + '.';
+}
+const AVAL_SISTEMA = 'Você escreve a resposta pública do Seu Justino Vila Madalena (bar/restaurante com música ao vivo, Grupo Ideia) a uma avaliação do Google. ' +
+  'Regras: português do Brasil (ou o idioma da avaliação); 3 a 5 frases, no máximo 600 caracteres; tom acolhedor e profissional; no máximo 1 emoji e só se a avaliação for positiva. ' +
+  'Personalize citando o ponto específico que o cliente relatou. Sem termos defensivos ("mas", "na verdade") e sem acusar o cliente. ' +
+  'NÃO invente fatos: não diga que já corrigiu algo, que falou com a equipe, nem cite prato, promoção ou horário que não esteja na avaliação. ' +
+  'NÃO ofereça cortesia, desconto ou reembolso. NÃO peça para apagar ou alterar a avaliação. Não use nome de cliente: comece com "Olá!". ' +
+  'Avaliação negativa (1-2 estrelas, ou 3 com reclamação): agradeça o feedback, lamente de forma específica, diga em uma frase que o relato não reflete o padrão, e convide a conversar no privado: ' + AVAL_CONTATOS + '. ' +
+  'Avaliação neutra (3): agradeça o que foi bom, reconheça a ressalva em uma frase e, se for concreta, ofereça o canal privado. ' +
+  'Avaliação positiva (4-5): agradeça, repita um detalhe elogiado e convide a voltar; sem canal privado. ' +
+  'Se a avaliação parecer falsa ou ofensiva, responda de forma neutra e curta sem acusar. Se não houver texto, só estrelas, agradeça de forma simples. ' +
+  'Responda SOMENTE com o texto da resposta, sem aspas e sem comentários.';
+
+// Sugere resposta para as avaliações dadas (objetos com id, nota, texto). Usa a IA se houver chave; senão, modelo por faixa de nota.
+function avalGerarSugestoes_(itens) {
+  const chave = PropertiesService.getScriptProperties().getProperty('ANTHROPIC_API_KEY');
+  const out = {};
+  if (!chave) { itens.forEach(function (it) { out[it.id] = { texto: avalSugestaoModelo_(it.nota, it.texto), origem: 'modelo' }; }); return out; }
+  const reqs = itens.map(function (it) {
+    return {
+      url: 'https://api.anthropic.com/v1/messages', method: 'post', contentType: 'application/json', muteHttpExceptions: true,
+      headers: { 'x-api-key': chave, 'anthropic-version': '2023-06-01' },
+      payload: JSON.stringify({ model: IA_MODELO, max_tokens: 400, system: AVAL_SISTEMA, messages: [{ role: 'user', content: 'Avaliação de ' + (Number(it.nota) || 0) + ' estrela(s) no Google. Texto do cliente (pode estar vazio):\n"""' + String(it.texto || '').slice(0, 1500) + '"""\n\nEscreva a resposta.' }] })
+    };
+  });
+  let resps = [];
+  try { resps = UrlFetchApp.fetchAll(reqs); } catch (e) { resps = []; }
+  itens.forEach(function (it, i) {
+    let texto = '';
+    try {
+      const r = resps[i];
+      if (r && r.getResponseCode() === 200) {
+        const j = JSON.parse(r.getContentText());
+        texto = (j.content || []).map(function (b) { return b && b.type === 'text' ? b.text : ''; }).join('').trim().slice(0, 900);
+      }
+    } catch (e) {}
+    out[it.id] = texto ? { texto: texto, origem: 'ia' } : { texto: avalSugestaoModelo_(it.nota, it.texto), origem: 'modelo' };
+  });
+  return out;
+}
+
+function submitGoogleAvaliacoes_(body) {
+  const lista = Array.isArray(body.avaliacoes) ? body.avaliacoes.slice(0, 200) : [];
+  if (!lista.length) return { ok: false, error: 'sem_avaliacoes' };
+  const sh = getAvalSheet_();
+  const existentes = {};
+  sheetToObjects_(sh).forEach(function (r) { existentes[String(r.id)] = r; });
+  const agora = Date.now();
+  const novas = [];
+  let atualizadas = 0;
+  lista.forEach(function (a) {
+    const id = String(a && a.chave || '').replace(/[^0-9a-fA-F]/g, '').slice(0, 64);
+    const nota = Math.round(Number(a && a.nota));
+    if (!id || !(nota >= 1 && nota <= 5)) return;
+    const resp = a.respondida ? 'sim' : 'nao';
+    const ex = existentes[id];
+    if (ex) {
+      // já conhecida: só atualiza se foi respondida fora do BI
+      if (resp === 'sim' && String(ex.respondida) !== 'sim') {
+        const linha = sh.createTextFinder(id).matchEntireCell(true).findNext();
+        if (linha) {
+          const row = linha.getRow();
+          sh.getRange(row, AVAL_COLS.indexOf('respondida') + 1).setValue('sim');
+          if (String(ex.status) === 'novo' || String(ex.status) === 'aprovada') sh.getRange(row, AVAL_COLS.indexOf('status') + 1).setValue('respondida_externa');
+          atualizadas++;
+        }
+      }
+      return;
+    }
+    existentes[id] = { id: id };
+    novas.push({ id: id, nota: nota, texto: String(a.texto || '').slice(0, 1500), quando: String(a.quando || '').slice(0, 40), respondida: resp });
+  });
+  // sugestões só para as que ainda precisam de resposta (máx. 15 por leitura, para não estourar o tempo; o resto vem na próxima)
+  const precisam = novas.filter(function (n) { return n.respondida !== 'sim'; }).slice(0, 15);
+  const sug = precisam.length ? avalGerarSugestoes_(precisam) : {};
+  novas.forEach(function (n) {
+    const s = sug[n.id];
+    sh.appendRow([n.id, n.nota, n.texto, n.quando, n.respondida, s ? s.texto : '', s ? s.origem : '', n.respondida === 'sim' ? 'respondida_externa' : 'novo', '', agora, '', '']);
+  });
+  const last = sh.getLastRow();
+  if (last > 1001) sh.deleteRows(2, last - 1001);
+  return { ok: true, novas: novas.length, comSugestao: Object.keys(sug).length, atualizadas: atualizadas };
+}
+
+function getGoogleAvaliacoes_() {
+  const rows = sheetToObjects_(getAvalSheet_());
+  // sugestões que ficaram para trás (limite por leitura): gera até 10 agora
+  const faltam = rows.filter(function (r) { return String(r.status) === 'novo' && !String(r.sugestao); }).slice(0, 10)
+    .map(function (r) { return { id: String(r.id), nota: Number(r.nota) || 0, texto: String(r.texto || '') }; });
+  if (faltam.length) {
+    const sug = avalGerarSugestoes_(faltam);
+    const sh = getAvalSheet_();
+    faltam.forEach(function (it) {
+      const c = sh.createTextFinder(it.id).matchEntireCell(true).findNext();
+      if (!c) return;
+      sh.getRange(c.getRow(), AVAL_COLS.indexOf('sugestao') + 1, 1, 2).setValues([[sug[it.id].texto, sug[it.id].origem]]);
+    });
+    return getGoogleAvaliacoes_();
+  }
+  const out = rows.map(function (r) {
+    return { id: String(r.id), nota: Number(r.nota) || 0, texto: String(r.texto || ''), quando: String(r.quando || ''), respondida: String(r.respondida) === 'sim',
+      sugestao: String(r.sugestao || ''), origem: String(r.origem || ''), status: String(r.status || 'novo'), textoFinal: String(r.textoFinal || ''),
+      capturedAt: Number(r.capturedAt) || 0, decididoPor: String(r.decididoPor || ''), decididoEm: Number(r.decididoEm) || 0 };
+  });
+  out.sort(function (a, b) { return b.capturedAt - a.capturedAt; });
+  return { ok: true, rows: out.slice(0, 300), contatos: AVAL_CONTATOS };
+}
+
+function sugerirGoogleAvaliacao_(body) {
+  const id = String(body.id || '').replace(/[^0-9a-fA-F]/g, '');
+  if (!id) return { ok: false, error: 'id_invalido' };
+  const sh = getAvalSheet_();
+  const c = sh.createTextFinder(id).matchEntireCell(true).findNext();
+  if (!c) return { ok: false, error: 'nao_encontrada' };
+  const vals = sh.getRange(c.getRow(), 1, 1, AVAL_COLS.length).getValues()[0];
+  const sug = avalGerarSugestoes_([{ id: id, nota: vals[1], texto: vals[2] }])[id];
+  sh.getRange(c.getRow(), AVAL_COLS.indexOf('sugestao') + 1, 1, 2).setValues([[sug.texto, sug.origem]]);
+  return { ok: true, sugestao: sug.texto, origem: sug.origem };
+}
+
+function decidirGoogleAvaliacao_(auth, body) {
+  const id = String(body.id || '').replace(/[^0-9a-fA-F]/g, '');
+  const status = String(body.status || '');
+  if (!id || AVAL_STATUS.indexOf(status) < 0 || status === 'respondida_externa') return { ok: false, error: 'dados_invalidos' };
+  const sh = getAvalSheet_();
+  const c = sh.createTextFinder(id).matchEntireCell(true).findNext();
+  if (!c) return { ok: false, error: 'nao_encontrada' };
+  const row = c.getRow();
+  const textoFinal = String(body.textoFinal || '').slice(0, 1500);
+  sh.getRange(row, AVAL_COLS.indexOf('status') + 1).setValue(status);
+  sh.getRange(row, AVAL_COLS.indexOf('textoFinal') + 1).setValue(status === 'novo' ? '' : textoFinal);
+  sh.getRange(row, AVAL_COLS.indexOf('decididoPor') + 1, 1, 2).setValues([[status === 'novo' ? '' : (auth && auth.email) || '', status === 'novo' ? '' : Date.now()]]);
+  if (status === 'publicada') sh.getRange(row, AVAL_COLS.indexOf('respondida') + 1).setValue('sim');
+  try { logAudit_(auth, 'save', 'marketing', 'avaliacaoGoogle', id, 'Avaliação do Google marcada como ' + status, null, null); } catch (e) {}
+  return { ok: true };
 }
 
 // Diagnóstico de permissões (24/10): mostra com que escopos esta implantação roda, sem expor o token.
