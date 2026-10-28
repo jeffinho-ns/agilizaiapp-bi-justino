@@ -194,11 +194,16 @@ function Read-Avaliacoes($drv, [string]$alvo) {
   Start-Sleep -Seconds 12
   $txt = Get-PageText $drv
   if (-not (Test-Logado $txt ([string]$drv.Url))) { return $null }
-  # rola para carregar mais avaliacoes (ate ~6 vezes)
-  for ($r = 0; $r -lt 6; $r++) {
+  # rola ate parar de aparecer avaliacao nova (2 vezes seguidas sem novidade), no maximo 30 rolagens
+  $antes = -1; $iguais = 0
+  for ($r = 0; $r -lt 30; $r++) {
     [void]$drv.ExecuteScript("var els=[...document.querySelectorAll('*')].filter(function(e){return e.scrollHeight>e.clientHeight+200&&getComputedStyle(e).overflowY.match(/auto|scroll/)});(els.length?els[els.length-1]:document.scrollingElement).scrollTop+=100000;window.scrollTo(0,document.body.scrollHeight)")
     Start-Sleep -Seconds 3
+    $n = [int]$drv.ExecuteScript("return document.querySelectorAll('.DsOcnf').length")
+    if ($n -eq $antes) { $iguais++; if ($iguais -ge 2) { break } } else { $iguais = 0 }
+    $antes = $n
   }
+  Log "Rolagens feitas: $($r + 1) | cartoes carregados: $antes"
   if ($Diag) {
     $est = [string]$drv.ExecuteScript($JsEstrutura)
     $arq = Join-Path ([Environment]::GetFolderPath('Desktop')) 'GOOGLE AVALIACOES - ESTRUTURA MASCARADA.txt'
@@ -251,6 +256,7 @@ Set-AvisoLogin $false
 if ($lista.Count -eq 0) { Log "AVISO: pagina abriu, mas nenhuma avaliacao foi reconhecida (veja o arquivo na Area de Trabalho)."; exit 4 }
 $naoResp = @($lista | Where-Object { -not $_.respondida }).Count
 Log ("Lidas {0} avaliacoes ({1} sem resposta)." -f $lista.Count, $naoResp)
+Log ("Por nota: " + ((5..1 | ForEach-Object { $k = $_; "{0} estrela(s): {1}" -f $k, @($lista | Where-Object { $_.nota -eq $k }).Count }) -join ' | ') + " | respondidas: " + @($lista | Where-Object { $_.respondida }).Count)
 if ($DryRun) { $lista | ForEach-Object { Log ("  {0} estrela(s) | {1} | respondida={2} | {3}" -f $_.nota, $_.quando, $_.respondida, $_.texto.Substring(0, [Math]::Min(90, $_.texto.Length))) }; exit 0 }
 $token = Get-BiToken $cred
 $res = Invoke-AppsScript @{ action = 'submitGoogleAvaliacoes'; token = $token; avaliacoes = @($lista) }
