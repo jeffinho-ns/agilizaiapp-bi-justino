@@ -199,6 +199,9 @@ function Read-Avaliacoes($drv, [string]$alvo) {
   for ($r = 0; $r -lt 30; $r++) {
     [void]$drv.ExecuteScript("var els=[...document.querySelectorAll('*')].filter(function(e){return e.scrollHeight>e.clientHeight+200&&getComputedStyle(e).overflowY.match(/auto|scroll/)});(els.length?els[els.length-1]:document.scrollingElement).scrollTop+=100000;window.scrollTo(0,document.body.scrollHeight)")
     Start-Sleep -Seconds 3
+    # clica em "Mostrar mais / Carregar mais" se existir (so carrega a lista; nao altera nada no Google)
+    [void]$drv.ExecuteScript("var b=[...document.querySelectorAll('button,a,div[role=button]')].filter(function(e){return /^(mostrar mais|carregar mais|ver mais avalia|mais avalia|load more|show more)/i.test((e.innerText||'').trim())&&e.offsetParent!==null});if(b.length){b[0].click();return 1}return 0")
+    Start-Sleep -Seconds 2
     $n = [int]$drv.ExecuteScript("return document.querySelectorAll('.DsOcnf').length")
     if ($n -eq $antes) { $iguais++; if ($iguais -ge 2) { break } } else { $iguais = 0 }
     $antes = $n
