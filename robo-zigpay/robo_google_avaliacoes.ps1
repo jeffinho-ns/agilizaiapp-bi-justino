@@ -189,17 +189,30 @@ function Mask-Linha([string]$l) {
   if ($l -match $RxQuando -or $l -match $RxUi -or $l -match '^(Responder|Resposta|Avalia|Todas|Filtrar|Ordenar|Estrelas|Mais recentes|Reviews|Perfil|Business)') { return $l }
   return ($l -creplace '[A-Za-z\u00c0-\u00ff]', 'x')
 }
-function Read-Avaliacoes($drv, [string]$alvo) {
-  Enter-SeUrl -Driver $drv -Url $alvo | Out-Null
-  Start-Sleep -Seconds 12
-  $txt = Get-PageText $drv
-  if (-not (Test-Logado $txt ([string]$drv.Url))) { return $null }
+$JsAbreOrdem = @'
+var b=[...document.querySelectorAll('button,div[role=button]')].filter(function(e){
+  if(e.offsetParent===null)return false;
+  var i=e.querySelector('i');var al=(e.getAttribute('aria-label')||'');
+  if((i&&/^sort/i.test((i.textContent||'').trim()))||/ordenar|sort/i.test(al))return true;
+  return false});
+if(!b.length){
+  b=[...document.querySelectorAll('button')].filter(function(e){var r=e.getBoundingClientRect();return e.offsetParent!==null&&!(e.innerText||'').trim()&&r.top>250&&r.top<450&&r.left>window.innerWidth*0.7});
+}
+if(b.length){b[0].click();return 'ok'}
+return 'nao';
+'@
+$JsEscolheOrdem = @'
+var t=arguments[0];
+var m=[...document.querySelectorAll('li,div,span,a,button')].filter(function(e){return (e.innerText||'').trim()===t&&e.offsetParent!==null});
+if(m.length){m[m.length-1].click();return 'ok'}
+return 'nao';
+'@
+function Rolar-Lista($drv) {
   # rola ate parar de aparecer avaliacao nova (2 vezes seguidas sem novidade), no maximo 30 rolagens
   $antes = -1; $iguais = 0
   for ($r = 0; $r -lt 30; $r++) {
     [void]$drv.ExecuteScript("var els=[...document.querySelectorAll('*')].filter(function(e){return e.scrollHeight>e.clientHeight+200&&getComputedStyle(e).overflowY.match(/auto|scroll/)});(els.length?els[els.length-1]:document.scrollingElement).scrollTop+=100000;window.scrollTo(0,document.body.scrollHeight)")
     Start-Sleep -Seconds 3
-    # clica em "Mostrar mais / Carregar mais" se existir (so carrega a lista; nao altera nada no Google)
     [void]$drv.ExecuteScript("var b=[...document.querySelectorAll('button,a,div[role=button]')].filter(function(e){return /^(mostrar mais|carregar mais|ver mais avalia|mais avalia|load more|show more)/i.test((e.innerText||'').trim())&&e.offsetParent!==null});if(b.length){b[0].click();return 1}return 0")
     Start-Sleep -Seconds 2
     $n = [int]$drv.ExecuteScript("return document.querySelectorAll('.DsOcnf').length")
@@ -207,28 +220,59 @@ function Read-Avaliacoes($drv, [string]$alvo) {
     $antes = $n
   }
   Log "Rolagens feitas: $($r + 1) | cartoes carregados: $antes"
+}
+function Ler-Cartoes($drv) {
+  Rolar-Lista $drv
+  $json = [string]$drv.ExecuteScript($JsCartoes)
+  return @((ConvertFrom-Json $json) | ForEach-Object { $_ })   # PS 5.1 devolve o array JSON como 1 objeto: desenrola
+}
+# Troca a ordenacao da lista (so muda a visualizacao; nao altera avaliacoes nem respostas)
+function Escolher-Ordem($drv, [string]$texto) {
+  $r1 = [string]$drv.ExecuteScript($JsAbreOrdem)
+  if ($r1 -ne 'ok') { return $false }
+  Start-Sleep -Seconds 2
+  $r2 = [string]$drv.ExecuteScript($JsEscolheOrdem, $texto)
+  Start-Sleep -Seconds 6
+  return ($r2 -eq 'ok')
+}
+
+function Read-Avaliacoes($drv, [string]$alvo) {
+  Enter-SeUrl -Driver $drv -Url $alvo | Out-Null
+  Start-Sleep -Seconds 12
+  $txt = Get-PageText $drv
+  if (-not (Test-Logado $txt ([string]$drv.Url))) { return $null }
   if ($Diag) {
+    Rolar-Lista $drv
     $est = [string]$drv.ExecuteScript($JsEstrutura)
     $arq = Join-Path ([Environment]::GetFolderPath('Desktop')) 'GOOGLE AVALIACOES - ESTRUTURA MASCARADA.txt'
     Set-Content -Path $arq -Value $est -Encoding UTF8
     Log "Estrutura mascarada (sem nomes) salva em: $arq"
     return ,@()
   }
-  $json = [string]$drv.ExecuteScript($JsCartoes)
-  $cartoes = @((ConvertFrom-Json $json) | ForEach-Object { $_ })   # PS 5.1 devolve o array JSON como 1 objeto: desenrola
+  $cartoes = @(Ler-Cartoes $drv)
+  Log ("1a leitura (ordem atual da tela): {0} cartoes" -f $cartoes.Count)
+  if (Escolher-Ordem $drv 'Ordenar por data') {
+    $c2 = @(Ler-Cartoes $drv)
+    Log ("2a leitura (ordenada por data): {0} cartoes" -f $c2.Count)
+    $cartoes = @($cartoes) + @($c2)
+  } else {
+    Log "AVISO: nao consegui trocar a ordem para 'Ordenar por data'; sigo so com a ordem atual da tela (pode trazer so as piores notas)."
+  }
   $localAlvo = 'Seu Justino Vila Madalena'
   if (Test-Path $LocalPath) { $l1 = (Get-Content $LocalPath -Raw -Encoding UTF8).Trim(); if ($l1) { $localAlvo = $l1 } }
   $alvoNorm = Norm-Txt $localAlvo
   $locais = @($cartoes | ForEach-Object { $_.local } | Where-Object { $_ } | Sort-Object -Unique)
-  Log ("Cartoes de avaliacao na pagina: {0}. Locais vistos: {1}" -f $cartoes.Count, ($locais -join ' | '))
-  $lista = @(); $outrosLocais = 0; $semNota = 0
+  Log ("Locais vistos: {0}" -f ($locais -join ' | '))
+  $lista = @(); $outrosLocais = 0; $semNota = 0; $repetidas = 0; $vistos = @{}
   foreach ($c in $cartoes) {
     if (-not ((Norm-Txt ([string]$c.local)).Contains($alvoNorm))) { $outrosLocais++; continue }
     if ([int]$c.nota -lt 1 -or [int]$c.nota -gt 5) { $semNota++; continue }
     $chave = Get-Sha1 ("$($c.autor)|$($c.nota)|$($c.texto)|$($c.local)")   # autor so serve de sal do hash; nao e enviado
+    if ($vistos.ContainsKey($chave)) { $repetidas++; continue }
+    $vistos[$chave] = 1
     $lista += [ordered]@{ chave = $chave; nota = [int]$c.nota; texto = [string]$c.texto; quando = [string]$c.quando; respondida = [bool]$c.respondida }
   }
-  Log ("Local '{0}': lidas {1} | de outros locais (ignoradas): {2} | sem nota reconhecida: {3}" -f $localAlvo, $lista.Count, $outrosLocais, $semNota)
+  Log ("Local '{0}': lidas {1} (unicas) | repetidas entre as 2 leituras: {2} | de outros locais (ignoradas): {3} | sem nota reconhecida: {4}" -f $localAlvo, $lista.Count, $repetidas, $outrosLocais, $semNota)
   if ($lista.Count -eq 0) {
     Log "Nenhuma avaliacao do local '$localAlvo'. Se o nome do local no Google for outro, escreva-o numa linha de $LocalPath (parte do nome basta). Se a pagina mudou, rode com -Diag."
   }
