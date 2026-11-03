@@ -10,13 +10,20 @@
        hash (SHA-1) calculado aqui e o nome nunca sai do computador.
     3. Manda ao BI -> acao submitGoogleAvaliacoes (aba Marketing > Avaliacoes Google). A IA sugere a resposta la.
     4. Se a sessao vencer, cria o arquivo "GOOGLE AVALIACOES - ROBO PRECISA DE LOGIN.txt" na Area de Trabalho.
-  NAO responde, NAO clica em Responder e NAO altera nada no Google. Quem publica a resposta e uma pessoa.
+  5. SO com -Publicar (ou -TesteEnvio): publica no Google as respostas que a equipe aprovou no BI com o botao "Enviar ao Google"
+     (fila acao getGoogleEnvios). Para cada uma, o robo acha a MESMA avaliacao (chave hash; confere nota e texto), confere que ainda
+     nao tem resposta, clica em Responder, digita o texto aprovado, confere o que digitou e so entao publica. Qualquer duvida = nao
+     publica e marca "falha no envio" no BI (a pessoa copia e publica a mao). Nunca responde sem o clique de aprovacao no BI.
+  Sem -Publicar, o robo NAO clica em Responder e NAO altera nada no Google.
   Senha do Google: nunca fica neste script nem em arquivo. O login e manual.
-  USO:  powershell -File robo_google_avaliacoes.ps1            (normal)
+  USO:  powershell -File robo_google_avaliacoes.ps1            (normal: le e manda ao BI; nao publica)
         powershell -File robo_google_avaliacoes.ps1 -DryRun    (le, mostra o que leu e NAO envia ao BI)
         powershell -File robo_google_avaliacoes.ps1 -DryRun -Url "https://..."   (testa outro link)
+        powershell -File robo_google_avaliacoes.ps1 -TesteEnvio -Visivel   (1a vez: abre o Chrome COM janela, digita a 1a resposta da fila
+                                                                            e PARA antes de publicar; salva o mapa mascarado do editor)
+        powershell -File robo_google_avaliacoes.ps1 -Publicar  (le, manda ao BI e publica a fila aprovada)
 #>
-param([switch]$DryRun, [switch]$Diag, [string]$Url = '')
+param([switch]$DryRun, [switch]$Diag, [switch]$Publicar, [switch]$TesteEnvio, [switch]$Visivel, [string]$Url = '')
 $ErrorActionPreference = 'Stop'
 $ScriptDir = $PSScriptRoot
 $CredPath = "$env:USERPROFILE\.seujustino\zigpay_credentials.json"   # so o campo "bi" (login do robo no BI)
@@ -250,9 +257,11 @@ function Read-Avaliacoes($drv, [string]$alvo) {
     return ,@()
   }
   $cartoes = @(Ler-Cartoes $drv)
+  $script:CartoesFinal = $cartoes   # cartoes na ordem do DOM atual (o indice serve para achar o cartao ao publicar)
   Log ("1a leitura (ordem atual da tela): {0} cartoes" -f $cartoes.Count)
   if (Escolher-Ordem $drv 'Ordenar por data') {
     $c2 = @(Ler-Cartoes $drv)
+    $script:CartoesFinal = $c2
     Log ("2a leitura (ordenada por data): {0} cartoes" -f $c2.Count)
     $cartoes = @($cartoes) + @($c2)
   } else {
@@ -279,6 +288,125 @@ function Read-Avaliacoes($drv, [string]$alvo) {
   return ,$lista
 }
 
+# ---------------- publicacao das respostas aprovadas no BI (so com -Publicar ou -TesteEnvio) ----------------
+# O Google pode mudar a pagina: os textos dos botoes ("Responder", "Publicar"...) e o tipo da caixa de texto foram deduzidos, nao vistos.
+# Por isso o 1o uso e com -TesteEnvio -Visivel (nao publica) e o robo confere cada passo antes de seguir.
+$JsAbreResposta = @'
+var c=document.querySelectorAll('.DsOcnf')[arguments[0]];
+if(!c)return 'sem_cartao';
+c.scrollIntoView({block:'center'});
+var b=[...c.querySelectorAll('button')].filter(function(e){return /^Responder$/.test((e.innerText||'').trim())&&e.offsetParent!==null});
+if(!b.length)return 'sem_botao';
+b[0].click();return 'ok';
+'@
+$JsAchaEditor = @'
+var c=document.querySelectorAll('.DsOcnf')[arguments[0]];
+function vis(e){return e&&e.offsetParent!==null&&!e.disabled&&!e.readOnly}
+var sel='textarea,[contenteditable=true],[contenteditable=""],input[type=text]';
+var l=c?[...c.querySelectorAll(sel)].filter(vis):[];
+if(!l.length){l=[...document.querySelectorAll('[role=dialog] '+sel.split(',').join(',[role=dialog] '))].filter(vis)}
+return l.length?l[0]:null;
+'@
+$JsLeEditor = @'
+var e=arguments[0];return (e.value!==undefined&&e.tagName!=='DIV')?e.value:(e.innerText||'');
+'@
+$JsPublica = @'
+var c=document.querySelectorAll('.DsOcnf')[arguments[0]];
+var raiz=[c].concat([...document.querySelectorAll('[role=dialog]')]);
+var ordem=['Publicar resposta','Publicar','Enviar','Salvar'];
+for(var k=0;k<ordem.length;k++){
+  for(var r=0;r<raiz.length;r++){
+    if(!raiz[r])continue;
+    var b=[...raiz[r].querySelectorAll('button')].filter(function(e){return (e.innerText||'').trim()===ordem[k]&&e.offsetParent!==null&&!e.disabled});
+    if(b.length){b[b.length-1].click();return ordem[k]}
+  }
+}
+return 'nao';
+'@
+$JsRespostaCartao = @'
+var c=document.querySelectorAll('.DsOcnf')[arguments[0]];
+var r=c?c.querySelector('.Rhj72c'):null;return r?(r.textContent||''):'';
+'@
+# Mapa mascarado (letras viram x, menos palavras de botao) do cartao com o editor aberto: serve para calibrar se o Google mudar a tela
+$JsEstruturaCartao = @'
+function mk(t){return (t||'').replace(/[A-Za-zÀ-ÿ]/g,'x')}
+function keep(t){return /^(Responder|Editar|Excluir|Mais|Publicar|Cancelar|Enviar|Salvar|Fechar|Descartar)/i.test(t)}
+var out=[];
+function desc(e,d){
+  if(out.length>320||d>16)return;
+  var a=[e.tagName.toLowerCase()];
+  var cl=(e.getAttribute('class')||'').split(' ').filter(String).slice(0,3).join('.');if(cl)a.push('.'+cl);
+  var ro=e.getAttribute('role');if(ro)a.push('role='+ro);
+  var ce=e.getAttribute('contenteditable');if(ce!==null)a.push('contenteditable='+ce);
+  var al=e.getAttribute('aria-label');if(al)a.push('aria-label='+(keep(al)?al:mk(al)));
+  if(e.disabled)a.push('disabled');
+  if(e.tagName==='TEXTAREA'||e.tagName==='INPUT')a.push('valor='+mk(e.value).slice(0,30));
+  if(e.children.length===0){var t=(e.textContent||'').trim();if(t)a.push('txt='+(keep(t)?t:mk(t).slice(0,40)))}
+  out.push(new Array(d+1).join('  ')+a.join(' '));
+  for(var i=0;i<e.children.length;i++)desc(e.children[i],d+1);
+}
+var c=document.querySelectorAll('.DsOcnf')[arguments[0]];
+out.push('===== CARTAO com o editor aberto =====');if(c)desc(c,0);
+out.push('===== DIALOGOS abertos =====');
+document.querySelectorAll('[role=dialog]').forEach(function(x){desc(x,0)});
+return out.join('\n');
+'@
+function Norm-Espaco([string]$s) { return ($s -replace '\s+', ' ').Trim() }
+function Publicar-Uma($drv, $it) {
+  $cart = @($script:CartoesFinal)
+  $idx = -1
+  for ($i = 0; $i -lt $cart.Count; $i++) {
+    $c = $cart[$i]
+    if ((Get-Sha1 ("$($c.autor)|$($c.nota)|$($c.texto)|$($c.local)")) -eq [string]$it.id) { $idx = $i; break }
+  }
+  if ($idx -lt 0) { return @{ ok = $false; motivo = 'a avaliacao nao esta mais na lista lida (muito antiga ou apagada)' } }
+  $c = $cart[$idx]
+  if ($c.respondida) { return @{ ok = $false; motivo = 'a avaliacao ja tem resposta no Google' } }
+  if ([int]$c.nota -ne [int]$it.nota -or (Norm-Espaco ([string]$c.texto)) -ne (Norm-Espaco ([string]$it.texto))) { return @{ ok = $false; motivo = 'nota ou texto da avaliacao nao conferem' } }
+  $texto = [string]$it.resposta
+  if (-not $texto.Trim()) { return @{ ok = $false; motivo = 'resposta vazia' } }
+  $r = [string]$drv.ExecuteScript($JsAbreResposta, $idx)
+  if ($r -ne 'ok') { return @{ ok = $false; motivo = "nao achei o botao Responder ($r)" } }
+  Start-Sleep -Seconds 3
+  $ed = $drv.ExecuteScript($JsAchaEditor, $idx)
+  if ($null -eq $ed) { return @{ ok = $false; motivo = 'nao achei a caixa de texto da resposta' } }
+  try { $ed.Clear() } catch {}
+  $ed.SendKeys($texto)
+  Start-Sleep -Seconds 1
+  $lido = [string]$drv.ExecuteScript($JsLeEditor, $ed)
+  if ((Norm-Espaco $lido) -ne (Norm-Espaco $texto)) { return @{ ok = $false; motivo = 'o texto digitado nao confere com o aprovado' } }
+  if ($TesteEnvio) {
+    $est = [string]$drv.ExecuteScript($JsEstruturaCartao, $idx)
+    $arq = Join-Path ([Environment]::GetFolderPath('Desktop')) 'GOOGLE AVALIACOES - EDITOR MASCARADO.txt'
+    Set-Content -Path $arq -Value $est -Encoding UTF8
+    Log "TESTE: texto digitado e conferido; mapa mascarado do editor salvo em: $arq"
+    if ($Visivel) { Log "TESTE: olhe a janela do Chrome (15 s). Nada sera publicado."; Start-Sleep -Seconds 15 }
+    return @{ ok = $false; motivo = 'teste: nao publicado' }
+  }
+  $b = [string]$drv.ExecuteScript($JsPublica, $idx)
+  if ($b -eq 'nao') { return @{ ok = $false; motivo = 'nao achei o botao de publicar' } }
+  $chave = Norm-Espaco $texto; $chave = $chave.Substring(0, [Math]::Min(40, $chave.Length))
+  for ($t = 0; $t -lt 10; $t++) {
+    Start-Sleep -Seconds 2
+    if ((Norm-Espaco ([string]$drv.ExecuteScript($JsRespostaCartao, $idx))).Contains($chave)) { return @{ ok = $true; motivo = '' } }
+  }
+  return @{ ok = $false; motivo = "cliquei em '$b', mas nao vi a resposta publicada (confira no Google antes de tentar de novo)" }
+}
+function Publicar-Fila($drv, $token) {
+  $q = Invoke-AppsScript @{ action = 'getGoogleEnvios'; token = $token }
+  if (-not $q.ok) { Log ("AVISO: nao consegui ler a fila de envio: $($q.error) $($q.code)"); return }
+  $fila = @($q.fila | ForEach-Object { $_ })
+  if ($fila.Count -eq 0) { Log "Fila de envio vazia: nenhuma resposta aprovada para publicar."; return }
+  Log ("Fila de envio: {0} resposta(s) aprovada(s) no BI." -f $fila.Count)
+  foreach ($it in $fila) {
+    $res = $null
+    try { $res = Publicar-Uma $drv $it } catch { $res = @{ ok = $false; motivo = "erro: " + $_.Exception.Message } }
+    if ($TesteEnvio) { Log ("TESTE: {0}" -f $res.motivo); break }
+    $rc = Invoke-AppsScript @{ action = 'confirmarEnvioGoogle'; token = $token; id = [string]$it.id; ok = [bool]$res.ok; motivo = [string]$res.motivo }
+    Log ("Resposta ({0} estrela(s)): {1}{2}{3}" -f $it.nota, $(if ($res.ok) { 'PUBLICADA' } else { 'NAO publicada: ' + $res.motivo }), $(if ($rc.ok) { '' } else { ' | AVISO: BI nao gravou o resultado: ' + $rc.error }), '')
+  }
+}
+
 # ---------------- principal ----------------
 Log "Iniciando robo Avaliacoes Google$(if ($DryRun) { ' (DryRun)' })"
 $alvo = $Url
@@ -290,9 +418,24 @@ New-Item -ItemType Directory -Force -Path $ProfileDir | Out-Null
 Import-Module Selenium
 $pidsAntes = @((Get-Process chrome, chromedriver -ErrorAction SilentlyContinue).Id)
 $driverDir = Get-MatchingChromeDriver
-$drv = Start-SeChrome -Headless -Quiet -BinaryPath "C:\Program Files\Google\Chrome\Application\chrome.exe" -WebDriverDirectory $driverDir -Arguments @('--window-size=1500,2400', "--user-data-dir=$ProfileDir")
-$lista = $null
-try { $lista = Read-Avaliacoes $drv $alvo } catch { Log ("ERRO leitura: " + $_.Exception.Message) }
+$chromeArgs = @('--window-size=1500,2400', "--user-data-dir=$ProfileDir")
+if ($Visivel) { $drv = Start-SeChrome -Quiet -BinaryPath "C:\Program Files\Google\Chrome\Application\chrome.exe" -WebDriverDirectory $driverDir -Arguments $chromeArgs }
+else { $drv = Start-SeChrome -Headless -Quiet -BinaryPath "C:\Program Files\Google\Chrome\Application\chrome.exe" -WebDriverDirectory $driverDir -Arguments $chromeArgs }
+$lista = $null; $token = $null; $res = $null
+try {
+  $lista = Read-Avaliacoes $drv $alvo
+  if ($null -ne $lista -and -not $Diag) {
+    if ($lista.Count -gt 0 -and -not $DryRun -and -not $TesteEnvio) {
+      $token = Get-BiToken $cred
+      $res = Invoke-AppsScript @{ action = 'submitGoogleAvaliacoes'; token = $token; avaliacoes = @($lista) }
+      if ($res.ok) { Log ("Enviado ao BI: {0} novas, {1} com sugestao." -f $res.novas, $res.comSugestao) } else { Log ("AVISO: BI recusou as avaliacoes: $($res.error) $($res.code)") }
+    }
+    if ($Publicar -or $TesteEnvio) {
+      if (-not $token) { $token = Get-BiToken $cred }
+      if ($TesteEnvio -or ($res -and $res.ok)) { Publicar-Fila $drv $token }
+    }
+  }
+} catch { Log ("ERRO: " + $_.Exception.Message) }
 finally {
   try { Stop-SeDriver -Driver $drv } catch {}
   Get-Process chrome, chromedriver -ErrorAction SilentlyContinue | Where-Object { $pidsAntes -notcontains $_.Id } | Stop-Process -Force -ErrorAction SilentlyContinue
@@ -305,8 +448,6 @@ $naoResp = @($lista | Where-Object { -not $_.respondida }).Count
 Log ("Lidas {0} avaliacoes ({1} sem resposta)." -f $lista.Count, $naoResp)
 Log ("Por nota: " + ((5..1 | ForEach-Object { $k = $_; "{0} estrela(s): {1}" -f $k, @($lista | Where-Object { $_.nota -eq $k }).Count }) -join ' | ') + " | respondidas: " + @($lista | Where-Object { $_.respondida }).Count)
 if ($DryRun) { $lista | ForEach-Object { Log ("  {0} estrela(s) | {1} | respondida={2} | {3}" -f $_.nota, $_.quando, $_.respondida, $_.texto.Substring(0, [Math]::Min(90, $_.texto.Length))) }; exit 0 }
-$token = Get-BiToken $cred
-$res = Invoke-AppsScript @{ action = 'submitGoogleAvaliacoes'; token = $token; avaliacoes = @($lista) }
-if (-not $res.ok) { Log ("AVISO: BI recusou as avaliacoes: $($res.error) $($res.code)"); exit 3 }
-Log ("Enviado ao BI: {0} novas, {1} com sugestao." -f $res.novas, $res.comSugestao)
+if ($TesteEnvio) { Log "Teste de envio concluido (nada foi publicado)."; exit 0 }
+if (-not $res -or -not $res.ok) { exit 3 }
 Log "Concluido."

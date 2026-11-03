@@ -1084,7 +1084,7 @@ tbody tr:hover{background:#ffffff08}
 <div id="mkAvalView" class="grid hidden" style="grid-column:1/-1">
 <div class="card full"><div class="roleTitle"><h3>⭐ Avaliações do Google</h3><span class="badge p" id="avalBadge">—</span></div>
 <div class="note">O robô lê o Perfil da Empresa do Google 1 vez ao dia (sem nome de cliente). A resposta sugerida segue a skill de respostas do Seu Justino. <b>Nada é publicado sozinho:</b> revise, copie, cole no Google e marque como publicada. Comece pelas negativas.</div>
-<div class="toolbar"><div class="tbItem"><label class="mini" for="avalFiltro">Mostrar</label><select id="avalFiltro" onchange="avalRender()"><option value="pend" selected>Para responder</option><option value="aprovada">Copiadas (falta publicar)</option><option value="publicada">Publicadas</option><option value="descartada">Descartadas</option><option value="respondida_externa">Já respondidas no Google</option><option value="todas">Todas</option></select></div>
+<div class="toolbar"><div class="tbItem"><label class="mini" for="avalFiltro">Mostrar</label><select id="avalFiltro" onchange="avalRender()"><option value="pend" selected>Para responder</option><option value="enviar">Na fila de envio ao Google</option><option value="erro_envio">Falha no envio</option><option value="aprovada">Copiadas (falta publicar)</option><option value="publicada">Publicadas</option><option value="descartada">Descartadas</option><option value="respondida_externa">Já respondidas no Google</option><option value="todas">Todas</option></select></div>
 <button class="btn" type="button" onclick="loadAvaliacoes(true)">↻ Atualizar tela</button></div>
 <div id="avalResumo" class="mini" style="margin:8px 0"></div>
 <div id="avalBody" class="mini">Abra esta página para carregar…</div></div>
@@ -8494,7 +8494,7 @@ async function loadAvaliacoes(forca){
     else body.innerHTML='<div class="alert y">'+(a&&a.error==='unknown_action'?'O servidor ainda não tem o módulo de avaliações: cole o Code.gs novo no Apps Script e publique uma nova versão.':'Sem dados de avaliações ('+escapeHtml(String(a&&(a.error||a.code)||'sem resposta'))+').')+'</div>';
   }catch(e){body.innerHTML='<div class="alert r">Falha ao carregar as avaliações ('+escapeHtml(String(e&&e.message||e))+').</div>'}
 }
-function avalPendente(r){return r.status==='novo'&&!r.respondida}
+function avalPendente(r){return (r.status==='novo'||r.status==='erro_envio')&&!r.respondida}
 function avalRender(){
   const body=$('avalBody');if(!body)return;
   const res=$('avalResumo');
@@ -8514,13 +8514,13 @@ function avalRender(){
     const id=escapeHtml(r.id);
     const txt=r.texto?escapeHtml(r.texto):'<i style="color:var(--muted)">(só estrelas, sem texto)</i>';
     const resp=r.status==='novo'||r.status==='aprovada'?(r.textoFinal||r.sugestao):(r.textoFinal||r.sugestao);
-    const edit=(r.status==='novo'||r.status==='aprovada');
-    const etiqueta={novo:'Para responder',aprovada:'Copiada, falta publicar',publicada:'Publicada',descartada:'Descartada',respondida_externa:'Já respondida no Google'}[r.status]||r.status;
+    const edit=(r.status==='novo'||r.status==='aprovada'||r.status==='erro_envio');
+    const etiqueta={novo:'Para responder',enviar:'Na fila: o robô publica na próxima rodada',erro_envio:'O robô não conseguiu publicar (copie e publique à mão, ou tente de novo)',aprovada:'Copiada, falta publicar',publicada:'Publicada',descartada:'Descartada',respondida_externa:'Já respondida no Google'}[r.status]||r.status;
     return '<div class="card" style="margin:10px 0;border-left:4px solid '+(r.nota<=2?'var(--red)':(r.nota===3?'var(--yellow)':'var(--green)'))+'">'
       +'<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center">'+avalEstrelas(r.nota)+'<span class="mini">'+escapeHtml(r.quando||'')+' • '+escapeHtml(etiqueta)+(r.origem==='modelo'?' • modelo padrão (sem IA)':'')+'</span></div>'
       +'<div style="margin:8px 0;white-space:pre-wrap">'+txt+'</div>'
       +(edit||resp?'<label class="mini" for="avalTx_'+id+'">Resposta sugerida (edite se quiser; a saudação usa "Olá!", acrescente o nome se desejar)</label><textarea id="avalTx_'+id+'" rows="4" style="width:100%;margin:4px 0;background:var(--panel2);color:var(--txt);border:1px solid var(--line);border-radius:var(--radius-md);padding:8px;font:inherit"'+(edit?'':' readonly')+'>'+escapeHtml(resp)+'</textarea>':'')
-      +(edit?'<div class="toolbar" style="gap:8px;flex-wrap:wrap"><button class="btn" type="button" onclick="avalAcao(\'copiar\',\''+id+'\')">📋 Copiar resposta</button><a class="btn" style="text-decoration:none" href="https://business.google.com/reviews" target="_blank" rel="noopener noreferrer">Abrir no Google ↗</a><button class="btn" type="button" onclick="avalAcao(\'publicada\',\''+id+'\')">✅ Já publiquei</button><button class="btn" type="button" onclick="avalAcao(\'sugerir\',\''+id+'\')">↻ Nova sugestão</button><button class="btn" type="button" onclick="avalAcao(\'descartada\',\''+id+'\')">Descartar</button></div>':'<div class="toolbar"><button class="btn" type="button" onclick="avalAcao(\'novo\',\''+id+'\')">↩ Voltar para responder</button></div>')
+      +(edit?'<div class="toolbar" style="gap:8px;flex-wrap:wrap"><button class="btn" type="button" style="background:#233a1f;border-color:#3a5c30" onclick="avalAcao(\'enviar\',\''+id+'\')" title="Coloca na fila: o robô publica a resposta no Google na próxima rodada">🚀 Enviar ao Google</button><button class="btn" type="button" onclick="avalAcao(\'copiar\',\''+id+'\')">📋 Copiar resposta</button><a class="btn" style="text-decoration:none" href="https://business.google.com/reviews" target="_blank" rel="noopener noreferrer">Abrir no Google ↗</a><button class="btn" type="button" onclick="avalAcao(\'publicada\',\''+id+'\')">✅ Já publiquei</button><button class="btn" type="button" onclick="avalAcao(\'sugerir\',\''+id+'\')">↻ Nova sugestão</button><button class="btn" type="button" onclick="avalAcao(\'descartada\',\''+id+'\')">Descartar</button></div>':'<div class="toolbar"><button class="btn" type="button" onclick="avalAcao(\'novo\',\''+id+'\')">'+(r.status==='enviar'?'✖ Cancelar o envio':'↩ Voltar para responder')+'</button></div>')
       +'</div>';
   }).join('')+(lista.length>60?'<div class="mini">Mostrando as 60 primeiras de '+lista.length+'.</div>':'');
 }
@@ -8541,9 +8541,13 @@ async function avalAcao(acao,id){
       showToast('Resposta copiada. Cole no Google e depois toque em "Já publiquei".');
       avalRender();return;
     }
-    if(acao==='publicada'&&!texto){showToast('Sem texto de resposta.',true);return}
+    if(acao==='enviar'){
+      if(!texto){showToast('Sem texto de resposta.',true);return}
+      if(!confirm('Enviar esta resposta ao Google?\n\nO robô vai publicá-la, com o texto abaixo, na próxima rodada (ou quando for rodado). A resposta fica pública no Perfil da Empresa.\n\n'+texto))return;
+    }
+    if((acao==='publicada'||acao==='enviar')&&!texto){showToast('Sem texto de resposta.',true);return}
     const a=await apiAuth('decidirGoogleAvaliacao',{id:id,status:acao,textoFinal:acao==='novo'||acao==='descartada'?'':texto},false,30000);
-    if(a&&a.ok){r.status=acao;r.textoFinal=acao==='novo'?'':texto;if(acao==='publicada')r.respondida=true;if(acao==='novo')r.respondida=false;avalRender();showToast('Marcada como '+({publicada:'publicada',descartada:'descartada',novo:'para responder'}[acao]||acao)+'.')}
+    if(a&&a.ok){r.status=acao;r.textoFinal=acao==='novo'?'':texto;if(acao==='publicada')r.respondida=true;if(acao==='novo')r.respondida=false;avalRender();showToast(acao==='enviar'?'Na fila de envio: o robô publica na próxima rodada.':'Marcada como '+({publicada:'publicada',descartada:'descartada',novo:'para responder'}[acao]||acao)+'.')}
     else showToast('Não consegui gravar: '+String(a&&(a.error||a.code)||'sem resposta'),true);
   }catch(e){showToast('Falha: '+String(e&&e.message||e),true)}
 }

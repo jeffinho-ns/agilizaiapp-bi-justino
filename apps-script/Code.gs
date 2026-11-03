@@ -453,6 +453,11 @@ function doPost(e) {
       if (!hasAreaAccess_(auth, 'financeiro')) return jsonOut_({ ok: false, code: 'forbidden' });
       return jsonOut_(submitGoogleAvaliacoes_(body));
     }
+    // Envio das respostas aprovadas (03/11): o robô busca a fila e confirma o resultado de cada uma.
+    if (action === 'getGoogleEnvios' || action === 'confirmarEnvioGoogle') {
+      if (!hasAreaAccess_(auth, 'financeiro')) return jsonOut_({ ok: false, code: 'forbidden' });
+      return jsonOut_(action === 'getGoogleEnvios' ? getGoogleEnvios_() : confirmarEnvioGoogle_(auth, body));
+    }
     if (action === 'getGoogleAvaliacoes' || action === 'sugerirGoogleAvaliacao' || action === 'decidirGoogleAvaliacao') {
       if (!hasAreaAccess_(auth, 'marketing')) return jsonOut_({ ok: false, code: 'forbidden' });
       if (action === 'getGoogleAvaliacoes') return jsonOut_(getGoogleAvaliacoes_());
@@ -5778,7 +5783,8 @@ function get99Food_() {
 // a chave de cada avaliação é um hash feito no computador do robô. A IA sugere a resposta com as regras da skill responder-avaliacoes-google;
 // a equipe aprova no BI (Marketing > Avaliações Google) e publica no Google. Nada é publicado automaticamente.
 const AVAL_COLS = ['id', 'nota', 'texto', 'quando', 'respondida', 'sugestao', 'origem', 'status', 'textoFinal', 'capturedAt', 'decididoPor', 'decididoEm'];
-const AVAL_STATUS = ['novo', 'aprovada', 'publicada', 'descartada', 'respondida_externa'];
+// 'enviar' = a equipe aprovou o envio no BI e o robô publica na próxima rodada; 'erro_envio' = o robô não conseguiu publicar.
+const AVAL_STATUS = ['novo', 'aprovada', 'publicada', 'descartada', 'respondida_externa', 'enviar', 'erro_envio'];
 const AVAL_CONTATOS = 'WhatsApp 1152003650 ou reservas@seujustino.com.br';
 const AVAL_FECHO_NEGATIVA = 'Já direcionamos seu feedback para o departamento responsável fazer as correções. Caso prefira falar direto com a gente, é só chamar pelo ' + AVAL_CONTATOS + '.';
 function getAvalSheet_() { return ensureSheet_('AvalGoogle', AVAL_COLS); }
@@ -5850,7 +5856,7 @@ function submitGoogleAvaliacoes_(body) {
         if (linha) {
           const row = linha.getRow();
           sh.getRange(row, AVAL_COLS.indexOf('respondida') + 1).setValue('sim');
-          if (String(ex.status) === 'novo' || String(ex.status) === 'aprovada') sh.getRange(row, AVAL_COLS.indexOf('status') + 1).setValue('respondida_externa');
+          if (['novo', 'aprovada', 'enviar', 'erro_envio'].indexOf(String(ex.status)) >= 0) sh.getRange(row, AVAL_COLS.indexOf('status') + 1).setValue('respondida_externa');
           atualizadas++;
         }
       }
@@ -5921,6 +5927,27 @@ function decidirGoogleAvaliacao_(auth, body) {
   sh.getRange(row, AVAL_COLS.indexOf('decididoPor') + 1, 1, 2).setValues([[status === 'novo' ? '' : (auth && auth.email) || '', status === 'novo' ? '' : Date.now()]]);
   if (status === 'publicada') sh.getRange(row, AVAL_COLS.indexOf('respondida') + 1).setValue('sim');
   try { logAudit_(auth, 'save', 'marketing', 'avaliacaoGoogle', id, 'Avaliação do Google marcada como ' + status, null, null); } catch (e) {}
+  return { ok: true };
+}
+
+// Fila de envio: respostas que a equipe aprovou no BI (status 'enviar'). O robô confere nota e texto da avaliação antes de publicar.
+function getGoogleEnvios_() {
+  const fila = sheetToObjects_(getAvalSheet_()).filter(function (r) { return String(r.status) === 'enviar' && String(r.textoFinal || '').trim(); })
+    .slice(0, 10).map(function (r) { return { id: String(r.id), nota: Number(r.nota) || 0, texto: String(r.texto || ''), resposta: String(r.textoFinal).slice(0, 1500) }; });
+  return { ok: true, fila: fila };
+}
+function confirmarEnvioGoogle_(auth, body) {
+  const id = String(body.id || '').replace(/[^0-9a-fA-F]/g, '');
+  if (!id) return { ok: false, error: 'id_invalido' };
+  const sh = getAvalSheet_();
+  const c = sh.createTextFinder(id).matchEntireCell(true).findNext();
+  if (!c) return { ok: false, error: 'nao_encontrada' };
+  const row = c.getRow();
+  if (String(sh.getRange(row, AVAL_COLS.indexOf('status') + 1).getValue()) !== 'enviar') return { ok: false, error: 'fora_da_fila' };
+  const publicou = body.ok === true || body.ok === 'true';
+  sh.getRange(row, AVAL_COLS.indexOf('status') + 1).setValue(publicou ? 'publicada' : 'erro_envio');
+  if (publicou) sh.getRange(row, AVAL_COLS.indexOf('respondida') + 1).setValue('sim');
+  try { logAudit_(auth, 'save', 'marketing', 'avaliacaoGoogle', id, publicou ? 'Resposta publicada no Google pelo robô' : 'Robô não conseguiu publicar a resposta: ' + String(body.motivo || '').slice(0, 120), null, null); } catch (e) {}
   return { ok: true };
 }
 
