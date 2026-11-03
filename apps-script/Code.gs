@@ -5780,20 +5780,21 @@ function get99Food_() {
 const AVAL_COLS = ['id', 'nota', 'texto', 'quando', 'respondida', 'sugestao', 'origem', 'status', 'textoFinal', 'capturedAt', 'decididoPor', 'decididoEm'];
 const AVAL_STATUS = ['novo', 'aprovada', 'publicada', 'descartada', 'respondida_externa'];
 const AVAL_CONTATOS = 'WhatsApp 1152003650 ou reservas@seujustino.com.br';
+const AVAL_FECHO_NEGATIVA = 'Já direcionamos seu feedback para o departamento responsável fazer as correções. Caso prefira falar direto com a gente, é só chamar pelo ' + AVAL_CONTATOS + '.';
 function getAvalSheet_() { return ensureSheet_('AvalGoogle', AVAL_COLS); }
 
 function avalSugestaoModelo_(nota, texto) {
   const n = Number(nota) || 0;
   if (n >= 4) return 'Olá! Muito obrigado pela avaliação e pelo carinho. Ficamos felizes que tenha curtido o Seu Justino. Esperamos você de volta em breve!';
   if (n === 3) return 'Olá! Obrigado por nos trazer seu feedback. Que bom que parte da experiência foi boa, e lamentamos pelo que ficou abaixo do esperado. Se quiser nos contar mais, fale com a gente pelo ' + AVAL_CONTATOS + '.';
-  return 'Olá! Obrigado por nos trazer seu feedback. Lamentamos que sua experiência não tenha atendido às suas expectativas; isso não reflete o padrão que buscamos no dia a dia. Queremos entender melhor para corrigir. Fale direto com a gente pelo ' + AVAL_CONTATOS + '.';
+  return 'Olá! Obrigado por nos trazer seu feedback. Lamentamos que sua experiência não tenha atendido às suas expectativas; isso não reflete o padrão que buscamos no dia a dia. ' + AVAL_FECHO_NEGATIVA;
 }
 const AVAL_SISTEMA = 'Você escreve a resposta pública do Seu Justino Vila Madalena (bar/restaurante com música ao vivo, Grupo Ideia) a uma avaliação do Google. ' +
   'Regras: português do Brasil (ou o idioma da avaliação); 3 a 5 frases, no máximo 600 caracteres; tom acolhedor e profissional; no máximo 1 emoji e só se a avaliação for positiva. ' +
   'Personalize citando o ponto específico que o cliente relatou. Sem termos defensivos ("mas", "na verdade") e sem acusar o cliente. ' +
-  'NÃO invente fatos: não diga que já corrigiu algo, que falou com a equipe, nem cite prato, promoção ou horário que não esteja na avaliação. ' +
+  'NÃO invente fatos: não diga que já corrigiu algo, nem cite prato, promoção ou horário que não esteja na avaliação. ' +
   'NÃO ofereça cortesia, desconto ou reembolso. NÃO peça para apagar ou alterar a avaliação. Não use nome de cliente: comece com "Olá!". ' +
-  'Avaliação negativa (1-2 estrelas, ou 3 com reclamação): agradeça o feedback, lamente de forma específica, diga em uma frase que o relato não reflete o padrão, e convide a conversar no privado: ' + AVAL_CONTATOS + '. ' +
+  'Avaliação negativa (1-2 estrelas, ou 3 com reclamação): agradeça o feedback, lamente de forma específica, diga em uma frase que o relato não reflete o padrão, e termine com esta frase, com estas palavras e sem soar como texto de robô: "' + AVAL_FECHO_NEGATIVA + '" Não use "Queremos entender melhor para corrigir". ' +
   'Avaliação neutra (3): agradeça o que foi bom, reconheça a ressalva em uma frase e, se for concreta, ofereça o canal privado. ' +
   'Avaliação positiva (4-5): agradeça, repita um detalhe elogiado e convide a voltar; sem canal privado. ' +
   'Se a avaliação parecer falsa ou ofensiva, responda de forma neutra e curta sem acusar. Se não houver texto, só estrelas, agradeça de forma simples. ' +
