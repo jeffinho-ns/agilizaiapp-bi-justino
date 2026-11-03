@@ -12,7 +12,7 @@ $script = Join-Path $PSScriptRoot 'robo_google_avaliacoes.ps1'
 $nome = 'SeuJustino - Robo Avaliacoes Google'
 $extra = if ($Publicar) { ' -Publicar' } else { '' }
 $acao = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$script`"$extra" -WorkingDirectory $PSScriptRoot
-$gatilhos = $Horarios | ForEach-Object { New-ScheduledTaskTrigger -Daily -At $_ }
+$gatilhos = @(($Horarios -join ',') -split '[,; ]+' | Where-Object { $_ }) | ForEach-Object { New-ScheduledTaskTrigger -Daily -At $_ }
 $config = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Minutes 15) -MultipleInstances IgnoreNew
 $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Limited
 Register-ScheduledTask -TaskName $nome -Action $acao -Trigger $gatilhos -Settings $config -Principal $principal -Force | Out-Null
