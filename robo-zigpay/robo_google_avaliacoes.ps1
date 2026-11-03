@@ -361,8 +361,17 @@ function Publicar-Uma($drv, $it) {
   }
   if ($idx -lt 0) { return @{ ok = $false; motivo = 'a avaliacao nao esta mais na lista lida (muito antiga ou apagada)' } }
   $c = $cart[$idx]
-  if ($c.respondida) { return @{ ok = $false; motivo = 'a avaliacao ja tem resposta no Google' } }
-  if ([int]$c.nota -ne [int]$it.nota -or (Norm-Espaco ([string]$c.texto)) -ne (Norm-Espaco ([string]$it.texto))) { return @{ ok = $false; motivo = 'nota ou texto da avaliacao nao conferem' } }
+  if ($c.respondida) {
+    # Anti-duplicidade: se a resposta que ja esta no Google e a MESMA aprovada no BI (ex.: o robo publicou mas nao conseguiu avisar o BI),
+    # so confirma como publicada; nunca publica de novo. Se for outro texto, nao mexe e avisa.
+    $feita = Norm-Espaco ([string]$drv.ExecuteScript($JsRespostaCartao, $idx))
+    $inicio = Norm-Espaco ([string]$it.resposta); $inicio = $inicio.Substring(0, [Math]::Min(40, $inicio.Length))
+    if ($inicio -and $feita.Contains($inicio)) { return @{ ok = $true; motivo = 'ja estava publicada com este texto' } }
+    return @{ ok = $false; motivo = 'a avaliacao ja tem resposta no Google (outro texto); nada foi publicado' }
+  }
+  # a chave (hash de autor|nota|texto|local) ja garante que e a mesma avaliacao; a nota e conferida de novo por seguranca
+  # (o texto da planilha pode diferir em detalhes do da pagina, entao nao e comparado aqui)
+  if ([int]$c.nota -ne [int]$it.nota) { return @{ ok = $false; motivo = 'a nota da avaliacao nao confere' } }
   $texto = [string]$it.resposta
   if (-not $texto.Trim()) { return @{ ok = $false; motivo = 'resposta vazia' } }
   $r = [string]$drv.ExecuteScript($JsAbreResposta, $idx)
@@ -409,6 +418,9 @@ function Publicar-Fila($drv, $token) {
 
 # ---------------- principal ----------------
 Log "Iniciando robo Avaliacoes Google$(if ($DryRun) { ' (DryRun)' })"
+# Uma execucao por vez (manual x agendada): duas ao mesmo tempo poderiam tentar publicar a mesma resposta
+$mutexRobo = New-Object System.Threading.Mutex($false, 'SeuJustinoRoboGoogleAvaliacoes')
+if (-not $mutexRobo.WaitOne(0)) { Log "Outra execucao do robo de avaliacoes esta em andamento; saindo sem fazer nada."; exit 5 }
 $alvo = $Url
 if (-not $alvo -and (Test-Path $UrlPath)) { $alvo = (Get-Content $UrlPath -Raw).Trim() }
 if (-not $alvo) { $alvo = $UrlPadrao }
