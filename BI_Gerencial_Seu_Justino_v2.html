@@ -1083,7 +1083,7 @@ tbody tr:hover{background:#ffffff08}
 <!-- 27/10, pedido do Renato: responder avaliações do Google. O robô lê (sem nome de cliente), a IA sugere, a equipe aprova e publica no Google. -->
 <div id="mkAvalView" class="grid hidden" style="grid-column:1/-1">
 <div class="card full"><div class="roleTitle"><h3>⭐ Avaliações do Google</h3><span class="badge p" id="avalBadge">—</span></div>
-<div class="note">O robô lê o Perfil da Empresa do Google 1 vez ao dia (sem nome de cliente). A resposta sugerida segue a skill de respostas do Seu Justino. <b>Nada é publicado sozinho:</b> revise, copie, cole no Google e marque como publicada. Comece pelas negativas.</div>
+<div class="note">O robô lê o Perfil da Empresa do Google nos horários agendados (sem nome de cliente). A resposta sugerida segue a skill de respostas do Seu Justino. <b>Nada é publicado sem a sua aprovação:</b> revise e edite o texto e clique em <b>🚀 Enviar ao Google</b>. O robô publica na próxima rodada, e a resposta passa para "Publicadas". Se falhar, ela aparece em "Falha no envio": copie e publique à mão. Comece pelas negativas.</div>
 <div class="toolbar"><div class="tbItem"><label class="mini" for="avalFiltro">Mostrar</label><select id="avalFiltro" onchange="avalRender()"><option value="pend" selected>Para responder</option><option value="enviar">Na fila de envio ao Google</option><option value="erro_envio">Falha no envio</option><option value="aprovada">Copiadas (falta publicar)</option><option value="publicada">Publicadas</option><option value="descartada">Descartadas</option><option value="respondida_externa">Já respondidas no Google</option><option value="todas">Todas</option></select></div>
 <button class="btn" type="button" onclick="loadAvaliacoes(true)">↻ Atualizar tela</button></div>
 <div id="avalResumo" class="mini" style="margin:8px 0"></div>
@@ -8512,7 +8512,8 @@ function avalRender(){
   if(!lista.length){body.innerHTML='<div class="mini">Nenhuma avaliação neste filtro.</div>';return}
   body.innerHTML=lista.slice(0,60).map(function(r){
     const id=escapeHtml(r.id);
-    const txt=r.texto?escapeHtml(r.texto):'<i style="color:var(--muted)">(só estrelas, sem texto)</i>';
+    const soNota=!r.texto||/^\s*O usu[aá]rio n[aã]o fez uma avalia[cç][aã]o,? apenas deu uma nota\.?\s*$/i.test(r.texto);   // o Google preenche esta frase quando o cliente só dá a nota
+    const txt=soNota?'<i style="color:var(--muted)">(só estrelas, sem texto)</i>':escapeHtml(r.texto);
     const resp=r.status==='novo'||r.status==='aprovada'?(r.textoFinal||r.sugestao):(r.textoFinal||r.sugestao);
     const edit=(r.status==='novo'||r.status==='aprovada'||r.status==='erro_envio');
     const etiqueta={novo:'Para responder',enviar:'Na fila: o robô publica na próxima rodada',erro_envio:'O robô não conseguiu publicar (copie e publique à mão, ou tente de novo)',aprovada:'Copiada, falta publicar',publicada:'Publicada',descartada:'Descartada',respondida_externa:'Já respondida no Google'}[r.status]||r.status;

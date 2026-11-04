@@ -5788,6 +5788,11 @@ const AVAL_STATUS = ['novo', 'aprovada', 'publicada', 'descartada', 'respondida_
 const AVAL_CONTATOS = 'WhatsApp 1152003650 ou reservas@seujustino.com.br';
 const AVAL_FECHO_NEGATIVA = 'Já direcionamos seu feedback para o departamento responsável fazer as correções. Caso prefira falar direto com a gente, é só chamar pelo ' + AVAL_CONTATOS + '.';
 function getAvalSheet_() { return ensureSheet_('AvalGoogle', AVAL_COLS); }
+// Quando o cliente só dá a nota, o Google preenche o texto com esta frase; isso não é comentário do cliente (vale como "sem texto").
+function avalLimpaTexto_(t) {
+  const s = String(t || '');
+  return /^\s*O usu[aá]rio n[aã]o fez uma avalia[cç][aã]o,? apenas deu uma nota\.?\s*$/i.test(s) ? '' : s;
+}
 
 function avalSugestaoModelo_(nota, texto) {
   const n = Number(nota) || 0;
@@ -5815,7 +5820,7 @@ function avalGerarSugestoes_(itens) {
     return {
       url: 'https://api.anthropic.com/v1/messages', method: 'post', contentType: 'application/json', muteHttpExceptions: true,
       headers: { 'x-api-key': chave, 'anthropic-version': '2023-06-01' },
-      payload: JSON.stringify({ model: IA_MODELO, max_tokens: 400, system: AVAL_SISTEMA, messages: [{ role: 'user', content: 'Avaliação de ' + (Number(it.nota) || 0) + ' estrela(s) no Google. Texto do cliente (pode estar vazio):\n"""' + String(it.texto || '').slice(0, 1500) + '"""\n\nEscreva a resposta.' }] })
+      payload: JSON.stringify({ model: IA_MODELO, max_tokens: 400, system: AVAL_SISTEMA, messages: [{ role: 'user', content: 'Avaliação de ' + (Number(it.nota) || 0) + ' estrela(s) no Google. Texto do cliente (pode estar vazio):\n"""' + avalLimpaTexto_(it.texto).slice(0, 1500) + '"""\n\nEscreva a resposta.' }] })
     };
   });
   let resps = [];
@@ -5863,7 +5868,7 @@ function submitGoogleAvaliacoes_(body) {
       return;
     }
     existentes[id] = { id: id };
-    novas.push({ id: id, nota: nota, texto: String(a.texto || '').slice(0, 1500), quando: String(a.quando || '').slice(0, 40), respondida: resp });
+    novas.push({ id: id, nota: nota, texto: avalLimpaTexto_(a.texto).slice(0, 1500), quando: String(a.quando || '').slice(0, 40), respondida: resp });
   });
   // sugestões só para as que ainda precisam de resposta (máx. 15 por leitura, para não estourar o tempo; o resto vem na próxima)
   const precisam = novas.filter(function (n) { return n.respondida !== 'sim'; }).slice(0, 15);
@@ -5893,7 +5898,7 @@ function getGoogleAvaliacoes_() {
     return getGoogleAvaliacoes_();
   }
   const out = rows.map(function (r) {
-    return { id: String(r.id), nota: Number(r.nota) || 0, texto: String(r.texto || ''), quando: String(r.quando || ''), respondida: String(r.respondida) === 'sim',
+    return { id: String(r.id), nota: Number(r.nota) || 0, texto: avalLimpaTexto_(r.texto), quando: String(r.quando || ''), respondida: String(r.respondida) === 'sim',
       sugestao: String(r.sugestao || ''), origem: String(r.origem || ''), status: String(r.status || 'novo'), textoFinal: String(r.textoFinal || ''),
       capturedAt: Number(r.capturedAt) || 0, decididoPor: String(r.decididoPor || ''), decididoEm: Number(r.decididoEm) || 0 };
   });
