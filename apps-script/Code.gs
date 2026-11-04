@@ -5855,6 +5855,18 @@ function submitGoogleAvaliacoes_(body) {
     const resp = a.respondida ? 'sim' : 'nao';
     const ex = existentes[id];
     if (ex) {
+      // já conhecida: o Google é a verdade sobre "tem resposta". Se o Google mostra SEM resposta mas a planilha dizia que tinha
+      // (marcada à mão ou resposta apagada no Google), volta para "sem resposta" para poder responder de novo.
+      if (resp === 'nao' && String(ex.respondida) === 'sim') {
+        const linhaN = sh.createTextFinder(id).matchEntireCell(true).findNext();
+        if (linhaN) {
+          const rowN = linhaN.getRow();
+          sh.getRange(rowN, AVAL_COLS.indexOf('respondida') + 1).setValue('nao');
+          if (['publicada', 'respondida_externa', 'descartada'].indexOf(String(ex.status)) >= 0) sh.getRange(rowN, AVAL_COLS.indexOf('status') + 1).setValue('novo');
+          atualizadas++;
+        }
+        return;
+      }
       // já conhecida: só atualiza se foi respondida fora do BI
       if (resp === 'sim' && String(ex.respondida) !== 'sim') {
         const linha = sh.createTextFinder(id).matchEntireCell(true).findNext();

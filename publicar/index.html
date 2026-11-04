@@ -1083,8 +1083,8 @@ tbody tr:hover{background:#ffffff08}
 <!-- 27/10, pedido do Renato: responder avaliações do Google. O robô lê (sem nome de cliente), a IA sugere, a equipe aprova e publica no Google. -->
 <div id="mkAvalView" class="grid hidden" style="grid-column:1/-1">
 <div class="card full"><div class="roleTitle"><h3>⭐ Avaliações do Google</h3><span class="badge p" id="avalBadge">—</span></div>
-<div class="note">O robô lê o Perfil da Empresa do Google nos horários agendados (sem nome de cliente). A resposta sugerida segue a skill de respostas do Seu Justino. <b>Nada é publicado sem a sua aprovação:</b> revise e edite o texto e clique em <b>🚀 Enviar ao Google</b>. O robô publica na próxima rodada, e a resposta passa para "Publicadas". Se falhar, ela aparece em "Falha no envio": copie e publique à mão. Comece pelas negativas.</div>
-<div class="toolbar"><div class="tbItem"><label class="mini" for="avalFiltro">Mostrar</label><select id="avalFiltro" onchange="avalRender()"><option value="pend" selected>Para responder</option><option value="enviar">Na fila de envio ao Google</option><option value="erro_envio">Falha no envio</option><option value="aprovada">Copiadas (falta publicar)</option><option value="publicada">Publicadas</option><option value="descartada">Descartadas</option><option value="respondida_externa">Já respondidas no Google</option><option value="todas">Todas</option></select></div>
+<div class="note">Aqui estão todas as avaliações do Google <b>sem resposta</b>, as negativas primeiro. Revise o texto sugerido (pode editar) e clique em <b>🚀 Enviar ao Google</b>: nada é publicado sem a sua aprovação, e o robô publica na próxima rodada.</div>
+<div class="toolbar"><div class="tbItem"><label class="mini" for="avalFiltro">Mostrar</label><select id="avalFiltro" onchange="avalRender()"><option value="pend" selected>Sem resposta</option><option value="fila">Na fila de envio</option><option value="resp">Já respondidas</option><option value="todas">Todas</option></select></div>
 <button class="btn" type="button" onclick="loadAvaliacoes(true)">↻ Atualizar tela</button></div>
 <div id="avalResumo" class="mini" style="margin:8px 0"></div>
 <div id="avalBody" class="mini">Abra esta página para carregar…</div></div>
@@ -8494,34 +8494,38 @@ async function loadAvaliacoes(forca){
     else body.innerHTML='<div class="alert y">'+(a&&a.error==='unknown_action'?'O servidor ainda não tem o módulo de avaliações: cole o Code.gs novo no Apps Script e publique uma nova versão.':'Sem dados de avaliações ('+escapeHtml(String(a&&(a.error||a.code)||'sem resposta'))+').')+'</div>';
   }catch(e){body.innerHTML='<div class="alert r">Falha ao carregar as avaliações ('+escapeHtml(String(e&&e.message||e))+').</div>'}
 }
-function avalPendente(r){return (r.status==='novo'||r.status==='erro_envio')&&!r.respondida}
+// O Google é a verdade sobre "tem resposta" (o robô atualiza a cada rodada). Três grupos simples: sem resposta, na fila de envio, respondidas.
+function avalSemResposta(r){return !r.respondida&&r.status!=='enviar'&&r.status!=='publicada'&&r.status!=='respondida_externa'}
+function avalNaFila(r){return r.status==='enviar'&&!r.respondida}
+function avalRespondida(r){return !!r.respondida||r.status==='publicada'||r.status==='respondida_externa'}
 function avalRender(){
   const body=$('avalBody');if(!body)return;
   const res=$('avalResumo');
   const todas=avalRows;
-  const pend=todas.filter(avalPendente);
+  const pend=todas.filter(avalSemResposta);
+  const fila=todas.filter(avalNaFila).length;
   const neg=pend.filter(function(r){return r.nota<=2}).length;
   const media=todas.length?todas.reduce(function(s,r){return s+r.nota},0)/todas.length:0;
   const ult=todas.reduce(function(m,r){return Math.max(m,r.capturedAt||0)},0);
-  if($('avalBadge'))$('avalBadge').textContent=pend.length+' para responder';
-  if(res)res.innerHTML=todas.length?('Nota média das avaliações lidas: <b>'+media.toFixed(2).replace('.',',')+'</b> ('+todas.length+' avaliações) • Para responder: <b>'+pend.length+'</b> (negativas: <b style="color:'+(neg?'var(--red)':'inherit')+'">'+neg+'</b>) • Última leitura: '+(ult?escapeHtml(new Date(ult).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})):'—')):'';
+  if($('avalBadge'))$('avalBadge').textContent=pend.length+' sem resposta';
+  if(res)res.innerHTML=todas.length?('Nota média das avaliações lidas: <b>'+media.toFixed(2).replace('.',',')+'</b> ('+todas.length+' avaliações) • Sem resposta: <b>'+pend.length+'</b> (negativas: <b style="color:'+(neg?'var(--red)':'inherit')+'">'+neg+'</b>)'+(fila?' • Na fila de envio: <b>'+fila+'</b>':'')+' • Última leitura: '+(ult?escapeHtml(new Date(ult).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})):'—')):'';
   const fil=($('avalFiltro')||{}).value||'pend';
-  let lista=todas.filter(function(r){return fil==='todas'||(fil==='pend'?avalPendente(r):r.status===fil)});
+  let lista=todas.filter(function(r){return fil==='todas'||(fil==='pend'?avalSemResposta(r):fil==='fila'?avalNaFila(r):avalRespondida(r))});
   lista.sort(function(a,b){return (a.nota<=2?0:1)-(b.nota<=2?0:1)||a.nota-b.nota||b.capturedAt-a.capturedAt});
   if(!todas.length){body.innerHTML='<div class="alert y">Nenhuma avaliação lida ainda. Rode o login manual e o robô de avaliações (robo-zigpay/login_manual_google.ps1 e robo_google_avaliacoes.ps1).</div>';return}
-  if(!lista.length){body.innerHTML='<div class="mini">Nenhuma avaliação neste filtro.</div>';return}
+  if(!lista.length){body.innerHTML='<div class="mini">'+(fil==='pend'?'Nenhuma avaliação sem resposta. 👏':'Nenhuma avaliação neste filtro.')+'</div>';return}
   body.innerHTML=lista.slice(0,60).map(function(r){
     const id=escapeHtml(r.id);
     const soNota=!r.texto||/^\s*O usu[aá]rio n[aã]o fez uma avalia[cç][aã]o,? apenas deu uma nota\.?\s*$/i.test(r.texto);   // o Google preenche esta frase quando o cliente só dá a nota
     const txt=soNota?'<i style="color:var(--muted)">(só estrelas, sem texto)</i>':escapeHtml(r.texto);
-    const resp=r.status==='novo'||r.status==='aprovada'?(r.textoFinal||r.sugestao):(r.textoFinal||r.sugestao);
-    const edit=(r.status==='novo'||r.status==='aprovada'||r.status==='erro_envio');
-    const etiqueta={novo:'Para responder',enviar:'Na fila: o robô publica na próxima rodada',erro_envio:'O robô não conseguiu publicar (copie e publique à mão, ou tente de novo)',aprovada:'Copiada, falta publicar',publicada:'Publicada',descartada:'Descartada',respondida_externa:'Já respondida no Google'}[r.status]||r.status;
+    const resp=r.textoFinal||r.sugestao;
+    const edit=avalSemResposta(r);
+    const etiqueta=avalRespondida(r)?'Respondida':avalNaFila(r)?'Na fila: o robô publica na próxima rodada':r.status==='erro_envio'?'Falha no envio: tente de novo ou copie e publique à mão':'Sem resposta';
     return '<div class="card" style="margin:10px 0;border-left:4px solid '+(r.nota<=2?'var(--red)':(r.nota===3?'var(--yellow)':'var(--green)'))+'">'
       +'<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center">'+avalEstrelas(r.nota)+'<span class="mini">'+escapeHtml(r.quando||'')+' • '+escapeHtml(etiqueta)+(r.origem==='modelo'?' • modelo padrão (sem IA)':'')+'</span></div>'
       +'<div style="margin:8px 0;white-space:pre-wrap">'+txt+'</div>'
       +(edit||resp?'<label class="mini" for="avalTx_'+id+'">Resposta sugerida (edite se quiser; a saudação usa "Olá!", acrescente o nome se desejar)</label><textarea id="avalTx_'+id+'" rows="4" style="width:100%;margin:4px 0;background:var(--panel2);color:var(--txt);border:1px solid var(--line);border-radius:var(--radius-md);padding:8px;font:inherit"'+(edit?'':' readonly')+'>'+escapeHtml(resp)+'</textarea>':'')
-      +(edit?'<div class="toolbar" style="gap:8px;flex-wrap:wrap"><button class="btn" type="button" style="background:#233a1f;border-color:#3a5c30" onclick="avalAcao(\'enviar\',\''+id+'\')" title="Coloca na fila: o robô publica a resposta no Google na próxima rodada">🚀 Enviar ao Google</button><button class="btn" type="button" onclick="avalAcao(\'copiar\',\''+id+'\')">📋 Copiar resposta</button><a class="btn" style="text-decoration:none" href="https://business.google.com/reviews" target="_blank" rel="noopener noreferrer">Abrir no Google ↗</a><button class="btn" type="button" onclick="avalAcao(\'publicada\',\''+id+'\')">✅ Já publiquei</button><button class="btn" type="button" onclick="avalAcao(\'sugerir\',\''+id+'\')">↻ Nova sugestão</button><button class="btn" type="button" onclick="avalAcao(\'descartada\',\''+id+'\')">Descartar</button></div>':'<div class="toolbar"><button class="btn" type="button" onclick="avalAcao(\'novo\',\''+id+'\')">'+(r.status==='enviar'?'✖ Cancelar o envio':'↩ Voltar para responder')+'</button></div>')
+      +(edit?'<div class="toolbar" style="gap:8px;flex-wrap:wrap"><button class="btn" type="button" style="background:#233a1f;border-color:#3a5c30" onclick="avalAcao(\'enviar\',\''+id+'\')" title="Coloca na fila: o robô publica a resposta no Google na próxima rodada">🚀 Enviar ao Google</button><button class="btn" type="button" onclick="avalAcao(\'sugerir\',\''+id+'\')">↻ Nova sugestão</button><button class="btn" type="button" onclick="avalAcao(\'copiar\',\''+id+'\')" title="Copia o texto para você colar à mão no Google">📋 Copiar</button></div>':(avalNaFila(r)?'<div class="toolbar"><button class="btn" type="button" onclick="avalAcao(\'novo\',\''+id+'\')">✖ Cancelar o envio</button></div>':''))
       +'</div>';
   }).join('')+(lista.length>60?'<div class="mini">Mostrando as 60 primeiras de '+lista.length+'.</div>':'');
 }
