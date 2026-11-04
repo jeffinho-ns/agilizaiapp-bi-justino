@@ -295,7 +295,8 @@ $JsAbreResposta = @'
 var c=document.querySelectorAll('.DsOcnf')[arguments[0]];
 if(!c)return 'sem_cartao';
 c.scrollIntoView({block:'center'});
-var b=[...c.querySelectorAll('button')].filter(function(e){return /^Responder$/.test((e.innerText||'').trim())&&e.offsetParent!==null});
+function tx(e){var s=e.querySelector('.VfPpkd-vQzf8d');return ((s?s.textContent:e.innerText)||'').trim()}   // o botao traz um icone com texto antes do rotulo
+var b=[...c.querySelectorAll('button')].filter(function(e){return tx(e)==='Responder'&&e.offsetParent!==null});
 if(!b.length)return 'sem_botao';
 b[0].click();return 'ok';
 '@
@@ -314,10 +315,11 @@ $JsPublica = @'
 var c=document.querySelectorAll('.DsOcnf')[arguments[0]];
 var raiz=[c].concat([...document.querySelectorAll('[role=dialog]')]);
 var ordem=['Publicar resposta','Publicar','Enviar','Salvar'];
+function tx(e){var s=e.querySelector('.VfPpkd-vQzf8d');return ((s?s.textContent:e.innerText)||'').trim()}
 for(var k=0;k<ordem.length;k++){
   for(var r=0;r<raiz.length;r++){
     if(!raiz[r])continue;
-    var b=[...raiz[r].querySelectorAll('button')].filter(function(e){return (e.innerText||'').trim()===ordem[k]&&e.offsetParent!==null&&!e.disabled});
+    var b=[...raiz[r].querySelectorAll('button')].filter(function(e){return tx(e)===ordem[k]&&e.offsetParent!==null&&!e.disabled});
     if(b.length){b[b.length-1].click();return ordem[k]}
   }
 }
