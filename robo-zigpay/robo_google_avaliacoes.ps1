@@ -314,13 +314,22 @@ var e=arguments[0];return (e.value!==undefined&&e.tagName!=='DIV')?e.value:(e.in
 $JsPublica = @'
 var c=document.querySelectorAll('.DsOcnf')[arguments[0]];
 var raiz=[c].concat([...document.querySelectorAll('[role=dialog]')]);
-var ordem=['Publicar resposta','Publicar','Enviar','Salvar'];
+var ordem=['Postar resposta','Publicar resposta','Postar','Publicar','Enviar','Salvar'];
 function tx(e){var s=e.querySelector('.VfPpkd-vQzf8d');return ((s?s.textContent:e.innerText)||'').trim()}
 for(var k=0;k<ordem.length;k++){
   for(var r=0;r<raiz.length;r++){
     if(!raiz[r])continue;
     var b=[...raiz[r].querySelectorAll('button')].filter(function(e){return tx(e)===ordem[k]&&e.offsetParent!==null&&!e.disabled});
     if(b.length){b[b.length-1].click();return ordem[k]}
+  }
+}
+// plano B: o botao principal do editor fica ao lado de "Cancelar" (visto no mapa mascarado: 2 botoes na mesma linha, o 1o e o de publicar)
+for(var r2=0;r2<raiz.length;r2++){
+  if(!raiz[r2])continue;
+  var canc=[...raiz[r2].querySelectorAll('button')].filter(function(e){return tx(e)==='Cancelar'&&e.offsetParent!==null});
+  if(canc.length){
+    var irmaos=[...canc[0].parentElement.querySelectorAll('button')].filter(function(e){return tx(e)!=='Cancelar'&&e.offsetParent!==null&&!e.disabled});
+    if(irmaos.length){irmaos[0].click();return 'ao lado de Cancelar'}
   }
 }
 return 'nao';
