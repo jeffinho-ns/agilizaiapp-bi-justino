@@ -8544,7 +8544,10 @@ async function avalAcao(acao,id){
     }
     if(acao==='enviar'){
       if(!texto){showToast('Sem texto de resposta.',true);return}
-      if(!confirm('Enviar esta resposta ao Google?\n\nO robô vai publicá-la, com o texto abaixo, na próxima rodada (ou quando for rodado). A resposta fica pública no Perfil da Empresa.\n\n'+texto))return;
+      // revisão antes do envio: bloqueia texto vazio, grande demais, com acento quebrado ou com marcador sem preencher
+      const prob=!texto?'a resposta está vazia':texto.length>1500?'a resposta passa de 1500 caracteres':/[\u2500-\u257F\uFFFD]|[\u00C3\u00C2][\u00A0-\u00BF]/.test(texto)?'o texto tem letras acentuadas quebradas (ex.: "├í"); apague e digite de novo':/\[[^\]]{1,30}\]|\{[^}]*\}|undefined|\bnull\b|NaN/.test(texto)?'sobrou um marcador ou campo sem preencher no texto':'';
+      if(prob){showToast('Não enviei: '+prob+'.',true);return}
+      if(!confirm('REVISE antes de enviar ao Google.\n\nConfira: acentos e pontuação, se o nome (se houver) está certo e se tudo o que o texto afirma é verdade. A resposta fica pública no Perfil da Empresa e o robô a publica na próxima rodada.\n\n'+texto+'\n\nEnviar esta resposta?'))return;
     }
     if((acao==='publicada'||acao==='enviar')&&!texto){showToast('Sem texto de resposta.',true);return}
     const a=await apiAuth('decidirGoogleAvaliacao',{id:id,status:acao,textoFinal:acao==='novo'||acao==='descartada'?'':texto},false,30000);

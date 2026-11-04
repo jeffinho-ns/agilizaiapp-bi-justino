@@ -5918,10 +5918,21 @@ function sugerirGoogleAvaliacao_(body) {
   return { ok: true, sugestao: sug.texto, origem: sug.origem };
 }
 
+// Revisão da resposta antes de entrar na fila de envio: devolve o problema encontrado ou '' se está ok.
+function avalRevisaResposta_(t) {
+  const s = String(t || '').trim();
+  if (!s) return 'a resposta está vazia';
+  if (s.length > 1500) return 'a resposta passa de 1500 caracteres';
+  if (/[\u2500-\u257F\uFFFD]|[\u00C3\u00C2][\u00A0-\u00BF]/.test(s)) return 'o texto tem letras acentuadas quebradas (ex.: "├í"); apague e digite de novo';
+  if (/\[[^\]]{1,30}\]|\{[^}]*\}|undefined|\bnull\b|NaN/.test(s)) return 'sobrou um marcador ou campo sem preencher no texto';
+  return '';
+}
+
 function decidirGoogleAvaliacao_(auth, body) {
   const id = String(body.id || '').replace(/[^0-9a-fA-F]/g, '');
   const status = String(body.status || '');
   if (!id || AVAL_STATUS.indexOf(status) < 0 || status === 'respondida_externa') return { ok: false, error: 'dados_invalidos' };
+  if (status === 'enviar') { const prob = avalRevisaResposta_(body.textoFinal); if (prob) return { ok: false, error: 'revisao: ' + prob }; }
   const sh = getAvalSheet_();
   const c = sh.createTextFinder(id).matchEntireCell(true).findNext();
   if (!c) return { ok: false, error: 'nao_encontrada' };

@@ -99,7 +99,13 @@ function Invoke-AppsScriptOnce($payload) {
     $locLine = (Get-Content $tmpHeaders) | Where-Object { $_ -match '^Location:' } | Select-Object -First 1
     $location = $locLine -replace '^Location:\s*', ''
     if (-not $location) { throw "Sem redirect do Apps Script ao chamar a acao '$($payload.action)'." }
-    $final = & curl.exe -sS -L "$location"
+    # A resposta vai para arquivo e e lida como UTF-8: ler a saida do curl direto usa a codificacao do console (OEM) e estraga os acentos
+    # ("Ola" virava "Ol├í"), e o texto aprovado seria digitado quebrado no Google.
+    $tmpOut = [System.IO.Path]::GetTempFileName()
+    try {
+      & curl.exe -sS -L "$location" -o $tmpOut
+      $final = [System.IO.File]::ReadAllText($tmpOut, [System.Text.Encoding]::UTF8)
+    } finally { if (Test-Path $tmpOut) { Remove-Item $tmpOut -Force -ErrorAction SilentlyContinue } }
     if ($final -notmatch '^\s*[{[]') { throw "Resposta inesperada do Apps Script pra acao '$($payload.action)': [$final]" }
     return ($final | ConvertFrom-Json)
   } finally {
@@ -150,7 +156,8 @@ document.querySelectorAll('.DsOcnf').forEach(function(c){
   if(est.length){var cls=est[0].className;for(var i=0;i<est.length;i++){if(est[i].className===cls)nota++}}
   var full=c.querySelector('.oiQd1c');var texto=full?(full.textContent||''):'';
   if(!texto){var q=c.querySelector('blockquote');texto=q?(q.textContent||'').replace(/Mais\s*$/,''):''}
-  out.push({local:tx('.rRqL5e'),autor:tx('.LH5kS'),nota:nota,quando:tx('.zWmYWd.NhZJzb'),texto:texto.replace(/\s+/g,' ').trim().slice(0,1500),respondida:!!c.querySelector('.Rhj72c')});
+  var rr=c.querySelector('.Rhj72c');
+  out.push({local:tx('.rRqL5e'),autor:tx('.LH5kS'),nota:nota,quando:tx('.zWmYWd.NhZJzb'),texto:texto.replace(/\s+/g,' ').trim().slice(0,1500),respondida:!!rr,resp:rr?(rr.textContent||'').replace(/\s+/g,' ').trim().slice(0,1500):''});
 });
 return JSON.stringify(out);
 '@
@@ -267,6 +274,13 @@ function Read-Avaliacoes($drv, [string]$alvo) {
   } else {
     Log "AVISO: nao consegui trocar a ordem para 'Ordenar por data'; sigo so com a ordem atual da tela (pode trazer so as piores notas)."
   }
+  # Alerta: respostas do dono ja publicadas com acentos corrompidos (ex.: "Ol├í"); so o "quando" e a nota entram no log, nunca nome
+  $rxQuebrado = '[\u2500-\u257F\uFFFD]|[\u00C3\u00C2][\u00A0-\u00BF]'
+  $quebradas = @($script:CartoesFinal | Where-Object { $_.respondida -and ([string]$_.resp) -match $rxQuebrado -and (Norm-Txt ([string]$_.local)).Contains((Norm-Txt 'Seu Justino Vila Madalena')) })
+  if ($quebradas.Count -gt 0) {
+    Log ("ATENCAO: {0} resposta(s) publicada(s) no Google com acentos corrompidos. Edite no Google (Editar) com o texto do BI:" -f $quebradas.Count)
+    $quebradas | ForEach-Object { Log ("   - avaliacao de {0} estrela(s), {1}" -f $_.nota, $_.quando) }
+  }
   $localAlvo = 'Seu Justino Vila Madalena'
   if (Test-Path $LocalPath) { $l1 = (Get-Content $LocalPath -Raw -Encoding UTF8).Trim(); if ($l1) { $localAlvo = $l1 } }
   $alvoNorm = Norm-Txt $localAlvo
@@ -363,6 +377,15 @@ document.querySelectorAll('[role=dialog]').forEach(function(x){desc(x,0)});
 return out.join('\n');
 '@
 function Norm-Espaco([string]$s) { return ($s -replace '\s+', ' ').Trim() }
+# Revisao automatica da resposta ANTES de digitar no Google. Devolve o problema encontrado ou '' se esta ok.
+function Revisar-Resposta([string]$t) {
+  $t = $t.Trim()
+  if (-not $t) { return 'resposta vazia' }
+  if ($t.Length -gt 1500) { return 'resposta com mais de 1500 caracteres' }
+  if ($t -match '[\u2500-\u257F\uFFFD]|[\u00C3\u00C2][\u00A0-\u00BF]') { return 'acentos corrompidos no texto' }
+  if ($t -match '\[[^\]]{1,30}\]|\{[^}]*\}|undefined|\bnull\b|NaN') { return 'sobrou marcador ou campo sem preencher no texto' }
+  return ''
+}
 function Publicar-Uma($drv, $it) {
   $cart = @($script:CartoesFinal)
   $idx = -1
@@ -384,7 +407,8 @@ function Publicar-Uma($drv, $it) {
   # (o texto da planilha pode diferir em detalhes do da pagina, entao nao e comparado aqui)
   if ([int]$c.nota -ne [int]$it.nota) { return @{ ok = $false; motivo = 'a nota da avaliacao nao confere' } }
   $texto = [string]$it.resposta
-  if (-not $texto.Trim()) { return @{ ok = $false; motivo = 'resposta vazia' } }
+  $rev = Revisar-Resposta $texto
+  if ($rev) { return @{ ok = $false; motivo = "revisao automatica barrou o envio: $rev" } }
   $r = [string]$drv.ExecuteScript($JsAbreResposta, $idx)
   if ($r -ne 'ok') { return @{ ok = $false; motivo = "nao achei o botao Responder ($r)" } }
   Start-Sleep -Seconds 3
