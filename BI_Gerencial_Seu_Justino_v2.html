@@ -172,6 +172,13 @@ input,select,textarea{width:100%;background:#17120e;color:white;border:1px solid
 input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px #c9673626}
 textarea{resize:vertical}
 input[readonly]{opacity:.78;background:#1d1711}
+/* Lista de tarefas (ex.: sugestões do Delivery): o input global tem width:100%, o que empurrava o texto para a direita; aqui o checkbox fica pequeno, à esquerda do texto */
+.deliCk{display:flex;gap:10px;align-items:flex-start;padding:7px 0;cursor:pointer;line-height:1.45;border-bottom:1px solid #ffffff0a}
+.deliCk:last-of-type{border-bottom:0}
+.deliCk input[type=checkbox]{width:18px;height:18px;flex:0 0 18px;margin:2px 0 0;padding:0;accent-color:var(--accent);cursor:pointer}
+.deliCk span{flex:1;min-width:0;text-align:left}
+.deliCk:has(input:checked) span{color:var(--muted);text-decoration:line-through}
+.deliTitulo{margin:16px 0 4px;font-size:14px}
 .btn:focus-visible,.nav button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .money{text-align:right;font-weight:800;font-variant-numeric:tabular-nums}
 .moneyPreview{display:block;margin-top:2px;color:var(--muted);font-size:12px;min-height:14px}
@@ -1023,6 +1030,17 @@ tbody tr:hover{background:#ffffff08}
 <div id="mkSemanalTicketWrap"><div class="mini">Carregando…</div></div>
 <div id="mkSemanalTicketAnalise" class="mini" style="margin-top:8px"></div>
 </div>
+<div class="card full" id="cardDeliveryReceita" data-card-id="mk-delivery-receita">
+<div class="roleTitle"><h3>🛵 Receita de delivery por plataforma</h3><span><button class="btn" type="button" style="padding:6px 10px;font-size:12px" onclick="atualizarDeliveryGrafico()">🔄 Atualizar</button></span></div>
+<div class="note">Venda de delivery lida da forma de pagamento do faturamento da ZigPay: iFood, Rappi, Uber e Delivery Online. <b>Geral</b> = soma dessas quatro plataformas; o <b>App ZigPay</b> (venda pelo aplicativo do bar) aparece separado, fora do Geral. A 99Food ainda não entra aqui, porque o painel dela não traz a receita por dia. Semana = segunda a domingo; <b>*</b> marca período ainda incompleto. <span class="mini" id="deliGrafRange"></span></div>
+<div class="toolbar">
+<div class="tbItem"><label class="mini" for="deliGrafGran">Ver por</label><select id="deliGrafGran" onchange="deliGrafRender()"><option value="dia">Dia a dia</option><option value="semana" selected>Semana a semana</option><option value="mes">Mês a mês</option></select></div>
+<div class="tbItem"><label class="mini" for="deliGrafPlat">Plataforma</label><select id="deliGrafPlat" onchange="deliGrafRender()"><option value="todas" selected>Geral e cada plataforma</option><option value="geral">Só o Geral (soma do delivery)</option><option value="IFOOD">iFood</option><option value="RAPPI">Rappi</option><option value="UBER">Uber</option><option value="DELIVERY ONLINE">Delivery Online</option><option value="APP">App ZigPay</option></select></div>
+<div class="tbItem" id="deliGrafDiasBox"><label class="mini" for="deliGrafDias">Últimos</label><select id="deliGrafDias" onchange="deliGrafRender()"><option value="14">14 dias</option><option value="30" selected>30 dias</option><option value="60">60 dias</option><option value="90">90 dias</option><option value="150">150 dias</option></select></div>
+</div>
+<div id="deliGrafWrap"><div class="mini">Carregando…</div></div>
+<div id="deliGrafResumo" class="mini" style="margin-top:10px"></div>
+</div>
 <div class="card full" id="cardPadraoSemanal" data-card-id="mk-graf-padrao">
 <div class="roleTitle"><h3>📊 Padrão semanal • faturamento e ticket médio por dia da semana</h3><span><button class="btn" type="button" style="padding:6px 10px;font-size:12px" onclick="atualizarPadraoSemanal()">🔄 Atualizar</button></span></div>
 <div class="note">Média de cada dia da semana (segunda a domingo) desde 01/07/2026 — dia com faturamento zero (fechado) fica de fora da média, conta só dia que realmente abriu. Público médio = média simples do público nos dias com público registrado (pode ser menos dias que "Dias no período", se algum dia aberto ainda não tem público capturado). Ticket médio = soma do faturamento ÷ soma do público, só nos dias com público registrado.</div>
@@ -1083,8 +1101,8 @@ tbody tr:hover{background:#ffffff08}
 <!-- 27/10, pedido do Renato: responder avaliações do Google. O robô lê (sem nome de cliente), a IA sugere, a equipe aprova e publica no Google. -->
 <div id="mkAvalView" class="grid hidden" style="grid-column:1/-1">
 <div class="card full"><div class="roleTitle"><h3>⭐ Avaliações do Google</h3><span class="badge p" id="avalBadge">—</span></div>
-<div class="note">Aqui estão todas as avaliações do Google <b>sem resposta</b>, as negativas primeiro. Revise o texto sugerido (pode editar) e clique em <b>🚀 Enviar ao Google</b>: nada é publicado sem a sua aprovação, e o robô publica na próxima rodada.</div>
-<div class="toolbar"><div class="tbItem"><label class="mini" for="avalFiltro">Mostrar</label><select id="avalFiltro" onchange="avalRender()"><option value="pend" selected>Sem resposta</option><option value="fila">Na fila de envio</option><option value="resp">Já respondidas</option><option value="todas">Todas</option></select></div>
+<div class="note">Aqui estão todas as avaliações do Google <b>sem resposta</b>, da mais recente para a mais antiga. Revise o texto sugerido (pode editar) e clique em <b>🚀 Enviar ao Google</b>: nada é publicado sem a sua aprovação, e o robô publica na próxima rodada.</div>
+<div class="toolbar"><input type="hidden" id="avalFiltro" value="pend"><div class="nav" id="avalChips" style="margin:0" role="group" aria-label="Mostrar avaliações"><button type="button" data-f="pend" class="active" onclick="avalFiltrar('pend')">📨 Mensagens sem resposta</button><button type="button" data-f="fila" onclick="avalFiltrar('fila')">Na fila de envio</button><button type="button" data-f="resp" onclick="avalFiltrar('resp')">Já respondidas</button><button type="button" data-f="todas" onclick="avalFiltrar('todas')">Todas</button></div>
 <button class="btn" type="button" onclick="loadAvaliacoes(true)">↻ Atualizar tela</button></div>
 <div id="avalResumo" class="mini" style="margin:8px 0"></div>
 <div id="avalBody" class="mini">Abra esta página para carregar…</div></div>
@@ -1112,7 +1130,7 @@ tbody tr:hover{background:#ffffff08}
 <tr><td>Avaliações (25/07 a 22/10)</td><td>nenhuma</td><td>Sem nota, a loja perde posição.</td></tr>
 <tr><td>Preparo</td><td>35,26 min • 50% fora do prazo (amostra de 2 pedidos)</td><td>Amostra pequena; vale ajustar o prazo informado.</td></tr>
 </tbody></table></div></div>
-<h4 style="margin:14px 0 6px">Horário</h4><label class="deliCk" style="display:flex;gap:8px;align-items:flex-start;padding:5px 0;cursor:pointer"><input type="checkbox" data-deli="h1" onchange="deliPlanoMarca(this)" style="margin-top:3px"><span>Deixar a loja conectada de 18:00 a 23:30 (horário de pico da loja). Hoje fica conectada só 35,5% do pico e 28,5% do horário predefinido.</span></label><label class="deliCk" style="display:flex;gap:8px;align-items:flex-start;padding:5px 0;cursor:pointer"><input type="checkbox" data-deli="h2" onchange="deliPlanoMarca(this)" style="margin-top:3px"><span>Definir quem abre e fecha a loja no app todo dia (e um aviso se ficar offline no pico).</span></label><label class="deliCk" style="display:flex;gap:8px;align-items:flex-start;padding:5px 0;cursor:pointer"><input type="checkbox" data-deli="h3" onchange="deliPlanoMarca(this)" style="margin-top:3px"><span>Revisar o prazo de preparo informado: hoje o tempo médio real é 35,26 min e 50% dos pedidos (1 de 2) saíram fora do prazo.</span></label><h4 style="margin:14px 0 6px">Cardápio</h4><label class="deliCk" style="display:flex;gap:8px;align-items:flex-start;padding:5px 0;cursor:pointer"><input type="checkbox" data-deli="c1" onchange="deliPlanoMarca(this)" style="margin-top:3px"><span>Burgers no topo (Muu Burguer e Veggie Burguer são os que a loja mais mostra: 83 e 81 impressões).</span></label><label class="deliCk" style="display:flex;gap:8px;align-items:flex-start;padding:5px 0;cursor:pointer"><input type="checkbox" data-deli="c2" onchange="deliPlanoMarca(this)" style="margin-top:3px"><span>Criar 2 ou 3 combos com preço fechado (burger + porção + bebida) para subir o ticket e facilitar a escolha.</span></label><label class="deliCk" style="display:flex;gap:8px;align-items:flex-start;padding:5px 0;cursor:pointer"><input type="checkbox" data-deli="c3" onchange="deliPlanoMarca(this)" style="margin-top:3px"><span>Reescrever ou tirar do delivery os itens sem impressão ou sem venda (Ceviche de banana da terra, Pastel Mix de Queijo, Arroz Biro Biro, Vinagrete).</span></label><label class="deliCk" style="display:flex;gap:8px;align-items:flex-start;padding:5px 0;cursor:pointer"><input type="checkbox" data-deli="c4" onchange="deliPlanoMarca(this)" style="margin-top:3px"><span>Descrição de uma linha por item, com o que o diferencia (braseiro, picanha, ponto da carne).</span></label><h4 style="margin:14px 0 6px">Fotos</h4><label class="deliCk" style="display:flex;gap:8px;align-items:flex-start;padding:5px 0;cursor:pointer"><input type="checkbox" data-deli="f1" onchange="deliPlanoMarca(this)" style="margin-top:3px"><span>Foto própria dos itens de maior margem, com luz natural, fundo limpo e o prato inteiro (campeões e combos primeiro).</span></label><label class="deliCk" style="display:flex;gap:8px;align-items:flex-start;padding:5px 0;cursor:pointer"><input type="checkbox" data-deli="f2" onchange="deliPlanoMarca(this)" style="margin-top:3px"><span>Sem texto, logo ou moldura sobre a foto.</span></label><h4 style="margin:14px 0 6px">Precificação</h4><label class="deliCk" style="display:flex;gap:8px;align-items:flex-start;padding:5px 0;cursor:pointer"><input type="checkbox" data-deli="p1" onchange="deliPlanoMarca(this)" style="margin-top:3px"><span>Informar a comissão da 99Food do contrato e o CMV alvo, para calcular o preço mínimo de delivery item a item (o BI já tem o custo da ficha técnica).</span></label><label class="deliCk" style="display:flex;gap:8px;align-items:flex-start;padding:5px 0;cursor:pointer"><input type="checkbox" data-deli="p2" onchange="deliPlanoMarca(this)" style="margin-top:3px"><span>Conferir se o preço do delivery cobre custo + comissão + desconto de oferta.</span></label><h4 style="margin:14px 0 6px">Promoções</h4><label class="deliCk" style="display:flex;gap:8px;align-items:flex-start;padding:5px 0;cursor:pointer"><input type="checkbox" data-deli="o1" onchange="deliPlanoMarca(this)" style="margin-top:3px"><span>Abrir Ofertas de vendas > Central de ofertas e ver o que a 99 oferece. Nas ofertas exclusivas da plataforma a loja não paga a promoção.</span></label><label class="deliCk" style="display:flex;gap:8px;align-items:flex-start;padding:5px 0;cursor:pointer"><input type="checkbox" data-deli="o2" onchange="deliPlanoMarca(this)" style="margin-top:3px"><span>Testar uma oferta de primeiro pedido (todos os 2 clientes até agora compraram uma vez só).</span></label><label class="deliCk" style="display:flex;gap:8px;align-items:flex-start;padding:5px 0;cursor:pointer"><input type="checkbox" data-deli="o3" onchange="deliPlanoMarca(this)" style="margin-top:3px"><span>Só usar Anúncio pago depois de acertar horário e cardápio.</span></label>
+<h4 class="deliTitulo">Horário</h4><label class="deliCk"><input type="checkbox" data-deli="h1" onchange="deliPlanoMarca(this)"><span>Deixar a loja conectada de 18:00 a 23:30 (horário de pico da loja). Hoje fica conectada só 35,5% do pico e 28,5% do horário predefinido.</span></label><label class="deliCk"><input type="checkbox" data-deli="h2" onchange="deliPlanoMarca(this)"><span>Definir quem abre e fecha a loja no app todo dia (e um aviso se ficar offline no pico).</span></label><label class="deliCk"><input type="checkbox" data-deli="h3" onchange="deliPlanoMarca(this)"><span>Revisar o prazo de preparo informado: hoje o tempo médio real é 35,26 min e 50% dos pedidos (1 de 2) saíram fora do prazo.</span></label><h4 class="deliTitulo">Cardápio</h4><label class="deliCk"><input type="checkbox" data-deli="c1" onchange="deliPlanoMarca(this)"><span>Burgers no topo (Muu Burguer e Veggie Burguer são os que a loja mais mostra: 83 e 81 impressões).</span></label><label class="deliCk"><input type="checkbox" data-deli="c2" onchange="deliPlanoMarca(this)"><span>Criar 2 ou 3 combos com preço fechado (burger + porção + bebida) para subir o ticket e facilitar a escolha.</span></label><label class="deliCk"><input type="checkbox" data-deli="c3" onchange="deliPlanoMarca(this)"><span>Reescrever ou tirar do delivery os itens sem impressão ou sem venda (Ceviche de banana da terra, Pastel Mix de Queijo, Arroz Biro Biro, Vinagrete).</span></label><label class="deliCk"><input type="checkbox" data-deli="c4" onchange="deliPlanoMarca(this)"><span>Descrição de uma linha por item, com o que o diferencia (braseiro, picanha, ponto da carne).</span></label><h4 class="deliTitulo">Fotos</h4><label class="deliCk"><input type="checkbox" data-deli="f1" onchange="deliPlanoMarca(this)"><span>Foto própria dos itens de maior margem, com luz natural, fundo limpo e o prato inteiro (campeões e combos primeiro).</span></label><label class="deliCk"><input type="checkbox" data-deli="f2" onchange="deliPlanoMarca(this)"><span>Sem texto, logo ou moldura sobre a foto.</span></label><h4 class="deliTitulo">Precificação</h4><label class="deliCk"><input type="checkbox" data-deli="p1" onchange="deliPlanoMarca(this)"><span>Informar a comissão da 99Food do contrato e o CMV alvo, para calcular o preço mínimo de delivery item a item (o BI já tem o custo da ficha técnica).</span></label><label class="deliCk"><input type="checkbox" data-deli="p2" onchange="deliPlanoMarca(this)"><span>Conferir se o preço do delivery cobre custo + comissão + desconto de oferta.</span></label><h4 class="deliTitulo">Promoções</h4><label class="deliCk"><input type="checkbox" data-deli="o1" onchange="deliPlanoMarca(this)"><span>Abrir Ofertas de vendas > Central de ofertas e ver o que a 99 oferece. Nas ofertas exclusivas da plataforma a loja não paga a promoção.</span></label><label class="deliCk"><input type="checkbox" data-deli="o2" onchange="deliPlanoMarca(this)"><span>Testar uma oferta de primeiro pedido (todos os 2 clientes até agora compraram uma vez só).</span></label><label class="deliCk"><input type="checkbox" data-deli="o3" onchange="deliPlanoMarca(this)"><span>Só usar Anúncio pago depois de acertar horário e cardápio.</span></label>
 <div class="mini" style="margin-top:12px">Pendente para fechar o diagnóstico: ver a tela de Cardápios (fotos e preços) e a Central de ofertas, e saber a comissão da 99Food e o CMV alvo.</div>
 </div>
 </div>
@@ -8498,6 +8516,18 @@ async function loadAvaliacoes(forca){
 function avalSemResposta(r){return !r.respondida&&r.status!=='enviar'&&r.status!=='publicada'&&r.status!=='respondida_externa'}
 function avalNaFila(r){return r.status==='enviar'&&!r.respondida}
 function avalRespondida(r){return !!r.respondida||r.status==='publicada'||r.status==='respondida_externa'}
+// "Há 3 dias", "Ontem", "Há 31 semanas"... -> idade aproximada em horas (o Google só informa o tempo relativo)
+function avalIdadeHoras(q){
+  q=String(q||'').toLowerCase();
+  if(/agora|hoje/.test(q))return 0;
+  if(/ontem/.test(q))return 24;
+  const m=q.match(/(\d+|um|uma)\s*(minuto|hora|dia|semana|m[eê]s|meses|ano)/);if(!m)return 1e6;
+  const n=/^\d+$/.test(m[1])?Number(m[1]):1;
+  return n*({minuto:1/60,hora:1,dia:24,semana:168,'mês':720,mes:720,meses:720,ano:8760}[m[2]]||1e4);
+}
+// Data aproximada da avaliação = momento em que o robô leu - idade que o Google mostrava naquela leitura (maior = mais recente)
+function avalDataAprox(r){return (Number(r.capturedAt)||0)-avalIdadeHoras(r.quando)*3600000}
+function avalFiltrar(f){const i=$('avalFiltro');if(i)i.value=f;avalRender()}
 function avalRender(){
   const body=$('avalBody');if(!body)return;
   const res=$('avalResumo');
@@ -8511,7 +8541,12 @@ function avalRender(){
   if(res)res.innerHTML=todas.length?('Nota média das avaliações lidas: <b>'+media.toFixed(2).replace('.',',')+'</b> ('+todas.length+' avaliações) • Sem resposta: <b>'+pend.length+'</b> (negativas: <b style="color:'+(neg?'var(--red)':'inherit')+'">'+neg+'</b>)'+(fila?' • Na fila de envio: <b>'+fila+'</b>':'')+' • Última leitura: '+(ult?escapeHtml(new Date(ult).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})):'—')):'';
   const fil=($('avalFiltro')||{}).value||'pend';
   let lista=todas.filter(function(r){return fil==='todas'||(fil==='pend'?avalSemResposta(r):fil==='fila'?avalNaFila(r):avalRespondida(r))});
-  lista.sort(function(a,b){return (a.nota<=2?0:1)-(b.nota<=2?0:1)||a.nota-b.nota||b.capturedAt-a.capturedAt});
+  lista.sort(function(a,b){return avalDataAprox(b)-avalDataAprox(a)});   // mais recente primeiro
+  const chips=$('avalChips');
+  if(chips){
+    const rot={pend:'📨 Mensagens sem resposta ('+pend.length+')',fila:'Na fila de envio'+(fila?' ('+fila+')':''),resp:'Já respondidas ('+todas.filter(avalRespondida).length+')',todas:'Todas ('+todas.length+')'};
+    chips.querySelectorAll('button').forEach(function(b){const f=b.dataset.f;b.textContent=rot[f]||b.textContent;b.classList.toggle('active',f===fil);b.setAttribute('aria-pressed',f===fil?'true':'false')});
+  }
   if(!todas.length){body.innerHTML='<div class="alert y">Nenhuma avaliação lida ainda. Rode o login manual e o robô de avaliações (robo-zigpay/login_manual_google.ps1 e robo_google_avaliacoes.ps1).</div>';return}
   if(!lista.length){body.innerHTML='<div class="mini">'+(fil==='pend'?'Nenhuma avaliação sem resposta. 👏':'Nenhuma avaliação neste filtro.')+'</div>';return}
   body.innerHTML=lista.slice(0,60).map(function(r){
@@ -11141,7 +11176,67 @@ function analiseHorario(st){
 function carregarGraficosMk(force){
   try{renderSemanalTrends()}catch(e){}
   try{renderPadraoSemanal()}catch(e){}
-  return Promise.all([safeRun(()=>renderVendaPorHorario()),safeRun(()=>loadFaturamentoHistoricoDre(!!force))]);
+  return Promise.all([safeRun(()=>renderVendaPorHorario()),safeRun(()=>loadFaturamentoHistoricoDre(!!force)),safeRun(()=>deliGrafCarregar(!!force))]);
+}
+
+// ---- Receita de delivery por plataforma (05/11, pedido do Renato): dia a dia, semana a semana e mês a mês, por plataforma e Geral ----
+// Dado: o mesmo de "Delivery por plataforma" (getZigDelivery: data, plataforma, valor vendido), até 150 dias. Reaproveita o gráfico de
+// tendência (renderTrendChart), que já traz o cursor com valores e o botão "Análise do gráfico".
+const DELI_GRAF_CORES={GERAL:'#34d399',IFOOD:'#f87171',RAPPI:'#fbbf24',UBER:'#60a5fa','DELIVERY ONLINE':'#a78bfa',APP:'#22d3ee'};
+const DELI_GRAF_PLAT=['IFOOD','RAPPI','UBER','DELIVERY ONLINE','APP'];   // ordem das séries; APP fica fora do Geral
+async function deliGrafCarregar(force){
+  const wrap=$('deliGrafWrap');if(!wrap)return;
+  if(!deliCarregado||force){
+    try{
+      if(!deliRows.length)wrap.innerHTML='<div class="mini">Carregando delivery…</div>';
+      const a=await apiAuth('getZigDelivery',{days:150},false,60000);
+      if(a&&a.ok){deliRows=(a.rows||[]).map(function(r){return {date:r[0],plataforma:r[1],valor:Number(r[2])||0}});deliCarregado=true}
+      else{wrap.innerHTML='<div class="alert y">'+(a&&a.error==='unknown_action'?'O servidor ainda não tem o módulo de delivery: cole o Code.gs novo no Apps Script e publique uma nova versão.':'Sem dados de delivery ('+escapeHtml(String(a&&(a.error||a.code)||'sem resposta'))+').')+'</div>';return}
+    }catch(e){wrap.innerHTML='<div class="alert r">Falha ao carregar o delivery ('+escapeHtml(String(e&&e.message||e))+').</div>';return}
+  }
+  deliGrafRender();
+}
+async function atualizarDeliveryGrafico(){await deliGrafCarregar(true);showToast('Receita de delivery atualizada com a ZigPay.')}
+function deliGrafRender(){
+  const wrap=$('deliGrafWrap');if(!wrap)return;
+  const gran=($('deliGrafGran')||{}).value||'semana',plat=($('deliGrafPlat')||{}).value||'todas',dias=Number(($('deliGrafDias')||{}).value)||30;
+  if($('deliGrafDiasBox'))$('deliGrafDiasBox').style.display=gran==='dia'?'':'none';
+  if(!deliRows.length){wrap.innerHTML='<div class="alert y">Ainda não há dias de delivery gravados. No Apps Script, rode <b>zigDeliveryHistorico</b> (uma vez) e depois <b>zigInstalarGatilho</b>.</div>';if($('deliGrafResumo'))$('deliGrafResumo').textContent='';return}
+  const datas=deliRows.map(r=>r.date).sort(),dMin=datas[0],dMax=datas[datas.length-1];
+  const pad=n=>String(n).padStart(2,'0');
+  const addDia=(d,n)=>{const x=new Date(d+'T12:00:00');x.setDate(x.getDate()+n);return x.getFullYear()+'-'+pad(x.getMonth()+1)+'-'+pad(x.getDate())};
+  const MES=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+  // baldes (dia, semana de segunda a domingo ou mês) com início/fim, para marcar com * os que ficam incompletos nos dados
+  let baldes=[];
+  if(gran==='dia'){
+    for(let d=addDia(dMax,-(dias-1));d<=dMax;d=addDia(d,1))baldes.push({k:d,ini:d,fim:d,lab:d.slice(8)+'/'+d.slice(5,7)});
+  }else if(gran==='semana'){
+    for(let m=semMondayOf(dMin);m<=dMax;m=semAddDays(m,7)){const f=semAddDays(m,6);baldes.push({k:m,ini:m,fim:f,lab:m.slice(8)+'/'+m.slice(5,7)})}
+  }else{
+    for(let y=Number(dMin.slice(0,4)),mo=Number(dMin.slice(5,7));y+'-'+pad(mo)<=dMax.slice(0,7);){
+      const k=y+'-'+pad(mo),ult=new Date(y,mo,0).getDate();
+      baldes.push({k:k,ini:k+'-01',fim:k+'-'+pad(ult),lab:MES[mo-1]+'/'+String(y).slice(2)});
+      if(++mo>12){mo=1;y++}
+    }
+  }
+  baldes.forEach(b=>{b.parcial=b.ini<dMin||b.fim>dMax;if(b.parcial)b.lab+='*'});
+  const idx={};baldes.forEach((b,i)=>{idx[b.k]=i});
+  const chaveDe=d=>gran==='dia'?d:gran==='semana'?semMondayOf(d):d.slice(0,7);
+  const vals={};DELI_GRAF_PLAT.forEach(p=>{vals[p]=baldes.map(()=>0)});
+  deliRows.forEach(r=>{const i=idx[chaveDe(r.date)];if(i!=null&&vals[r.plataforma])vals[r.plataforma][i]+=r.valor});
+  const geral=baldes.map((b,i)=>DELI_GRAF_PLAT.filter(p=>p!=='APP').reduce((s,p)=>s+vals[p][i],0));
+  // séries conforme o filtro: Geral em área por cima de tudo; plataformas sem nenhuma venda no período ficam de fora
+  const nomeP=p=>DELI_NOMES[p]||p;
+  let series=[];
+  if(plat==='todas'||plat==='geral')series.push({name:'Geral (delivery)',color:DELI_GRAF_CORES.GERAL,area:true,values:geral});
+  if(plat==='todas')DELI_GRAF_PLAT.forEach(p=>{if(vals[p].some(v=>v>0))series.push({name:nomeP(p),color:DELI_GRAF_CORES[p],values:vals[p]})});
+  else if(plat!=='geral')series.push({name:nomeP(plat),color:DELI_GRAF_CORES[plat]||'#34d399',area:true,values:vals[plat]||baldes.map(()=>0)});
+  renderTrendChart('deliGrafWrap',baldes.map(b=>b.lab),series);
+  const tot=a=>a.reduce((s,v)=>s+v,0);
+  const rangeTxt=gran==='dia'?'Últimos '+baldes.length+' dias':gran==='semana'?baldes.length+' semanas':baldes.length+' meses';
+  if($('deliGrafRange'))$('deliGrafRange').textContent='Dados de '+dMin.split('-').reverse().join('/')+' a '+dMax.split('-').reverse().join('/')+' • '+rangeTxt+'.';
+  const linhas=[['Geral (delivery)',tot(geral)]].concat(DELI_GRAF_PLAT.map(p=>[nomeP(p),tot(vals[p])]));
+  if($('deliGrafResumo'))$('deliGrafResumo').innerHTML='<b>Total no período do gráfico:</b> '+linhas.map(l=>escapeHtml(l[0])+' <b>'+brlPreciso(l[1])+'</b>').join(' • ');
 }
 function abrirTodasAnalisesMk(){
   const v=$('mkGrafView');if(!v)return;
